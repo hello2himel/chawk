@@ -1,0 +1,110 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1">
+<title>Chawk — line art → equations</title>
+<link rel="stylesheet" href="styles.css">
+</head>
+<body>
+<header>
+  <div class="brand">
+    <h1>Chawk</h1>
+    <p>turn sketches into equations</p>
+  </div>
+  <div id="health" class="health unknown">connecting…</div>
+</header>
+
+<main>
+  <aside class="panel rail" aria-label="Input and settings">
+    <h2>1 · Drop a drawing</h2>
+    <div id="dropzone" class="dropzone" tabindex="0" role="button" aria-label="Choose an image: click, drop a file, or paste from clipboard">
+      <input id="file" type="file" accept="image/png,image/jpeg,image/bmp,image/webp,image/tiff" hidden>
+      <div id="dz-label">
+        <strong>Drop a line drawing here</strong>
+        <span>click to browse · paste with Ctrl+V · PNG/JPG ≤15MB</span>
+      </div>
+      <img id="preview" alt="your drawing preview" hidden>
+    </div>
+    <p id="facts" class="facts" hidden></p>
+
+    <div class="samples">
+      <span>No drawing handy?</span>
+      <button type="button" data-sample="sine_wave.png">sine</button>
+      <button type="button" data-sample="geometric.png">shapes</button>
+      <button type="button" data-sample="parabola_line.png">curve</button>
+    </div>
+
+    <h2>2 · Pick a preset</h2>
+    <div id="presets" class="pills" role="group" aria-label="Preset">
+      <button type="button" data-preset="balanced" aria-pressed="true" title="Good for most drawings">Balanced</button>
+      <button type="button" data-preset="precise" aria-pressed="false" title="Tighter fit, more equations">Precise</button>
+      <button type="button" data-preset="simple" aria-pressed="false" title="Fewer, simpler equations">Simple</button>
+      <button type="button" data-preset="complex" aria-pressed="false" title="Dense artwork, many strokes">Dense art</button>
+    </div>
+    <p id="custom-note" class="custom-note" hidden>Custom — settings tweaked (<button id="reset" type="button" class="link">reset</button>)</p>
+
+    <button id="go" type="button" disabled>Trace drawing → get equations</button>
+    <button id="cancel" type="button" class="link" hidden>Cancel</button>
+
+    <details id="advanced">
+      <summary>Fine-tune fit</summary>
+      <label class="row">
+        <span>Detail <b id="rmse-val"></b> <i>stricter ←→ simpler</i></span>
+        <input id="rmse" type="range" min="0.5" max="6" step="0.1" value="2">
+      </label>
+      <label class="row">
+        <span>Max wiggle <b id="maxerr-val"></b></span>
+        <input id="maxerr" type="range" min="2" max="15" step="0.5" value="6">
+      </label>
+      <label class="row">
+        <span>Max degree <b id="poly-val"></b></span>
+        <input id="poly" type="range" min="1" max="6" step="1" value="4">
+      </label>
+      <fieldset>
+        <legend>Curve types</legend>
+        <label><input id="m-circle" type="checkbox" checked> circle / arcs</label>
+        <label><input id="m-ellipse" type="checkbox" checked> ellipse / arcs</label>
+        <label><input id="m-sinusoid" type="checkbox" checked> waves</label>
+        <label><input id="m-spline" type="checkbox" checked> freeform fallback</label>
+      </fieldset>
+      <label class="check"><input id="labels" type="checkbox" checked> equation labels on image</label>
+      <label class="check"><input id="debug" type="checkbox"> debug view (mask + skeleton)</label>
+    </details>
+
+    <p id="status" class="status" role="status" aria-live="polite"></p>
+    <div id="error" class="error" role="alert" tabindex="-1" hidden>
+      <p id="error-text"></p>
+      <button id="error-action" type="button" hidden></button>
+    </div>
+  </aside>
+
+  <section class="panel stage" aria-label="Result">
+    <h2 id="result-heading" tabindex="-1">3 · Result</h2>
+    <div id="placeholder" class="muted">Your traced drawing lands here — annotated with its equations.</div>
+
+    <div id="progress" class="progress" hidden>
+      <div class="bar"><div class="fill"></div></div>
+      <p id="progress-text">Tracing…</p>
+    </div>
+
+    <div id="result" hidden>
+      <div class="seg" role="group" aria-label="Image view">
+        <button type="button" data-view="fitted" aria-pressed="true">Fitted</button>
+        <button type="button" data-view="original" aria-pressed="false">Original</button>
+        <button type="button" data-view="debug" aria-pressed="false" hidden>Debug</button>
+      </div>
+      <div class="imgwrap"><img id="output" alt="drawing with fitted equation curves overlaid"></div>
+      <div id="summary" class="chips"></div>
+      <div class="downloads">
+        <a id="dl-png" download="chawk.png">Download PNG</a>
+        <a id="dl-json" download="chawk.json">Download JSON</a>
+      </div>
+      <div id="equations"></div>
+    </div>
+  </section>
+</main>
+
+<script src="app.js"></script>
+</body>
+</html>
