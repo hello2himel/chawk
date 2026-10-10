@@ -352,8 +352,9 @@ function paintResult() {
       m.textContent = `R²=${typeof sg.r_squared === "number" ? sg.r_squared.toFixed(3) : "n/a"}`;
       top.append(b, m);
       const eq = document.createElement("span");
-      eq.className = "eqline";
-      eq.textContent = sg.equation;
+      eq.className = "eqline math";
+      if (typeof renderEquationHTML !== "undefined") eq.innerHTML = renderEquationHTML(sg.equation, sg.model);
+      else eq.textContent = sg.equation;
       const metaline = document.createElement("span");
       metaline.className = "metalime";
       const rm = document.createElement("span");
@@ -363,9 +364,11 @@ function paintResult() {
       copy.type = "button";
       copy.className = "copy";
       copy.innerHTML = '<i class="ri-file-copy-line" aria-hidden="true"></i>';
-      copy.setAttribute("aria-label", `Copy ${sg.equation}`);
+      copy.setAttribute("aria-label", `Copy LaTeX for ${sg.equation}`);
       copy.onclick = async () => {
-        const text = `${sg.equation}, x in [${sg.x_range}], y in [${sg.y_range}]`;
+        const tex = (typeof chawkToLatex !== "undefined" && chawkToLatex(sg.equation, sg.model))
+          || sg.equation;
+        const text = `\\(${tex}\\)`;
         const doneMark = () => {
           copy.innerHTML = '<i class="ri-check-line" aria-hidden="true"></i>';
           setTimeout(() => { copy.innerHTML = '<i class="ri-file-copy-line" aria-hidden="true"></i>'; }, 1200);

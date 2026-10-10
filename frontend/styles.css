@@ -173,6 +173,9 @@ p.seg .notes {
 .badge.warn { background: rgba(232, 185, 62, 0.16); color: var(--warn); }
 .badge.bad { background: rgba(255, 122, 114, 0.16); color: var(--bad); }
 .eq { font-family: ui-monospace, SFMono-Regular, monospace; font-size: 13px; }
+/* KaTeX-rendered equations inherit the dark-theme text color */
+.math .katex { font-size: 14.5px; }
+.math .katex-display { margin: 0; }
 .meta { color: var(--muted); font-size: 12px; margin-left: 8px; }
 .stroke h3 .meta, p.seg .topline .meta { margin-left: 0; }
 .copy {
