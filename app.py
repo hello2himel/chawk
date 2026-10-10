@@ -91,7 +91,15 @@ def process_image_bytes(
         "image_png_b64": base64.b64encode(
             render_mod.render_png_bytes(
                 result.preprocessed, result.strokes,
-                result.stroke_segments, cfg, title=title,
+                result.stroke_segments, cfg, title=title, labels=True,
+            )
+        ).decode("ascii"),
+        # Clean twin without labels: the UI toggles labels instantly (views +
+        # dock switch) instead of refitting.
+        "image_clean_b64": base64.b64encode(
+            render_mod.render_png_bytes(
+                result.preprocessed, result.strokes,
+                result.stroke_segments, cfg, title=title, labels=False,
             )
         ).decode("ascii"),
     }

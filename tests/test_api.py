@@ -56,6 +56,16 @@ class TestProcessBytes(unittest.TestCase):
         )
         self.assertEqual(out["report"]["config"]["max_poly_degree"], 2)
 
+    def test_clean_twin_differs(self):
+        """Labeled + label-free renders must both be valid PNGs and differ."""
+        out = server.process_image_bytes(_bytes("geometric.png"))
+        lab = base64.b64decode(out["image_png_b64"])
+        cln = base64.b64decode(out["image_clean_b64"])
+        self.assertTrue(lab.startswith(PNG_MAGIC))
+        self.assertTrue(cln.startswith(PNG_MAGIC))
+        self.assertNotEqual(lab, cln)
+        self.assertGreater(len(lab), len(cln))  # labels add ink
+
     def test_blank_raises_no_strokes(self):
         import cv2
         import numpy as np

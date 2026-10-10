@@ -96,8 +96,13 @@ def _to_rgb(image) -> "np.ndarray":
 
 
 def _build_figure(pre, strokes, stroke_segments, cfg: Config,
-                  title: str | None = None):
-    """Build the annotated overlay figure (shared by file and bytes output)."""
+                  title: str | None = None, labels: bool | None = None):
+    """Build the annotated overlay figure (shared by file and bytes output).
+
+    ``labels`` overrides ``cfg.label_equations``: True forces equation labels,
+    False suppresses them. This lets callers pre-render both variants so a UI
+    can toggle labels instantly without refitting.
+    """
     image = pre.original
     h, w = _check_render_size(image)
     rgb = _to_rgb(image)
@@ -115,7 +120,8 @@ def _build_figure(pre, strokes, stroke_segments, cfg: Config,
         for gi, seg in enumerate(segs):
             flat.append((si, gi, seg.length))
 
-    label_ids = set(_label_points(flat, cfg.max_labels)) if cfg.label_equations else set()
+    show_labels = cfg.label_equations if labels is None else bool(labels)
+    label_ids = set(_label_points(flat, cfg.max_labels)) if show_labels else set()
 
     label_entries = []
     for flat_index, (si, gi, _length) in enumerate(flat):
@@ -159,9 +165,9 @@ def _build_figure(pre, strokes, stroke_segments, cfg: Config,
 
 
 def render(pre, strokes, stroke_segments, cfg: Config, out_path: str,
-           title: str | None = None) -> str:
+           title: str | None = None, labels: bool | None = None) -> str:
     """Draw the original image with fitted curves + equation labels on top."""
-    fig, dpi = _build_figure(pre, strokes, stroke_segments, cfg, title=title)
+    fig, dpi = _build_figure(pre, strokes, stroke_segments, cfg, title=title, labels=labels)
     try:
         fig.savefig(out_path, dpi=dpi, facecolor="white")
     except Exception as exc:
@@ -172,9 +178,9 @@ def render(pre, strokes, stroke_segments, cfg: Config, out_path: str,
 
 
 def render_png_bytes(pre, strokes, stroke_segments, cfg: Config,
-                     title: str | None = None) -> bytes:
+                     title: str | None = None, labels: bool | None = None) -> bytes:
     """Same overlay as :func:`render` but returned as in-memory PNG bytes."""
-    fig, dpi = _build_figure(pre, strokes, stroke_segments, cfg, title=title)
+    fig, dpi = _build_figure(pre, strokes, stroke_segments, cfg, title=title, labels=labels)
     try:
         buf = io.BytesIO()
         fig.savefig(buf, format="png", dpi=dpi, facecolor="white")

@@ -37,7 +37,8 @@ Exit codes: `0` ok, `2` bad input/config, `3` no strokes detected.
 
 - `GET /health`, `GET /api/presets`
 - `POST /api/process` (multipart `file`, plus `preset`, `config` JSON, `debug`);
-  returns `{report, image_png_b64, debug_png_b64}`.
+  returns `{report, image_png_b64, image_clean_b64, debug_png_b64}` —
+  labeled overlay, label-free twin, and optional mask/skeleton view.
 - Limits: 15MB uploads, 2 concurrent jobs, 180s timeout.
   Dense photo/noise input is rejected (422), not hung.
 

@@ -118,6 +118,20 @@ fieldset { border: 1px solid var(--line); border-radius: 8px; margin: 8px 0; fon
   position: absolute; top: 10px; right: 10px; z-index: 6;
   background: rgba(20, 20, 28, 0.88);
 }
+/* highlight overlay: glowing boxes positioned over the paper */
+.hl { position: absolute; inset: 0; pointer-events: none; z-index: 5; }
+.hlbox {
+  position: absolute; border: 2px solid var(--accent); border-radius: 6px;
+  background: rgba(110, 155, 255, 0.07);
+}
+/* quiet download button riding on the image */
+.dl-overlay {
+  position: absolute; right: 10px; bottom: 10px; z-index: 6;
+  width: 44px; height: 44px; display: flex; align-items: center; justify-content: center;
+  border-radius: 50%; background: rgba(20, 20, 28, 0.55); color: #fff;
+  font-size: 18px; text-decoration: none; opacity: 0.55; transition: opacity 150ms;
+}
+.dl-overlay:hover { opacity: 1; background: rgba(20, 20, 28, 0.9); }
 .scan {
   position: absolute; inset: 0; pointer-events: none;
   background: linear-gradient(to bottom, transparent 0%, rgba(110, 155, 255, 0.28) 48%,
@@ -152,7 +166,7 @@ fieldset { border: 1px solid var(--line); border-radius: 8px; margin: 8px 0; fon
 .stroke h3 { margin: 0 0 4px; font-size: 14px; display: flex; align-items: center; gap: 8px; }
 .dot { width: 12px; height: 12px; border-radius: 50%; flex: none; }
 .stroke h3 .meta { margin-left: auto; }
-p.seg { margin: 6px 0 6px 20px; font-size: 13.5px; overflow: visible; }
+p.seg { display: block; margin: 6px 0 6px 20px; font-size: 13.5px; overflow: visible; }
 p.seg .topline { display: flex; align-items: baseline; gap: 6px; }
 p.seg .eqline {
   display: block; margin: 2px 0; min-width: 0;
@@ -213,13 +227,13 @@ p.seg .notes {
   display: inline-block; width: 8px; height: 8px; border-radius: 50%;
   background: var(--warn); vertical-align: middle;
 }
-#eqtoggle, #fresh {
+#eqtoggle, #fresh, #labelbtn {
   min-height: 44px; padding: 8px 14px; border-radius: 999px; font-size: 14px;
   border: 1px solid transparent; background: transparent; color: var(--muted); cursor: pointer;
   white-space: nowrap; display: inline-flex; align-items: center; gap: 6px;
 }
-#eqtoggle:hover, #fresh:hover { color: var(--ink); }
-#eqtoggle[aria-expanded="true"] { background: var(--panel2); color: var(--accent); }
+#eqtoggle:hover, #fresh:hover, #labelbtn:hover { color: var(--ink); }
+#eqtoggle[aria-expanded="true"], #labelbtn[aria-pressed="true"] { background: var(--panel2); color: var(--accent); }
 .seg { display: inline-flex; border: 1px solid var(--line); border-radius: 999px; overflow: hidden; }
 .seg button {
   border: 0; background: transparent; color: var(--muted);

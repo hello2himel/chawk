@@ -8,10 +8,11 @@ const els = {
   reset: $("reset"), rmse: $("rmse"), rmseVal: $("rmse-val"),
   maxerr: $("maxerr"), maxerrVal: $("maxerr-val"), poly: $("poly"), polyVal: $("poly-val"),
   mCircle: $("m-circle"), mEllipse: $("m-ellipse"), mSinusoid: $("m-sinusoid"),
-  mSpline: $("m-spline"), labels: $("labels"),
+  mSpline: $("m-spline"),
   serverVer: $("server-ver"),
   dz: $("dropzone"), file: $("file"), empty: $("empty"), paper: $("paper"), scan: $("scan"),
   go: $("go"), goIcon: $("go-icon"), goText: $("go-text"), viewbar: $("viewbar"),
+  hl: $("hl"), dlOverlay: $("dl-overlay"), labelBtn: $("labelbtn"),
   dlPng: $("dl-png"), dlJson: $("dl-json"),
   eqtoggle: $("eqtoggle"), fresh: $("fresh"),
   eqsheet: $("eqsheet"), eqclose: $("eqclose"), equations: $("equations"),
@@ -32,8 +33,8 @@ const PRESET_NAMES = { balanced: "Balanced", precise: "Precise", simple: "Simple
 const state = {
   file: null, previewURL: null,
   status: "idle", // idle | working | done | error
-  result: null,   // { report, annotatedURL, debugURL }
-  view: "fitted", sheetOpen: false,
+  result: null,   // { report, annotatedURL, cleanURL }
+  view: "equations", sheetOpen: false,
   controller: null, timerId: null, t0: 0,
   urls: [],
 };
@@ -50,7 +51,6 @@ function readSettings() {
     enable_ellipse: els.mEllipse.checked,
     enable_sinusoid: els.mSinusoid.checked,
     enable_spline: els.mSpline.checked,
-    label_equations: els.labels.checked,
   };
 }
 function saveSettings() {
@@ -65,8 +65,7 @@ function loadSettings() {
   if (s.max_error_tolerance) els.maxerr.value = s.max_error_tolerance;
   if (s.max_poly_degree) els.poly.value = s.max_poly_degree;
   for (const [k, el] of [["enable_circle", els.mCircle], ["enable_ellipse", els.mEllipse],
-      ["enable_sinusoid", els.mSinusoid], ["enable_spline", els.mSpline],
-      ["label_equations", els.labels]]) {
+      ["enable_sinusoid", els.mSinusoid], ["enable_spline", els.mSpline]]) {
     if (typeof s[k] === "boolean") el.checked = s[k];
   }
   return true;
@@ -162,6 +161,8 @@ async function chooseFile(f) {
   els.empty.hidden = true;
   els.eqtoggle.hidden = true;
   els.fresh.hidden = true;
+  els.labelBtn.hidden = true;
+  els.dlOverlay.hidden = true;
   els.viewbar.hidden = true;
   closeSheet();
   hideToast();
@@ -185,6 +186,8 @@ function fresh() {
   els.empty.hidden = false;
   els.eqtoggle.hidden = true;
   els.fresh.hidden = true;
+  els.labelBtn.hidden = true;
+  els.dlOverlay.hidden = true;
   els.viewbar.hidden = true;
   closeSheet();
   hideToast();
@@ -226,7 +229,6 @@ function buildConfig() {
     enable_ellipse: s.enable_ellipse,
     enable_sinusoid: s.enable_sinusoid,
     enable_spline: s.enable_spline,
-    label_equations: s.label_equations,
   };
 }
 async function go() {
@@ -234,7 +236,7 @@ async function go() {
   if (state.controller) state.controller.abort();
   state.controller = new AbortController();
   state.status = "working";
-  state.view = "fitted";
+  state.view = "equations";
   hideToast();
   forgetURLs();
   els.eqtoggle.hidden = true;
@@ -247,7 +249,7 @@ async function go() {
   form.append("file", state.file);
   form.append("preset", s.preset);
   form.append("config", JSON.stringify(buildConfig()));
-  form.append("debug", "true"); // Debug is a result view; always fetch it.
+  form.append("debug", "false");
   let res;
   try {
     res = await fetch("/api/process", { method: "POST", body: form, signal: state.controller.signal });
@@ -277,13 +279,10 @@ async function go() {
   const pngURL = URL.createObjectURL(new Blob(
     [Uint8Array.from(atob(out.image_png_b64), (c) => c.charCodeAt(0))], { type: "image/png" }));
   state.urls.push(pngURL);
-  let debugURL = null;
-  if (out.debug_png_b64) {
-    debugURL = URL.createObjectURL(new Blob(
-      [Uint8Array.from(atob(out.debug_png_b64), (c) => c.charCodeAt(0))], { type: "image/png" }));
-    state.urls.push(debugURL);
-  }
-  state.result = { report: out.report, annotatedURL: pngURL, debugURL };
+  const cleanURL = URL.createObjectURL(new Blob(
+    [Uint8Array.from(atob(out.image_clean_b64), (c) => c.charCodeAt(0))], { type: "image/png" }));
+  state.urls.push(cleanURL);
+  state.result = { report: out.report, annotatedURL: pngURL, cleanURL };
   state.status = "done";
   paintResult();
   const t = out.timings_sec && out.timings_sec.server_total;
@@ -310,12 +309,12 @@ function fitWord(rmse) {
 function paintResult() {
   const { report } = state.result;
   const s = report.summary;
-  const dbg = viewBtns.find((b) => b.dataset.view === "debug");
-  dbg.hidden = !state.result.debugURL;
   els.viewbar.hidden = false;
-  paintView();
+  setView("equations");
   els.eqtoggle.hidden = false;
   els.fresh.hidden = false;
+  els.labelBtn.hidden = false;
+  els.dlOverlay.hidden = false;
   countUp(els.statStrokes, s.stroke_count);
   countUp(els.statEqs, s.segment_count);
   els.statFit.textContent = `${fitWord(s.mean_rmse_px)} · ~${s.mean_rmse_px}px off`;
@@ -334,6 +333,11 @@ function paintResult() {
     dot.className = "dot";
     dot.style.background = PALETTE[si % PALETTE.length];
     h.append(dot, ` ${st.stroke_id} · ${models}`);
+    h.tabIndex = 0;
+    h.addEventListener("mouseenter", () => showHighlight(strokeBoxes(si)));
+    h.addEventListener("mouseleave", clearHighlight);
+    h.addEventListener("focus", () => showHighlight(strokeBoxes(si)));
+    h.addEventListener("blur", clearHighlight);
     const sub = document.createElement("span");
     sub.className = "meta";
     sub.textContent = `${st.closed ? "closed" : "open"} · ${st.arc_length.toFixed(0)}px`;
@@ -382,6 +386,8 @@ function paintResult() {
         }
       };
       metaline.append(rm, copy);
+      p.addEventListener("mouseenter", () => showHighlight(strokeBoxes(si, gi)));
+      p.addEventListener("mouseleave", clearHighlight);
       p.append(top, eq, metaline);
       if (sg.notes && sg.notes.length) {
         const nt = document.createElement("span");
@@ -394,15 +400,63 @@ function paintResult() {
     els.equations.append(div);
   });
 }
+function setView(v) {
+  state.view = v;
+  paintView();
+}
 function paintView() {
+  const labeled = state.view !== "fitted";
   for (const b of viewBtns) b.setAttribute("aria-pressed", b.dataset.view === state.view ? "true" : "false");
+  els.labelBtn.setAttribute("aria-pressed", labeled ? "true" : "false");
   if (!state.result) return;
-  els.paper.src = state.view === "original" ? state.previewURL
-    : state.view === "debug" && state.result.debugURL ? state.result.debugURL
-    : state.result.annotatedURL;
-  els.paper.alt = state.view === "original" ? "your original drawing"
-    : state.view === "debug" ? "binary mask and skeleton debug view"
-    : "drawing with fitted equation curves overlaid";
+  els.paper.src = labeled ? state.result.annotatedURL : state.result.cleanURL;
+  els.paper.alt = labeled ? "drawing with fitted equations labeled"
+    : "drawing with fitted equation curves";
+  els.dlOverlay.href = els.paper.src;
+  clearHighlight();
+}
+function contentRect(img) {
+  // Displayed content box of an object-fit:contain image (handles letterboxing).
+  const iw = img.naturalWidth, ih = img.naturalHeight;
+  const ew = img.clientWidth, eh = img.clientHeight;
+  if (!iw || !ih || !ew || !eh) return null;
+  const s = Math.min(ew / iw, eh / ih);
+  const w = iw * s, h = ih * s;
+  return { x: (ew - w) / 2, y: (eh - h) / 2, s, w };
+}
+function showHighlight(boxes) {
+  // boxes: [{x0,y0,x1,y1,color}] in original-image pixels.
+  clearHighlight();
+  if (!boxes || !boxes.length || !state.result) return;
+  const r = contentRect(els.paper);
+  const size = state.result.report.image_size;
+  if (!r || !size || !size.width) return;
+  const k = r.w / size.width;
+  els.hl.hidden = false;
+  for (const b of boxes) {
+    const d = document.createElement("div");
+    d.className = "hlbox";
+    d.style.left = (r.x + b.x0 * k) + "px";
+    d.style.top = (r.y + b.y0 * k) + "px";
+    d.style.width = Math.max(6, (b.x1 - b.x0) * k) + "px";
+    d.style.height = Math.max(6, (b.y1 - b.y0) * k) + "px";
+    d.style.borderColor = b.color;
+    d.style.boxShadow = `0 0 10px 2px ${b.color}`;
+    els.hl.append(d);
+  }
+}
+function clearHighlight() {
+  els.hl.innerHTML = "";
+  els.hl.hidden = true;
+}
+function strokeBoxes(si, gi) {
+  const st = state.result && state.result.report.strokes[si];
+  if (!st) return [];
+  const color = PALETTE[si % PALETTE.length];
+  const segs = gi === undefined ? st.segments : st.segments.slice(gi, gi + 1);
+  return segs.map((sg) => ({
+    x0: sg.x_range[0], y0: sg.y_range[0], x1: sg.x_range[1], y1: sg.y_range[1], color,
+  }));
 }
 function openSheet() {
   els.eqsheet.hidden = false;
@@ -459,10 +513,11 @@ function closeMenus() {
   els.presetBtn.setAttribute("aria-expanded", "false");
 }
 for (const el of [els.rmse, els.maxerr, els.poly, els.mCircle, els.mEllipse,
-    els.mSinusoid, els.mSpline, els.labels]) {
+    els.mSinusoid, els.mSpline]) {
   el.addEventListener("input", () => { paintSliderLabels(); markCustom(); });
 }
-for (const b of viewBtns) b.addEventListener("click", () => { state.view = b.dataset.view; paintView(); });
+for (const b of viewBtns) b.addEventListener("click", () => setView(b.dataset.view));
+els.labelBtn.addEventListener("click", () => setView(state.view === "equations" ? "fitted" : "equations"));
 document.querySelectorAll("[data-sample]").forEach((b) =>
   b.addEventListener("click", (e) => { e.stopPropagation(); loadSample(b.dataset.sample); }));
 els.go.addEventListener("click", () => {
