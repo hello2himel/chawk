@@ -1,20 +1,23 @@
-/* Chawk lab UI: canvas-first, floating dock + equation sheet. Vanilla JS. */
+/* Chawk lab UI: canvas-first, dock dropdowns, remix icons. Vanilla JS. */
 "use strict";
 
 const $ = (id) => document.getElementById(id);
 const els = {
   health: $("health"), tune: $("tune"), tuneDot: $("tune-dot"), tunePop: $("tune-pop"),
+  presetBtn: $("preset-btn"), presetLabel: $("preset-label"), presets: $("presets"),
   reset: $("reset"), rmse: $("rmse"), rmseVal: $("rmse-val"),
   maxerr: $("maxerr"), maxerrVal: $("maxerr-val"), poly: $("poly"), polyVal: $("poly-val"),
   mCircle: $("m-circle"), mEllipse: $("m-ellipse"), mSinusoid: $("m-sinusoid"),
-  mSpline: $("m-spline"), labels: $("labels"), debug: $("debug"),
+  mSpline: $("m-spline"), labels: $("labels"),
+  serverVer: $("server-ver"),
   dz: $("dropzone"), file: $("file"), empty: $("empty"), paper: $("paper"), scan: $("scan"),
-  go: $("go"), viewbar: $("viewbar"),
-  serverVer: $("server-ver"), dlPng: $("dl-png"), dlJson: $("dl-json"),
+  go: $("go"), goIcon: $("go-icon"), goText: $("go-text"), viewbar: $("viewbar"),
+  dlPng: $("dl-png"), dlJson: $("dl-json"),
   eqtoggle: $("eqtoggle"), fresh: $("fresh"),
   eqsheet: $("eqsheet"), eqclose: $("eqclose"), equations: $("equations"),
   statStrokes: $("stat-strokes"), statEqs: $("stat-eqs"), statFit: $("stat-fit"),
-  status: $("status"), error: $("error"), errorText: $("error-text"), errorAction: $("error-action"),
+  status: $("status"), error: $("error"), errorText: $("error-text"),
+  errorAction: $("error-action"), errorIcon: $("error-icon"), errorLabel: $("error-label"),
 };
 const viewBtns = [...document.querySelectorAll("[data-view]")];
 const presetBtns = [...document.querySelectorAll("[data-preset]")];
@@ -24,6 +27,7 @@ const MAX_BYTES = 15 * 1024 * 1024;
 const PALETTE = ["#e6194b", "#3cb44b", "#4363d8", "#f58231", "#911eb4", "#008080",
   "#f032e6", "#bcf60c", "#fabebe", "#9a6324", "#800000", "#808000",
   "#000075", "#e6beff", "#aaffc3", "#ffd8b1"];
+const PRESET_NAMES = { balanced: "Balanced", precise: "Precise", simple: "Simple", complex: "Dense art" };
 
 const state = {
   file: null, previewURL: null,
@@ -74,12 +78,14 @@ function setPreset(name, silent) {
     b.setAttribute("aria-pressed", on ? "true" : "false");
     if (on) known = true;
   }
+  els.presetLabel.textContent = known ? PRESET_NAMES[name] : "Custom";
   els.tuneDot.hidden = known;
   els.tune.setAttribute("aria-label", known ? "Tune fit" : "Tune fit (customized)");
   if (!silent) saveSettings();
 }
 function markCustom() {
   for (const b of presetBtns) b.setAttribute("aria-pressed", "false");
+  els.presetLabel.textContent = "Custom";
   els.tuneDot.hidden = false;
   saveSettings();
 }
@@ -89,6 +95,30 @@ function paintSliderLabels() {
   els.polyVal.textContent = els.poly.value;
 }
 
+/* ---------- drop-up menus ---------- */
+function anchorMenu(menu, btn) {
+  menu.hidden = false;
+  const r = btn.getBoundingClientRect();
+  const mw = Math.min(menu.offsetWidth || 280, window.innerWidth - 24);
+  const mh = menu.offsetHeight || 200;
+  menu.style.left = Math.max(8, Math.min(r.left + r.width / 2 - mw / 2, window.innerWidth - mw - 8)) + "px";
+  menu.style.top = Math.max(8, r.top - mh - 10) + "px";
+}
+function closeMenus() {
+  els.tunePop.hidden = true;
+  els.presets.hidden = true;
+  els.tune.setAttribute("aria-expanded", "false");
+  els.presetBtn.setAttribute("aria-expanded", "false");
+}
+function toggleMenu(menu, btn) {
+  const willOpen = menu.hidden;
+  closeMenus();
+  if (willOpen) {
+    anchorMenu(menu, btn);
+    btn.setAttribute("aria-expanded", "true");
+  }
+}
+
 /* ---------- status / toast ---------- */
 function setStatus(msg) { els.status.textContent = msg || ""; }
 function toast(message, action) {
@@ -96,7 +126,8 @@ function toast(message, action) {
   els.errorText.textContent = message || "";
   els.errorAction.hidden = !(action && message);
   if (action && message) {
-    els.errorAction.textContent = action.label;
+    els.errorLabel.textContent = action.label;
+    els.errorIcon.className = action.icon || "ri-arrow-right-line";
     els.errorAction.onclick = () => { hideToast(); action.run(); };
   }
   if (message) (action ? els.errorAction : els.error).focus();
@@ -119,7 +150,7 @@ async function chooseFile(f) {
     const bmp = await createImageBitmap(f);
     const ok = bmp.width >= 2 && bmp.height >= 2 && Math.max(bmp.width, bmp.height) <= 6000;
     bmp.close();
-    if (!ok) { toast(`Unusable size — need a real drawing, scaled under ~4000px.`); return false; }
+    if (!ok) { toast("Unusable size — need a real drawing, scaled under ~4000px."); return false; }
   } catch { /* dimensions optional */ }
   if (state.previewURL) URL.revokeObjectURL(state.previewURL);
   state.file = f;
@@ -132,7 +163,6 @@ async function chooseFile(f) {
   els.eqtoggle.hidden = true;
   els.fresh.hidden = true;
   els.viewbar.hidden = true;
-  setViewButtons();
   closeSheet();
   hideToast();
   els.go.disabled = false;
@@ -157,6 +187,7 @@ function fresh() {
   els.fresh.hidden = true;
   els.viewbar.hidden = true;
   closeSheet();
+  hideToast();
   els.go.disabled = true;
   setStatus("");
 }
@@ -167,19 +198,36 @@ function tick() {
   const el = Date.now() - state.t0;
   let label = STAGES[0][1];
   for (const [t, s] of STAGES) if (el >= t) label = s;
-  els.go.textContent = `${label}… ${(el / 1000).toFixed(1)}s`;
+  els.goText.textContent = `${label}… ${(el / 1000).toFixed(1)}s`;
 }
 function setWorking(on) {
   // One button, two jobs: Trace morphs into Cancel so the slot never shifts.
   els.go.disabled = on ? false : !state.file;
   els.go.classList.toggle("abort", on);
+  els.goIcon.className = on ? "ri-close-line" : "ri-play-line";
   els.scan.hidden = !on;
   els.dz.classList.toggle("busy", on);
   if (on) {
     state.t0 = Date.now();
-    els.go.textContent = "Uploading…";
+    els.goText.textContent = "Uploading…";
     state.timerId = setInterval(tick, 200);
-  } else { clearInterval(state.timerId); els.go.textContent = "Trace"; els.go.classList.remove("abort"); }
+  } else {
+    clearInterval(state.timerId);
+    els.goText.textContent = "Trace";
+  }
+}
+function buildConfig() {
+  const s = readSettings();
+  return {
+    rmse_tolerance: s.rmse_tolerance,
+    max_error_tolerance: s.max_error_tolerance,
+    max_poly_degree: s.max_poly_degree,
+    enable_circle: s.enable_circle,
+    enable_ellipse: s.enable_ellipse,
+    enable_sinusoid: s.enable_sinusoid,
+    enable_spline: s.enable_spline,
+    label_equations: s.label_equations,
+  };
 }
 async function go() {
   if (!state.file || state.status === "working") return;
@@ -198,20 +246,18 @@ async function go() {
   const form = new FormData();
   form.append("file", state.file);
   form.append("preset", s.preset);
-  form.append("config", JSON.stringify({
-    rmse_tolerance: s.rmse_tolerance, max_error_tolerance: s.max_error_tolerance,
-    max_poly_degree: s.max_poly_degree, enable_circle: s.enable_circle,
-    enable_ellipse: s.enable_ellipse, enable_sinusoid: s.enable_sinusoid,
-    enable_spline: s.enable_spline, label_equations: s.label_equations,
-  }));
-  form.append("debug", "true"); // Debug is a result view; always fetch it
+  form.append("config", JSON.stringify(buildConfig()));
+  form.append("debug", "true"); // Debug is a result view; always fetch it.
   let res;
   try {
     res = await fetch("/api/process", { method: "POST", body: form, signal: state.controller.signal });
   } catch (e) {
     setWorking(false);
     if (e.name === "AbortError") { state.status = "idle"; setStatus("Cancelled."); }
-    else { state.status = "error"; toast("Server unreachable.", { label: "Retry", run: go }); }
+    else {
+      state.status = "error";
+      toast("Couldn't reach the server. Is it still running?", { label: "Retry", icon: "ri-refresh-line", run: go });
+    }
     return;
   }
   setWorking(false);
@@ -219,11 +265,12 @@ async function go() {
     state.status = "error";
     let detail = res.statusText;
     try { detail = (await res.json()).detail || detail; } catch { /* keep */ }
-    if (res.status === 422) toast(detail + " Dark lines on white work best.", { label: "Try a sample", run: () => loadSample("sine_wave.png") });
-    else if (res.status === 504) toast(detail, { label: "Re-run as Simple", run: () => { setPreset("simple"); go(); } });
-    else if (res.status === 400) toast(detail, { label: "Reset to Balanced", run: () => setPreset("balanced") });
+    if (res.status === 422) toast(detail + " Dark lines on white work best.", { label: "Try a sample", icon: "ri-image-line", run: () => loadSample("sine_wave.png") });
+    else if (res.status === 504) toast(detail, { label: "Re-run as Simple", icon: "ri-refresh-line", run: () => { setPreset("simple"); go(); } });
+    else if (res.status === 400) toast(detail, { label: "Reset to Balanced", icon: "ri-restart-line", run: () => setPreset("balanced") });
     else if (res.status === 413) toast(detail + " Export it smaller and retry.");
-    else toast(`Error ${res.status}: ${detail}`, { label: "Retry", run: go });
+    else toast(`Error ${res.status}: ${detail}`, { label: "Retry", icon: "ri-refresh-line", run: go });
+    els.empty.hidden = !state.file;
     return;
   }
   const out = await res.json();
@@ -263,7 +310,8 @@ function fitWord(rmse) {
 function paintResult() {
   const { report } = state.result;
   const s = report.summary;
-  setViewButtons();
+  const dbg = viewBtns.find((b) => b.dataset.view === "debug");
+  dbg.hidden = !state.result.debugURL;
   els.viewbar.hidden = false;
   paintView();
   els.eqtoggle.hidden = false;
@@ -314,18 +362,21 @@ function paintResult() {
       const copy = document.createElement("button");
       copy.type = "button";
       copy.className = "copy";
-      copy.textContent = "⧉";
+      copy.innerHTML = '<i class="ri-file-copy-line" aria-hidden="true"></i>';
       copy.setAttribute("aria-label", `Copy ${sg.equation}`);
       copy.onclick = async () => {
         const text = `${sg.equation}, x in [${sg.x_range}], y in [${sg.y_range}]`;
-        try { await navigator.clipboard.writeText(text); copy.textContent = "✓"; }
+        const doneMark = () => {
+          copy.innerHTML = '<i class="ri-check-line" aria-hidden="true"></i>';
+          setTimeout(() => { copy.innerHTML = '<i class="ri-file-copy-line" aria-hidden="true"></i>'; }, 1200);
+        };
+        try { await navigator.clipboard.writeText(text); doneMark(); }
         catch {
           const ta = document.createElement("textarea");
           ta.value = text; document.body.append(ta); ta.select();
-          try { document.execCommand("copy"); copy.textContent = "✓"; } catch { copy.textContent = "!"; }
+          try { document.execCommand("copy"); doneMark(); } catch { /* clipboard blocked */ }
           ta.remove();
         }
-        setTimeout(() => { copy.textContent = "⧉"; }, 1200);
       };
       metaline.append(rm, copy);
       p.append(top, eq, metaline);
@@ -340,24 +391,21 @@ function paintResult() {
     els.equations.append(div);
   });
 }
-function setViewButtons() {
-  const dbg = viewBtns.find((b) => b.dataset.view === "debug");
-  dbg.hidden = !(state.result && state.result.debugURL);
-}
 function paintView() {
   for (const b of viewBtns) b.setAttribute("aria-pressed", b.dataset.view === state.view ? "true" : "false");
   if (!state.result) return;
   els.paper.src = state.view === "original" ? state.previewURL
     : state.view === "debug" && state.result.debugURL ? state.result.debugURL
     : state.result.annotatedURL;
+  els.paper.alt = state.view === "original" ? "your original drawing"
+    : state.view === "debug" ? "binary mask and skeleton debug view"
+    : "drawing with fitted equation curves overlaid";
 }
 function openSheet() {
-  state.sheetOpen = true;
   els.eqsheet.hidden = false;
   els.eqtoggle.setAttribute("aria-expanded", "true");
 }
 function closeSheet() {
-  state.sheetOpen = false;
   els.eqsheet.hidden = true;
   els.eqtoggle.setAttribute("aria-expanded", "false");
 }
@@ -386,21 +434,27 @@ document.addEventListener("paste", (e) => {
   const items = (e.clipboardData && e.clipboardData.files) || [];
   if (items.length) chooseFile(items[0]);
 });
-for (const b of presetBtns) b.addEventListener("click", () => setPreset(b.dataset.preset));
-els.reset.addEventListener("click", () => { setPreset("balanced"); toggleTune(false); });
-function toggleTune(force) {
-  const open = force !== undefined ? force : els.tunePop.hidden;
-  if (open) {
-    const r = els.tune.getBoundingClientRect();
-    els.tunePop.style.top = Math.max(8, Math.min(r.bottom + 8, window.innerHeight - 20)) + "px";
-    els.tunePop.hidden = false;
-  } else els.tunePop.hidden = true;
-  els.tune.setAttribute("aria-expanded", String(!els.tunePop.hidden));
-}
-els.tune.addEventListener("click", (e) => { e.stopPropagation(); toggleTune(); });
+for (const b of presetBtns) b.addEventListener("click", () => { setPreset(b.dataset.preset); closeMenus(); });
+els.presetBtn.addEventListener("click", (e) => { e.stopPropagation(); toggleMenu(els.presets, els.presetBtn); });
+els.reset.addEventListener("click", () => { setPreset("balanced"); closeMenus(); });
+els.tune.addEventListener("click", (e) => { e.stopPropagation(); toggleMenu(els.tunePop, els.tune); });
 document.addEventListener("pointerdown", (e) => {
-  if (!els.tunePop.hidden && !e.target.closest("#tune-pop") && !e.target.closest("#tune")) toggleTune(false);
+  if (!e.target.closest(".menu") && !e.target.closest("#tune") && !e.target.closest("#preset-btn")) closeMenus();
 });
+function toggleMenu(menu, btn) {
+  const willOpen = menu.hidden;
+  closeMenus();
+  if (willOpen) {
+    anchorMenu(menu, btn);
+    btn.setAttribute("aria-expanded", "true");
+  }
+}
+function closeMenus() {
+  els.tunePop.hidden = true;
+  els.presets.hidden = true;
+  els.tune.setAttribute("aria-expanded", "false");
+  els.presetBtn.setAttribute("aria-expanded", "false");
+}
 for (const el of [els.rmse, els.maxerr, els.poly, els.mCircle, els.mEllipse,
     els.mSinusoid, els.mSpline, els.labels]) {
   el.addEventListener("input", () => { paintSliderLabels(); markCustom(); });
@@ -412,10 +466,10 @@ els.go.addEventListener("click", () => {
   if (state.status === "working" && state.controller) state.controller.abort();
   else go();
 });
-els.eqtoggle.addEventListener("click", () => (state.sheetOpen ? closeSheet() : openSheet()));
+els.eqtoggle.addEventListener("click", () => (els.eqsheet.hidden ? openSheet() : closeSheet()));
 els.eqclose.addEventListener("click", closeSheet);
 els.fresh.addEventListener("click", fresh);
-document.addEventListener("keydown", (e) => { if (e.key === "Escape" && !els.tunePop.hidden) toggleTune(false); });
+document.addEventListener("keydown", (e) => { if (e.key === "Escape") closeMenus(); });
 
 async function checkHealth() {
   try {

@@ -45,6 +45,18 @@ class TestFrontend(unittest.TestCase):
                            capture_output=True, text=True, timeout=60)
         self.assertEqual(p.returncode, 0, msg=p.stderr[-2000:])
 
+    def test_js_dom_ids_exist(self):
+        """Every $("id") in app.js must exist as id="..." in index.html.
+
+        Catches dead wiring (null.addEventListener) without a browser.
+        """
+        import re
+        html = open(os.path.join(FRONT, "index.html"), encoding="utf-8").read()
+        js = open(os.path.join(FRONT, "app.js"), encoding="utf-8").read()
+        have = set(re.findall(r'id="([^"]+)"', html))
+        for ref in sorted(set(re.findall(r'\$\("([^"]+)"\)', js))):
+            self.assertIn(ref, have, f'app.js references #${ref} but index.html lacks it')
+
 
 if __name__ == "__main__":
     unittest.main()
