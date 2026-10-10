@@ -30,19 +30,31 @@
     <input id="poly" type="range" min="1" max="6" step="1" value="4"></label>
   <fieldset>
     <legend>Curve types</legend>
-    <label><input id="m-circle" type="checkbox" checked> circles</label>
-    <label><input id="m-ellipse" type="checkbox" checked> ellipses</label>
-    <label><input id="m-sinusoid" type="checkbox" checked> waves</label>
-    <label><input id="m-spline" type="checkbox" checked> freeform</label>
+    <div class="modelgrid">
+      <label><input id="m-circle" type="checkbox" checked> circles</label>
+      <label><input id="m-ellipse" type="checkbox" checked> ellipses</label>
+      <label><input id="m-sinusoid" type="checkbox" checked> waves</label>
+      <label><input id="m-spline" type="checkbox" checked> freeform</label>
+    </div>
   </fieldset>
   <label class="check"><input id="labels" type="checkbox" checked> labels on image</label>
-  <label class="check"><input id="debug" type="checkbox"> debug view</label>
-  <button id="reset" type="button" class="link">Reset to Balanced</button>
+  <button id="reset" type="button" class="resetbtn">Reset to Balanced</button>
+  <p id="server-ver" class="serverver"></p>
+</div>
+
+<div id="error" class="toast" role="alert" tabindex="-1" hidden>
+  <p id="error-text"></p>
+  <button id="error-action" type="button" hidden></button>
 </div>
 
 <main id="stage">
   <div id="dropzone" class="sheet" tabindex="0" role="button" aria-label="Canvas. Activate to choose an image, or drop a file or paste anywhere.">
     <input id="file" type="file" accept="image/png,image/jpeg,image/bmp,image/webp,image/tiff" hidden>
+    <div id="viewbar" class="seg views" role="group" aria-label="Image view" hidden>
+      <button type="button" data-view="fitted" aria-pressed="true">Fitted</button>
+      <button type="button" data-view="original" aria-pressed="false">Original</button>
+      <button type="button" data-view="debug" aria-pressed="false" hidden>Debug</button>
+    </div>
     <div id="empty">
       <p class="prompt"><strong>Drop a drawing</strong> anywhere · click · Ctrl+V</p>
       <div class="samples">
@@ -59,34 +71,21 @@
   <aside id="eqsheet" class="eqsheet" hidden aria-label="Equations">
     <div class="eqhead">
       <div><strong id="stat-strokes">0</strong> strokes · <strong id="stat-eqs">0</strong> equations</div>
-      <div id="stat-fit" class="fit"></div>
+      <a id="dl-png" download="chawk.png" title="Download annotated PNG">↓PNG</a>
+      <a id="dl-json" download="chawk.json" title="Download JSON report">↓JSON</a>
       <button id="eqclose" type="button" aria-label="Close equations">×</button>
     </div>
+    <div id="stat-fit" class="fit"></div>
     <div id="equations"></div>
   </aside>
 </main>
 
 <div id="dock" class="dock">
   <button id="go" type="button" disabled>Trace</button>
-  <button id="cancel" type="button" hidden>✕</button>
-  <div id="viewbar" class="seg" role="group" aria-label="Image view" hidden>
-    <button type="button" data-view="fitted" aria-pressed="true">Fitted</button>
-    <button type="button" data-view="original" aria-pressed="false">Original</button>
-    <button type="button" data-view="debug" aria-pressed="false" hidden>Debug</button>
-  </div>
-  <div id="dock-result" class="dock-result" hidden>
-    <a id="dl-png" download="chawk.png" title="Download annotated PNG">PNG</a>
-    <a id="dl-json" download="chawk.json" title="Download JSON report">JSON</a>
-    <button id="eqtoggle" type="button" aria-expanded="false">Equations</button>
-    <button id="fresh" type="button" title="Start over with a new drawing">New</button>
-  </div>
+  <button id="eqtoggle" type="button" aria-expanded="false" hidden>Equations</button>
+  <button id="fresh" type="button" title="Start over with a new drawing" hidden>New</button>
 </div>
-
 <p id="status" class="status" role="status" aria-live="polite"></p>
-<div id="error" class="toast" role="alert" tabindex="-1" hidden>
-  <p id="error-text"></p>
-  <button id="error-action" type="button" hidden></button>
-</div>
 
 <script src="app.js"></script>
 </body>

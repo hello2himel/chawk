@@ -9,8 +9,8 @@ const els = {
   mCircle: $("m-circle"), mEllipse: $("m-ellipse"), mSinusoid: $("m-sinusoid"),
   mSpline: $("m-spline"), labels: $("labels"), debug: $("debug"),
   dz: $("dropzone"), file: $("file"), empty: $("empty"), paper: $("paper"), scan: $("scan"),
-  go: $("go"), cancel: $("cancel"), viewbar: $("viewbar"),
-  dockResult: $("dock-result"), dlPng: $("dl-png"), dlJson: $("dl-json"),
+  go: $("go"), viewbar: $("viewbar"),
+  serverVer: $("server-ver"), dlPng: $("dl-png"), dlJson: $("dl-json"),
   eqtoggle: $("eqtoggle"), fresh: $("fresh"),
   eqsheet: $("eqsheet"), eqclose: $("eqclose"), equations: $("equations"),
   statStrokes: $("stat-strokes"), statEqs: $("stat-eqs"), statFit: $("stat-fit"),
@@ -47,7 +47,6 @@ function readSettings() {
     enable_sinusoid: els.mSinusoid.checked,
     enable_spline: els.mSpline.checked,
     label_equations: els.labels.checked,
-    debug: els.debug.checked,
   };
 }
 function saveSettings() {
@@ -63,7 +62,7 @@ function loadSettings() {
   if (s.max_poly_degree) els.poly.value = s.max_poly_degree;
   for (const [k, el] of [["enable_circle", els.mCircle], ["enable_ellipse", els.mEllipse],
       ["enable_sinusoid", els.mSinusoid], ["enable_spline", els.mSpline],
-      ["label_equations", els.labels], ["debug", els.debug]]) {
+      ["label_equations", els.labels]]) {
     if (typeof s[k] === "boolean") el.checked = s[k];
   }
   return true;
@@ -130,7 +129,8 @@ async function chooseFile(f) {
   els.paper.src = state.previewURL;
   els.paper.hidden = false;
   els.empty.hidden = true;
-  els.dockResult.hidden = true;
+  els.eqtoggle.hidden = true;
+  els.fresh.hidden = true;
   els.viewbar.hidden = true;
   setViewButtons();
   closeSheet();
@@ -153,7 +153,8 @@ function fresh() {
   state.file = null; state.previewURL = null; state.result = null;
   els.paper.hidden = true;
   els.empty.hidden = false;
-  els.dockResult.hidden = true;
+  els.eqtoggle.hidden = true;
+  els.fresh.hidden = true;
   els.viewbar.hidden = true;
   closeSheet();
   els.go.disabled = true;
@@ -169,15 +170,16 @@ function tick() {
   els.go.textContent = `${label}… ${(el / 1000).toFixed(1)}s`;
 }
 function setWorking(on) {
-  els.go.disabled = on || !state.file;
-  els.cancel.hidden = !on;
+  // One button, two jobs: Trace morphs into Cancel so the slot never shifts.
+  els.go.disabled = on ? false : !state.file;
+  els.go.classList.toggle("abort", on);
   els.scan.hidden = !on;
   els.dz.classList.toggle("busy", on);
   if (on) {
     state.t0 = Date.now();
     els.go.textContent = "Uploading…";
     state.timerId = setInterval(tick, 200);
-  } else { clearInterval(state.timerId); els.go.textContent = "Trace"; }
+  } else { clearInterval(state.timerId); els.go.textContent = "Trace"; els.go.classList.remove("abort"); }
 }
 async function go() {
   if (!state.file || state.status === "working") return;
@@ -187,7 +189,8 @@ async function go() {
   state.view = "fitted";
   hideToast();
   forgetURLs();
-  els.dockResult.hidden = true;
+  els.eqtoggle.hidden = true;
+  els.fresh.hidden = true;
   closeSheet();
   setWorking(true);
   setStatus("");
@@ -201,7 +204,7 @@ async function go() {
     enable_ellipse: s.enable_ellipse, enable_sinusoid: s.enable_sinusoid,
     enable_spline: s.enable_spline, label_equations: s.label_equations,
   }));
-  form.append("debug", s.debug ? "true" : "false");
+  form.append("debug", "true"); // Debug is a result view; always fetch it
   let res;
   try {
     res = await fetch("/api/process", { method: "POST", body: form, signal: state.controller.signal });
@@ -263,7 +266,8 @@ function paintResult() {
   setViewButtons();
   els.viewbar.hidden = false;
   paintView();
-  els.dockResult.hidden = false;
+  els.eqtoggle.hidden = false;
+  els.fresh.hidden = false;
   countUp(els.statStrokes, s.stroke_count);
   countUp(els.statEqs, s.segment_count);
   els.statFit.textContent = `${fitWord(s.mean_rmse_px)} · ~${s.mean_rmse_px}px off`;
@@ -306,8 +310,7 @@ function paintResult() {
       metaline.className = "metalime";
       const rm = document.createElement("span");
       rm.className = "meta";
-      const rmse = typeof sg.rmse === "number" ? sg.rmse.toFixed(2) + "px off" : "n/a";
-      rm.textContent = rmse + ((sg.notes && sg.notes.length) ? " · " + sg.notes.join("; ") : "");
+      rm.textContent = typeof sg.rmse === "number" ? sg.rmse.toFixed(2) + "px off" : "n/a";
       const copy = document.createElement("button");
       copy.type = "button";
       copy.className = "copy";
@@ -326,6 +329,12 @@ function paintResult() {
       };
       metaline.append(rm, copy);
       p.append(top, eq, metaline);
+      if (sg.notes && sg.notes.length) {
+        const nt = document.createElement("span");
+        nt.className = "notes";
+        nt.textContent = sg.notes.join("; ");
+        p.append(nt);
+      }
       div.append(p);
     }
     els.equations.append(div);
@@ -378,34 +387,50 @@ document.addEventListener("paste", (e) => {
   if (items.length) chooseFile(items[0]);
 });
 for (const b of presetBtns) b.addEventListener("click", () => setPreset(b.dataset.preset));
-els.reset.addEventListener("click", () => { setPreset("balanced"); els.tunePop.hidden = true; });
-els.tune.addEventListener("click", () => {
-  els.tunePop.hidden = !els.tunePop.hidden;
+els.reset.addEventListener("click", () => { setPreset("balanced"); toggleTune(false); });
+function toggleTune(force) {
+  const open = force !== undefined ? force : els.tunePop.hidden;
+  if (open) {
+    const r = els.tune.getBoundingClientRect();
+    els.tunePop.style.top = Math.max(8, Math.min(r.bottom + 8, window.innerHeight - 20)) + "px";
+    els.tunePop.hidden = false;
+  } else els.tunePop.hidden = true;
   els.tune.setAttribute("aria-expanded", String(!els.tunePop.hidden));
+}
+els.tune.addEventListener("click", (e) => { e.stopPropagation(); toggleTune(); });
+document.addEventListener("pointerdown", (e) => {
+  if (!els.tunePop.hidden && !e.target.closest("#tune-pop") && !e.target.closest("#tune")) toggleTune(false);
 });
 for (const el of [els.rmse, els.maxerr, els.poly, els.mCircle, els.mEllipse,
-    els.mSinusoid, els.mSpline, els.labels, els.debug]) {
+    els.mSinusoid, els.mSpline, els.labels]) {
   el.addEventListener("input", () => { paintSliderLabels(); markCustom(); });
 }
 for (const b of viewBtns) b.addEventListener("click", () => { state.view = b.dataset.view; paintView(); });
 document.querySelectorAll("[data-sample]").forEach((b) =>
   b.addEventListener("click", (e) => { e.stopPropagation(); loadSample(b.dataset.sample); }));
-els.go.addEventListener("click", go);
-els.cancel.addEventListener("click", () => state.controller && state.controller.abort());
+els.go.addEventListener("click", () => {
+  if (state.status === "working" && state.controller) state.controller.abort();
+  else go();
+});
 els.eqtoggle.addEventListener("click", () => (state.sheetOpen ? closeSheet() : openSheet()));
 els.eqclose.addEventListener("click", closeSheet);
 els.fresh.addEventListener("click", fresh);
-document.addEventListener("keydown", (e) => { if (e.key === "Escape" && !els.tunePop.hidden) els.tunePop.hidden = true; });
+document.addEventListener("keydown", (e) => { if (e.key === "Escape" && !els.tunePop.hidden) toggleTune(false); });
 
 async function checkHealth() {
   try {
     const r = await fetch("/health");
     if (!r.ok) throw new Error();
-    els.health.textContent = "● v" + (await r.json()).version;
+    const ver = (await r.json()).version;
+    els.health.textContent = "●";
+    els.health.title = "server v" + ver + " — reachable";
     els.health.className = "health ok";
+    els.serverVer.textContent = "server v" + ver;
   } catch {
-    els.health.textContent = "● offline — start: .venv/bin/python app.py";
+    els.health.textContent = "●";
+    els.health.title = "server unreachable — start it with .venv/bin/python app.py";
     els.health.className = "health down";
+    els.serverVer.textContent = "server unreachable";
   }
 }
 async function syncDefaults() {
