@@ -33,6 +33,14 @@ class Stroke:
     length: float
     raw_point_count: int
     merged_from: int = 1
+    color: str | None = None
+    filled: bool = False
+    """True when this path is the fitted boundary of a solid ink region."""
+    fill_group: int | None = None
+    """Fills that belong together (an outer contour and its holes)."""
+    fill_role: str | None = None
+    """``outer`` or ``hole`` for fill boundaries."""
+    """Pen colour sampled from the source (``#rrggbb``), set by the pipeline."""
     notes: list[str] = field(default_factory=list)
 
 

@@ -2,101 +2,279 @@
 <html lang="en">
 <head>
 <meta charset="utf-8">
-<meta name="viewport" content="width=device-width, initial-scale=1">
-<title>Chawk — line art → equations</title>
+<meta name="viewport" content="width=device-width, initial-scale=1, viewport-fit=cover">
+<title>Chawk — every squiggle is a function</title>
 <link rel="stylesheet" href="vendor/remixicon.css">
-<link rel="stylesheet" href="vendor/katex/katex.min.css">
 <link rel="stylesheet" href="styles.css">
 </head>
 <body>
-<header class="topbar">
-  <div class="brand"><i class="ri-shapes-line" aria-hidden="true"></i> Chawk</div>
-  <div class="top-actions">
-    <span id="health" class="health unknown" title="backend status">…</span>
-  </div>
-</header>
-
-<div id="error" class="toast" role="alert" tabindex="-1" hidden>
-  <i class="ri-alert-line" aria-hidden="true"></i>
-  <p id="error-text"></p>
-  <button id="error-action" type="button" hidden><i id="error-icon" class="ri-arrow-right-line" aria-hidden="true"></i><span id="error-label"></span></button>
-</div>
-
-<main id="stage">
-  <div id="dropzone" class="sheet" tabindex="0" role="button" aria-label="Canvas. Activate to choose an image, or drop a file or paste anywhere.">
-    <input id="file" type="file" accept="image/png,image/jpeg,image/bmp,image/webp,image/tiff" hidden>
-    <div id="viewbar" class="seg views" role="group" aria-label="Image view" hidden>
-      <button type="button" data-view="equations" aria-pressed="true"><i class="ri-function-line" aria-hidden="true"></i>Equations</button>
-      <button type="button" data-view="fitted" aria-pressed="false"><i class="ri-magic-line" aria-hidden="true"></i>Fitted</button>
+<div class="app" id="app">
+  <header class="bar" id="bar">
+    <div class="brand">
+      <svg width="32" height="32" viewBox="0 0 64 64" aria-hidden="true"><g transform="rotate(-24 32 32)"><rect x="18" y="4" width="28" height="56" rx="8" fill="#fff" stroke="#15161A" stroke-width="3"></rect><path d="M18 46h28v6a8 8 0 0 1-8 8H26a8 8 0 0 1-8-8z" fill="#ECE8DD" stroke="#15161A" stroke-width="3"></path><circle cx="26" cy="22" r="6" fill="#fff" stroke="#15161A" stroke-width="2.5"></circle><circle cx="38" cy="22" r="6" fill="#fff" stroke="#15161A" stroke-width="2.5"></circle><circle cx="27" cy="23" r="2" fill="#15161A"></circle><circle cx="37" cy="23" r="2" fill="#15161A"></circle><path d="M24 36c3-5 5-5 8 0s5 5 8 0" fill="none" stroke="#1F3FD1" stroke-width="3" stroke-linecap="round"></path></g></svg>
+      Chawk
     </div>
-    <div id="empty">
-      <p class="prompt"><i class="ri-upload-cloud-2-line" aria-hidden="true"></i><strong>Drop a drawing</strong> anywhere · click · Ctrl+V</p>
-      <div class="samples">
-        <button type="button" data-sample="sine_wave.png"><img src="samples/sine_wave.png" alt="sine wave sample"><span>sine</span></button>
-        <button type="button" data-sample="geometric.png"><img src="samples/geometric.png" alt="geometry sample"><span>shapes</span></button>
-        <button type="button" data-sample="parabola_line.png"><img src="samples/parabola_line.png" alt="curve sample"><span>curve</span></button>
+
+    <span class="m hide-m" id="start-meta">v1.1.0 · connected</span>
+
+    <button class="btn" id="check-change" hidden>
+      <span class="hide-m">Choose another</span><span class="show-m">Change</span>
+    </button>
+
+    <div class="resultbar" id="result-bar" hidden>
+      <div class="runs hide-m" id="runs" role="group" aria-label="Runs"></div>
+      <span class="m hide-m" id="run-meta"></span>
+      <button class="chip show-m" id="run-menu-btn" aria-haspopup="menu" aria-expanded="false">Run 1 <i class="ri-arrow-down-s-line" aria-hidden="true"></i></button>
+      <button class="ib show-m" id="new-mobile" aria-label="New doodle"><i class="ri-add-line" aria-hidden="true"></i></button>
+      <button class="btn hide-m" id="retrace">Try again</button>
+      <button class="btn hide-m" id="new-run">New doodle</button>
+      <button class="btn bp hide-m" id="download-btn" aria-haspopup="menu" aria-expanded="false">
+        <i class="ri-download-line" aria-hidden="true"></i> Download <i class="ri-arrow-down-s-line" aria-hidden="true"></i>
+      </button>
+    </div>
+  </header>
+
+  <!-- ============================= START ============================= -->
+  <main class="hero" id="screen-start">
+    <section class="copy">
+      <div style="display:flex;align-items:center;gap:6px">
+        <svg width="72" height="72" viewBox="0 0 64 64" aria-hidden="true"><g transform="rotate(-24 32 32)"><rect x="18" y="4" width="28" height="56" rx="8" fill="#fff" stroke="#15161A" stroke-width="3"></rect><path d="M18 46h28v6a8 8 0 0 1-8 8H26a8 8 0 0 1-8-8z" fill="#ECE8DD" stroke="#15161A" stroke-width="3"></path><circle cx="26" cy="22" r="6" fill="#fff" stroke="#15161A" stroke-width="2.5"></circle><circle cx="38" cy="22" r="6" fill="#fff" stroke="#15161A" stroke-width="2.5"></circle><circle cx="27" cy="23" r="2" fill="#15161A"></circle><circle cx="37" cy="23" r="2" fill="#15161A"></circle><path d="M24 36c3-5 5-5 8 0s5 5 8 0" fill="none" stroke="#1F3FD1" stroke-width="3" stroke-linecap="round"></path></g></svg>
+        <span class="hand" style="font-size:26px">hi, I’m Chawk. I turn doodles into algebra.</span>
       </div>
-      <p class="note">dark lines on white · PNG/JPG ≤15MB</p>
+      <h1 class="h">Every squiggle is a <span class="hl"><i>function</i></span>.</h1>
+      <p class="lead">Drop in a doodle. I’ll find the line, circle, wave or curve hiding behind every stroke, then redraw your picture using nothing but equations.</p>
+      <button class="drop" id="drop">
+        <span style="font-size:20px;font-weight:700"><span class="hide-m">Drop a doodle here</span><span class="show-m">Tap to add a doodle</span></span>
+        <span class="m" style="font-size:15px"><span class="hide-m">Click to choose · paste with Ctrl V · or take a photo on your phone</span><span class="show-m">Pick from your photos or take a new picture</span></span>
+      </button>
+      <div style="display:flex;gap:8px;align-items:center;flex-wrap:wrap">
+        <span class="hand">no doodle handy? borrow one →</span>
+        <button class="chip" data-sample="sine_wave.png">Sine wave</button>
+        <button class="chip" data-sample="geometric.png">Shapes</button>
+        <button class="chip" data-sample="parabola_line.png">Curve</button>
+      </div>
+      <p class="m">Best on dark lines and plain paper. Photos of your cat are adorable but out of scope. PNG, JPG or WebP, up to 15 MB.</p>
+    </section>
+
+    <section class="demo paper">
+      <svg viewBox="0 0 760 500" style="width:100%;height:auto;display:block" role="img" aria-label="Animation: a drawing builds itself curve by curve from equations">
+        <g font-family="'JetBrains Mono',monospace" font-size="11" fill="#5A5D68">
+          <path d="M60 480H700M50 40V480" stroke="#15161A" stroke-opacity=".35"></path>
+          <text x="60" y="496" text-anchor="middle">0</text>
+          <text x="220" y="496" text-anchor="middle">160</text>
+          <text x="380" y="496" text-anchor="middle">320</text>
+          <text x="540" y="496" text-anchor="middle">480</text>
+          <text x="700" y="496" text-anchor="middle">640</text>
+          <text x="44" y="44" text-anchor="end">0</text>
+          <text x="44" y="184" text-anchor="end">140</text>
+          <text x="44" y="324" text-anchor="end">280</text>
+          <text x="44" y="464" text-anchor="end">420</text>
+        </g>
+        <path class="d" pathLength="1" d="M185 110a55 55 0 1 0-110 0a55 55 0 1 0 110 0" stroke="#B4441C" stroke-width="3"></path>
+        <path class="d" pathLength="1" d="M60 260C100 180 180 180 220 260S340 340 380 260S500 180 540 260S660 340 700 260" stroke="#0F6E5A" stroke-width="5" stroke-linecap="round" style="animation-delay:.8s"></path>
+        <path class="d" pathLength="1" d="M60 430L700 414" stroke="#15161A" stroke-width="3" stroke-linecap="round" style="animation-delay:1.6s"></path>
+      </svg>
+      <p class="fig">Fig. 1 · a doodle, rebuilt from 3 equations</p>
+      <div class="eq" style="font-size:19px;display:flex;flex-direction:column;gap:6px;min-height:84px">
+        <span class="f" style="color:#B4441C">(<i>x</i> − 70)<sup>2</sup> + (<i>y</i> − 70)<sup>2</sup> = 55<sup>2</sup><span class="no">(1)</span></span>
+        <span class="f" style="animation-delay:.8s;color:#0F6E5A"><i>y</i> = −80 sin(0.0196<i>x</i>) + 220<span class="no">(2)</span></span>
+        <span class="f" style="animation-delay:1.6s"><i>y</i> = −0.025<i>x</i> + 390<span class="no">(3)</span></span>
+      </div>
+      <p class="hand">↑ yes, that circle is just algebra</p>
+    </section>
+  </main>
+
+  <!-- ============================= CHECK ============================= -->
+  <main class="set" id="screen-check" hidden>
+    <section class="view paper" style="align-items:center;border-top:0">
+      <div class="previewwrap" id="preview-wrap">
+        <div class="preview" id="preview">
+          <div class="preview-inner">
+            <img id="preview-img" alt="Your doodle, with the ink Chawk will trace highlighted in blue">
+            <canvas id="preview-mask" aria-hidden="true"></canvas>
+          </div>
+          <div class="frame" aria-hidden="true"><span class="handle tl"></span><span class="handle tr"></span><span class="handle bl"></span><span class="handle br"></span></div>
+        </div>
+      </div>
+      <p class="fig" style="text-align:center">Fig. 0 · what I think is ink</p>
+      <p class="hand" style="text-align:center">blue = I’ll trace it. The circled speck? Pretending I didn’t see it.</p>
+    </section>
+
+    <aside class="ctl">
+      <div>
+        <h1 class="h" style="font-size:34px">Ready to do some <span class="hl"><i>maths</i></span>?</h1>
+        <p class="m" id="file-meta" style="margin-top:4px"></p>
+      </div>
+
+      <label style="display:block;font-weight:600;font-size:14px">Ink sensitivity
+        <input id="sensitivity" type="range" min="0" max="100" value="55">
+        <span class="m" style="display:flex;justify-content:space-between"><span>Only dark lines</span><span>Faint lines too</span></span>
+      </label>
+
+      <fieldset class="kindfield">
+        <legend>What kind of drawing is it?</legend>
+        <label class="row card" data-kind="clean">
+          <input type="radio" name="kind" value="clean"><span><b>Clean lines</b><br><span class="m">Crisp pen, print or digital</span></span>
+        </label>
+        <label class="row card on" data-kind="sketchy">
+          <input type="radio" name="kind" value="sketchy" checked><span><b>Sketchy</b><br><span class="m">Hand-drawn, charmingly wobbly</span></span>
+        </label>
+        <label class="row card" data-kind="busy">
+          <input type="radio" name="kind" value="busy"><span><b>Busy</b><br><span class="m">Many strokes, ambitious art</span></span>
+        </label>
+      </fieldset>
+
+      <label style="display:block;font-weight:600;font-size:14px">How picky should the fit be?
+        <input id="fit" type="range" min="0" max="100" value="50">
+        <span class="m" style="display:flex;justify-content:space-between"><span>Minimalist</span><span>Pedantic</span></span>
+      </label>
+
+      <div>
+        <p style="font-weight:600;font-size:14px;margin-bottom:8px">Allowed curve types</p>
+        <div style="display:flex;gap:6px;flex-wrap:wrap">
+          <button class="chip" data-type="circle" aria-pressed="true">Circles</button>
+          <button class="chip" data-type="ellipse" aria-pressed="true">Ellipses</button>
+          <button class="chip" data-type="sinusoid" aria-pressed="true">Waves</button>
+          <button class="chip" data-type="spline" aria-pressed="true">Freeform</button>
+        </div>
+      </div>
+
+      <label class="filltoggle">
+        <span><b>Fill solid shapes</b><br><span class="m">Colour areas and blobs are filled in. Off keeps outlines only.</span></span>
+        <input type="checkbox" id="fill-toggle" checked>
+      </label>
+
+      <p class="err" id="check-error" role="alert" hidden></p>
+      <button class="btn bp go" id="trace">Do the maths →</button>
+    </aside>
+  </main>
+
+  <!-- ============================= WORKING ============================= -->
+  <main class="work" id="screen-working" hidden>
+    <div class="workinner">
+      <div class="paper workpaper">
+        <img id="working-img" alt="Your doodle being scanned">
+        <div class="scan" aria-hidden="true"></div>
+      </div>
+      <p class="fig" id="working-fig" style="margin:0">Fig. 1 · scanning your doodle for strokes</p>
+      <div style="display:flex;align-items:center;gap:14px">
+        <svg width="72" height="72" viewBox="0 0 64 64" aria-hidden="true"><g transform="rotate(-24 32 32)"><rect x="18" y="4" width="28" height="56" rx="8" fill="#fff" stroke="#15161A" stroke-width="3"></rect><path d="M18 46h28v6a8 8 0 0 1-8 8H26a8 8 0 0 1-8-8z" fill="#ECE8DD" stroke="#15161A" stroke-width="3"></path><circle cx="26" cy="22" r="6" fill="#fff" stroke="#15161A" stroke-width="2.5"></circle><circle cx="38" cy="22" r="6" fill="#fff" stroke="#15161A" stroke-width="2.5"></circle><circle cx="27" cy="23" r="2" fill="#15161A"></circle><circle cx="37" cy="23" r="2" fill="#15161A"></circle><path d="M24 36c3-5 5-5 8 0s5 5 8 0" fill="none" stroke="#1F3FD1" stroke-width="3" stroke-linecap="round"></path></g></svg>
+        <div class="workstatus" role="status" aria-live="polite">
+          <p class="hand q" style="font-size:26px">Interrogating your squiggles…</p>
+          <p class="hand q" style="font-size:26px;animation-delay:3s">Asking π for a second opinion…</p>
+          <p class="hand q" style="font-size:26px;animation-delay:6s">Fitting curves. Tangents avoided.</p>
+          <p class="hand q" style="font-size:26px;animation-delay:9s">Rounding to four decimal places…</p>
+        </div>
+        <span class="mono" id="working-time">0:00</span>
+      </div>
+      <button class="btn" id="cancel" style="height:48px">Cancel</button>
     </div>
-    <img id="paper" alt="drawing" hidden>
-    <div id="scan" class="scan" hidden></div>
-    <div id="hl" class="hl" hidden></div>
-    <a id="dl-overlay" class="dl-overlay" download="chawk.png" title="Download this view" hidden><i class="ri-download-line" aria-hidden="true"></i></a>
+  </main>
+
+  <!-- ============================= RESULT ============================= -->
+  <div class="resultwrap" id="screen-result" hidden>
+    <div class="body">
+      <section class="sc" style="flex:1">
+        <div class="stage paper" id="stage">
+          <div class="artw">
+            <div class="artbox" id="artbox">
+              <div class="plot" id="plot" role="img" aria-label="Your doodle with its fitted equations">
+                <img class="layer ghost" id="layer-ghost" alt="">
+                <img class="layer math" id="layer-math" alt="">
+                <canvas class="layer diff" id="layer-diff" aria-hidden="true"></canvas>
+                <div class="hlbox" id="hl" hidden></div>
+                <span class="axis axis-x" aria-hidden="true"></span>
+                <span class="axis axis-y" aria-hidden="true"></span>
+                <div class="ticks ticks-x" id="ticks-x" aria-hidden="true"></div>
+                <div class="ticks ticks-y" id="ticks-y" aria-hidden="true"></div>
+              </div>
+            </div>
+            <p class="fig">Fig. 1 · grey = your doodle · colour = its equations · 1 grid = 100 px</p>
+          </div>
+
+          <div class="card sel" id="eqcard" hidden>
+            <span style="display:flex;align-items:center;gap:8px"><span class="dot" id="sel-dot"></span><b id="sel-model">Wave</b><span class="m" id="sel-stroke">Stroke 2</span><span class="ok" id="sel-ok">spot on</span><span class="no" id="sel-no">(1)</span></span>
+            <div class="eq" id="sel-eq" style="font-size:24px;margin:10px 0 4px"></div>
+            <p class="m" id="sel-meta"></p>
+            <div style="display:flex;gap:8px;margin-top:12px">
+              <button class="btn bp" id="sel-copy" style="flex:1"><i class="ri-file-copy-line" aria-hidden="true"></i> Copy LaTeX</button>
+              <button class="btn" id="sel-desmos">Desmos</button>
+            </div>
+          </div>
+        </div>
+
+        <div class="tools">
+          <button class="chip" id="t-original" aria-pressed="true">Original</button>
+          <button class="chip" id="t-equations" aria-pressed="true">Equations</button>
+          <button class="chip" id="t-labels" aria-pressed="false">Labels</button>
+          <button class="chip" id="t-diff" aria-pressed="true">Show the wobble</button>
+          <button class="chip show-m" id="t-hold">Hold: flip to original</button>
+          <label class="m blend">Original<input id="blend" type="range" aria-label="Blend between original and equations" value="70">Math</label>
+          <span class="m hide-m" style="margin-left:auto">Hold&nbsp;<kbd class="mono">Space</kbd>&nbsp;to flip</span>
+          <span class="mono hide-m" id="coords" style="min-width:120px;justify-content:flex-end">x — · y — px</span>
+        </div>
+      </section>
+
+      <aside class="side">
+        <div style="padding:16px 16px 10px">
+          <h2 class="h" style="font-size:28px" id="eq-count">0 equations</h2>
+          <p class="m" id="eq-summary" style="margin-top:4px"></p>
+          <div style="display:flex;gap:8px;margin-top:12px;align-items:center">
+            <div role="group" aria-label="Coordinates" class="coordbar">
+              <button class="chip" id="coord-px" aria-pressed="true" style="border:0">Pixels</button>
+              <button class="chip" id="coord-up" aria-pressed="false" style="border:0;background:transparent">Math, y up</button>
+            </div>
+            <button class="btn" id="copy-all" style="margin-left:auto"><i class="ri-file-copy-line" aria-hidden="true"></i> Copy all</button>
+          </div>
+        </div>
+        <div id="eq-rows" style="padding:4px 10px;display:flex;flex-direction:column;gap:4px"></div>
+        <p class="hand" style="padding:14px 16px 6px">∎ Q.E.D. your doodle is officially a function</p>
+      </aside>
+    </div>
+
+    <div class="actbar">
+      <button class="btn bp" id="download-mobile" style="flex:1;height:48px"><i class="ri-download-line" aria-hidden="true"></i> Download</button>
+      <button class="btn" id="retrace-mobile" style="height:48px">Try again</button>
+    </div>
   </div>
+</div>
 
-  <aside id="eqsheet" class="eqsheet" hidden aria-label="Equations">
-    <div class="eqhead">
-      <div><strong id="stat-strokes">0</strong> strokes · <strong id="stat-eqs">0</strong> equations</div>
-      <a id="dl-png" download="chawk.png" title="Download annotated PNG"><i class="ri-image-line" aria-hidden="true"></i>PNG</a>
-      <a id="dl-json" download="chawk.json" title="Download JSON report"><i class="ri-file-text-line" aria-hidden="true"></i>JSON</a>
-      <button id="eqclose" type="button" aria-label="Close equations"><i class="ri-close-line" aria-hidden="true"></i></button>
-    </div>
-    <div id="stat-fit" class="fit"></div>
-    <div id="equations"></div>
-  </aside>
-</main>
+<div class="scrim" id="scrim" hidden></div>
 
-<div id="dock" class="dock">
-  <button id="preset-btn" type="button" aria-expanded="false" aria-haspopup="listbox" title="Fit preset">
-    <i class="ri-stack-line" aria-hidden="true"></i><span id="preset-label">Balanced</span><i class="ri-arrow-down-s-line caret" aria-hidden="true"></i>
+<div class="menu" id="sheet" role="menu" aria-label="Download" hidden>
+  <p class="m" style="font-weight:600;padding:8px 10px 4px">Save as image</p>
+  <button role="menuitem" class="row dl-item" data-img="clean">
+    <svg width="56" height="40" viewBox="0 0 56 40" aria-hidden="true" style="flex:none"><rect width="56" height="40" rx="5" fill="#FAF9F4" stroke="#DDD9CC"></rect><path d="M6 24C14 8 22 8 28 22S44 34 50 16" fill="none" stroke="#15161A" stroke-opacity=".25" stroke-width="5" stroke-linecap="round"></path><path d="M6 24C14 8 22 8 28 22S44 34 50 16" fill="none" stroke="#0F6E5A" stroke-width="2" stroke-linecap="round"></path></svg>
+    <span><b style="font-size:14px">Drawing + equations</b><br><span class="m">Your original with the fitted curves on top</span></span>
   </button>
-  <button id="tune" type="button" aria-expanded="false" title="Fine-tune fit">
-    <i class="ri-equalizer-line" aria-hidden="true"></i>Tune<span id="tune-dot" class="tunedot" hidden></span>
+  <button role="menuitem" class="row dl-item" data-img="redraw">
+    <svg width="56" height="40" viewBox="0 0 56 40" aria-hidden="true" style="flex:none"><rect width="56" height="40" rx="5" fill="#fff" stroke="#DDD9CC"></rect><path d="M6 24C14 8 22 8 28 22S44 34 50 16" fill="none" stroke="#0F6E5A" stroke-width="2" stroke-linecap="round"></path></svg>
+    <span><b style="font-size:14px">Equations only</b><br><span class="m">The drawing rebuilt from the math alone</span></span>
   </button>
-  <button id="go" type="button" disabled><i id="go-icon" class="ri-play-line" aria-hidden="true"></i><span id="go-text">Trace</span></button>
-  <button id="labelbtn" type="button" aria-pressed="true" title="Toggle equation labels (instant, no re-trace)" hidden><i class="ri-price-tag-3-line" aria-hidden="true"></i>Labels</button>
-  <button id="eqtoggle" type="button" aria-expanded="false" hidden><i class="ri-function-line" aria-hidden="true"></i>Equations</button>
-  <button id="fresh" type="button" title="Start over with a new drawing" hidden><i class="ri-add-line" aria-hidden="true"></i>New</button>
+  <button role="menuitem" class="row dl-item" data-img="sidebyside">
+    <svg width="56" height="40" viewBox="0 0 56 40" aria-hidden="true" style="flex:none"><rect width="56" height="40" rx="5" fill="#FAF9F4" stroke="#DDD9CC"></rect><rect x="5" y="5" width="20" height="30" rx="2" fill="#fff" stroke="#DDD9CC"></rect><path d="M9 26C13 16 16 16 21 25" fill="none" stroke="#0F6E5A" stroke-width="1.6" stroke-linecap="round"></path><path d="M31 11h19M31 17h19M31 23h13M31 29h16" stroke="#15161A" stroke-opacity=".45" stroke-width="1.5" stroke-linecap="round"></path></svg>
+    <span><b style="font-size:14px">Side by side</b><br><span class="m">A 1:1 sheet — the drawing on the left, every equation on the right</span></span>
+  </button>
+  <p class="m" style="font-weight:600;padding:10px 10px 6px;border-top:1px solid #E9E5DA;margin-top:6px">Copy or save the math</p>
+  <div style="display:flex;gap:6px;flex-wrap:wrap;padding:0 8px 8px">
+    <button role="menuitem" class="chip" data-math="desmos">Desmos</button>
+    <button role="menuitem" class="chip" data-math="latex">LaTeX</button>
+    <button role="menuitem" class="chip" data-math="text">Text</button>
+    <button role="menuitem" class="chip" data-math="json">JSON</button>
+  </div>
 </div>
-<div id="presets" class="menu" role="listbox" aria-label="Preset" hidden>
-  <button type="button" data-preset="balanced" aria-pressed="true" role="option">Balanced<span>good for most drawings</span></button>
-  <button type="button" data-preset="precise" aria-pressed="false" role="option">Precise<span>tighter fit, more equations</span></button>
-  <button type="button" data-preset="simple" aria-pressed="false" role="option">Simple<span>fewer, simpler equations</span></button>
-  <button type="button" data-preset="complex" aria-pressed="false" role="option">Dense art<span>many strokes, busy drawings</span></button>
-</div>
-<div id="tune-pop" class="menu panel" hidden>
-  <label class="row"><span>Detail <b id="rmse-val"></b></span>
-    <input id="rmse" type="range" min="0.5" max="6" step="0.1" value="2"></label>
-  <label class="row"><span>Max wiggle <b id="maxerr-val"></b></span>
-    <input id="maxerr" type="range" min="2" max="15" step="0.5" value="6"></label>
-  <label class="row"><span>Max degree <b id="poly-val"></b></span>
-    <input id="poly" type="range" min="1" max="6" step="1" value="4"></label>
-  <fieldset>
-    <legend>Curve types</legend>
-    <div class="modelgrid">
-      <label><input id="m-circle" type="checkbox" checked> circles</label>
-      <label><input id="m-ellipse" type="checkbox" checked> ellipses</label>
-      <label><input id="m-sinusoid" type="checkbox" checked> waves</label>
-      <label><input id="m-spline" type="checkbox" checked> freeform</label>
-    </div>
-  </fieldset>
-  <button id="reset" type="button" class="resetbtn"><i class="ri-restart-line" aria-hidden="true"></i>Reset to Balanced</button>
-  <p id="server-ver" class="serverver"></p>
-</div>
-<p id="status" class="status" role="status" aria-live="polite"></p>
 
-<script src="vendor/katex/katex.min.js" defer></script>
+<div class="menu runmenu" id="run-menu" role="menu" aria-label="Runs" hidden></div>
+
+<div class="toast" id="toast" role="alert" aria-live="assertive" hidden><span id="toast-text"></span></div>
+
+<input type="file" id="file" accept="image/png,image/jpeg,image/webp,image/bmp,image/tiff" hidden>
+
+<link rel="stylesheet" href="/vendor/katex/katex.min.css">
+<script src="/vendor/katex/katex.min.js" defer></script>
+<script src="/vendor/html2canvas.min.js" defer></script>
+<script src="gl.js" defer></script>
 <script src="math.js" defer></script>
-<script src="app.js"></script>
+<script src="app.js" defer></script>
 </body>
 </html>

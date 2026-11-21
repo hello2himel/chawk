@@ -3,6 +3,7 @@
 from __future__ import annotations
 
 import numpy as np
+from scipy.spatial import cKDTree
 
 
 def polyline_length(points: np.ndarray) -> float:
@@ -21,11 +22,26 @@ def arc_length_param(points: np.ndarray) -> np.ndarray:
     return np.concatenate([[0.0], np.cumsum(d)])
 
 
+def _segment_distance(p: np.ndarray, a: np.ndarray, b: np.ndarray) -> np.ndarray:
+    """Distance from each point p[i] to the segment a[i]-b[i]."""
+    ab = b - a
+    denom = np.einsum("ij,ij->i", ab, ab)
+    denom = np.where(denom < 1e-12, 1e-12, denom)
+    t = np.einsum("ij,ij->i", p - a, ab) / denom
+    np.clip(t, 0.0, 1.0, out=t)
+    proj = a + t[:, None] * ab
+    return np.linalg.norm(p - proj, axis=1)
+
+
 def point_to_polyline_distance(points: np.ndarray, polyline: np.ndarray) -> np.ndarray:
     """Shortest Euclidean distance from each point to a dense polyline.
 
     Used as the single, model-agnostic error metric so that ``y = f(x)``
     fits, arcs, and splines are all judged on the same geometric scale.
+
+    The nearest point on a polyline lies on a segment incident to the vertex
+    closest to the query point, so a KD-tree over the vertices reduces this
+    from O(points × segments) to O(points log segments) with an exact answer.
     """
     p = np.asarray(points, dtype=np.float64)
     q = np.asarray(polyline, dtype=np.float64)
@@ -34,22 +50,22 @@ def point_to_polyline_distance(points: np.ndarray, polyline: np.ndarray) -> np.n
     if len(q) == 1:
         return np.linalg.norm(p - q[0], axis=1)
 
-    a = q[:-1]                    # (M, 2) segment starts
-    ab = q[1:] - a                # (M, 2) segment vectors
-    denom = np.einsum("ij,ij->i", ab, ab)
-    denom = np.where(denom < 1e-12, 1e-12, denom)
+    tree = cKDTree(q)
+    _dist, idx = tree.query(p, k=1)
 
-    out = np.empty(len(p), dtype=np.float64)
-    chunk = max(1, int(4_000_000 // max(len(a), 1)))
-    for start in range(0, len(p), chunk):
-        block = p[start:start + chunk]
-        ap = block[:, None, :] - a[None, :, :]           # (B, M, 2)
-        t = np.einsum("bmj,mj->bm", ap, ab) / denom      # (B, M)
-        np.clip(t, 0.0, 1.0, out=t)
-        proj = a[None, :, :] + t[:, :, None] * ab[None, :, :]
-        d = np.linalg.norm(block[:, None, :] - proj, axis=2)
-        out[start:start + chunk] = d.min(axis=1)
-    return out
+    n = len(q)
+    # Segment on the left of the nearest vertex, and on the right.
+    left_a = q[np.maximum(idx - 1, 0)]
+    left_b = q[idx]
+    d_left = _segment_distance(p, left_a, left_b)
+    d_left[idx == 0] = np.inf
+
+    right_a = q[idx]
+    right_b = q[np.minimum(idx + 1, n - 1)]
+    d_right = _segment_distance(p, right_a, right_b)
+    d_right[idx == n - 1] = np.inf
+
+    return np.minimum(d_left, d_right)
 
 
 def rdp_indices(points: np.ndarray, epsilon: float) -> list[int]:

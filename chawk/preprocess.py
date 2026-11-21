@@ -2,13 +2,30 @@
 
 from __future__ import annotations
 
-from dataclasses import dataclass, replace
+from dataclasses import dataclass, field, replace
 
 import cv2
 import numpy as np
 from skimage.morphology import skeletonize
 
 from .config import Config
+
+
+@dataclass
+class FillContour:
+    points: np.ndarray
+    """(N, 2) float array of (x, y) in *working* image coordinates."""
+    role: str
+    """``outer`` or ``hole``."""
+
+
+@dataclass
+class FillRegion:
+    fill_id: int
+    area: float
+    contours: list[FillContour] = field(default_factory=list)
+    color: str | None = None
+    """Explicit fill colour (colour mode); None means sample the ink."""
 
 
 @dataclass
@@ -32,6 +49,16 @@ class Preprocessed:
     """Estimated mean stroke width in working pixels."""
 
     ink_ratio: float
+
+    fills: list[FillRegion] = field(default_factory=list)
+    """Solid ink regions (discs, letters, blobs) that should be filled rather
+    than traced down the middle."""
+
+    paper_rgb: tuple[int, int, int] | None = None
+    """Canvas colour when the drawing's paper is not the border median."""
+
+    color_mode: bool = False
+    """True when the image was vectorised as colour regions."""
 
 
 def _flatten_alpha(image: np.ndarray) -> np.ndarray:
@@ -99,8 +126,8 @@ def _flatten_background(gray: np.ndarray) -> np.ndarray:
     return flat
 
 
-def _binarize(gray: np.ndarray, cfg: Config) -> np.ndarray:
-    """Return a mask where strokes are 255 (foreground)."""
+def _normalized_work(gray: np.ndarray, cfg: Config) -> np.ndarray:
+    """Blur + orient so ink is dark on a light background."""
     work = gray
     if cfg.blur_kernel and cfg.blur_kernel > 1:
         k = int(cfg.blur_kernel) | 1
@@ -125,6 +152,24 @@ def _binarize(gray: np.ndarray, cfg: Config) -> np.ndarray:
         strokes_dark = float(np.count_nonzero(probe)) / probe.size > 0.5
     if not strokes_dark:
         work = cv2.bitwise_not(work)
+    return work
+
+
+def _raw_ink_mask(gray: np.ndarray, cfg: Config) -> np.ndarray:
+    """Un-flattened Otsu mask.
+
+    ``_flatten_background`` divides out large uniform dark areas (it exists to
+    fix uneven scans), which erases filled shapes. Fills are detected on this
+    raw mask instead; strokes keep using :func:`_binarize`.
+    """
+    work = _normalized_work(gray, cfg)
+    _, raw = cv2.threshold(work, 0, 255, cv2.THRESH_BINARY_INV + cv2.THRESH_OTSU)
+    return raw
+
+
+def _binarize(gray: np.ndarray, cfg: Config) -> np.ndarray:
+    """Return a mask where strokes are 255 (foreground)."""
+    work = _normalized_work(gray, cfg)
 
     mode = cfg.threshold_mode
     candidates: list[np.ndarray] = []
@@ -193,6 +238,90 @@ def _estimate_thickness(mask: np.ndarray, skeleton: np.ndarray) -> float:
     return max(1.0, ink / bones)
 
 
+def _find_fills(mask: np.ndarray, min_area: int,
+                cfg: Config) -> tuple[np.ndarray, list[FillRegion]]:
+    """Split solid ink regions off the ink mask.
+
+    Two signals mark a fill rather than a stroke:
+
+    * **Compact blobs** — a disc is area/(pi r^2) ~1.0, a square ~1.27, while
+      a long thick stroke grows with its length. Only compact components pass.
+    * **Holes** — a thick ring/frame (the counter of a letter, a donut) has a
+      hole and a wall thick enough to be a filled band. Thin pen outlines also
+      have holes but a small inradius, so they stay strokes.
+
+    Everything else is left to the centreline tracer.
+    """
+    if not cfg.enable_fill or cfg.fill_min_area <= 0:
+        return np.zeros_like(mask), []
+
+    if min_area > 1:
+        mask = _remove_specks(mask, min_area)
+    count, labels, stats, _ = cv2.connectedComponentsWithStats(mask, connectivity=8)
+    if count <= 1:
+        return np.zeros_like(mask), []
+    dist = cv2.distanceTransform((mask > 0).astype(np.uint8), cv2.DIST_L2, 5)
+
+    fill_labels: list[int] = []
+    regions: list[FillRegion] = []
+
+    def build_region(label: int, area: float) -> FillRegion | None:
+        x = int(stats[label, cv2.CC_STAT_LEFT]); y = int(stats[label, cv2.CC_STAT_TOP])
+        w = int(stats[label, cv2.CC_STAT_WIDTH]); h = int(stats[label, cv2.CC_STAT_HEIGHT])
+        comp = np.where(labels[y:y + h, x:x + w] == label, np.uint8(255), np.uint8(0))
+        contours, hierarchy = cv2.findContours(comp, cv2.RETR_CCOMP, cv2.CHAIN_APPROX_NONE)
+        if hierarchy is None:
+            return None
+        hierarchy = hierarchy[0]
+        region = FillRegion(fill_id=0, area=area)
+        for ci, contour in enumerate(contours):
+            if len(contour) < 3:
+                continue
+            parent = int(hierarchy[ci][3])
+            role = "outer" if parent == -1 else "hole"
+            pts = contour.reshape(-1, 2).astype(np.float64)
+            pts[:, 0] += x
+            pts[:, 1] += y
+            region.contours.append(FillContour(points=pts, role=role))
+        if not region.contours:
+            return None
+        return region
+
+    for i in range(1, count):
+        area = float(stats[i, cv2.CC_STAT_AREA])
+        if area < cfg.fill_min_area:
+            continue
+        x = int(stats[i, cv2.CC_STAT_LEFT]); y = int(stats[i, cv2.CC_STAT_TOP])
+        w = int(stats[i, cv2.CC_STAT_WIDTH]); h = int(stats[i, cv2.CC_STAT_HEIGHT])
+        comp = labels[y:y + h, x:x + w]
+        rmax = float(dist[y:y + h, x:x + w][comp == i].max())
+        if rmax < cfg.fill_min_radius:
+            continue
+        blobbiness = area / (np.pi * rmax * rmax)
+        region = build_region(i, area)
+        if region is None:
+            continue
+        has_hole = any(c.role == "hole" for c in region.contours)
+        if has_hole:
+            accepted = (rmax >= 2.0 * cfg.fill_min_radius
+                        and blobbiness <= cfg.fill_max_ring_blobbiness)
+        else:
+            accepted = blobbiness <= cfg.fill_max_blobbiness
+        if not accepted:
+            continue
+        region.fill_id = len(regions) + 1
+        regions.append(region)
+        fill_labels.append(i)
+
+    if not fill_labels:
+        return np.zeros_like(mask), []
+
+    keep = np.zeros(count, dtype=bool)
+    keep[fill_labels] = True
+    fill_mask = np.where(keep[labels], np.uint8(255), np.uint8(0))
+    return fill_mask, regions
+
+
 def preprocess(image: np.ndarray, cfg: Config) -> Preprocessed:
     """Grayscale -> binarize -> denoise -> skeletonize."""
     if image is None:
@@ -245,7 +374,17 @@ def preprocess(image: np.ndarray, cfg: Config) -> Preprocessed:
 
     mask = _remove_specks(mask, int(cfg.min_component_area))
 
-    skeleton = skeletonize(mask > 0).astype(np.uint8) * 255
+    raw = _raw_ink_mask(gray, cfg)
+    fill_mask, fills = _find_fills(raw, int(cfg.min_component_area), cfg)
+    if fills:
+        # Dilate by 1px so the anti-aliased rim of the fill is not traced as a
+        # separate outline stroke.
+        grown = cv2.dilate(fill_mask, np.ones((3, 3), np.uint8), iterations=1)
+        stroke_mask = cv2.bitwise_and(mask, cv2.bitwise_not(grown))
+    else:
+        stroke_mask = mask
+
+    skeleton = skeletonize(stroke_mask > 0).astype(np.uint8) * 255
     # Skeletonizing thick strokes can leave 1px specks of its own.
     skeleton = _remove_specks(skeleton, 2)
 
@@ -256,6 +395,7 @@ def preprocess(image: np.ndarray, cfg: Config) -> Preprocessed:
         binary=mask,
         skeleton=skeleton,
         scale=scale,
-        stroke_thickness=_estimate_thickness(mask, skeleton),
+        stroke_thickness=_estimate_thickness(stroke_mask, skeleton),
         ink_ratio=ink_ratio,
+        fills=fills,
     )

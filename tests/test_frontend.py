@@ -29,19 +29,26 @@ class TestFrontend(unittest.TestCase):
 
     def test_html_hooks(self):
         html = open(os.path.join(FRONT, "index.html"), encoding="utf-8").read()
-        for hook in ("dropzone", "presets", "data-view", "data-sample", "equations",
-                     "role=\"alert\"", "aria-live"):
+        for hook in ("screen-start", "screen-check", "screen-result", "data-sample",
+                     "data-kind", "data-type", "role=\"alert\"", "aria-live",
+                     "vendor/remixicon.css"):
             self.assertIn(hook, html, hook)
+        css = open(os.path.join(FRONT, "styles.css"), encoding="utf-8").read()
+        for hook in ("vendor/fonts/InstrumentSans-latin.woff2", "vendor/fonts/JetBrainsMono-latin.woff2"):
+            self.assertIn(hook, css, hook)
+        for name in ("InstrumentSans-latin.woff2", "JetBrainsMono-latin.woff2"):
+            self.assertTrue(os.path.isfile(os.path.join(FRONT, "vendor", "fonts", name)), name)
+        self.assertIn("gl.js", html, "gl.js should be loaded")
         js = open(os.path.join(FRONT, "app.js"), encoding="utf-8").read()
-        for hook in ("/api/process", "/api/presets", "/health", "AbortController",
-                     "localStorage", "clipboardData"):
+        for hook in ("/api/process", "/health", "clipboardData", "image_redraw_b64",
+                     "requestAnimationFrame"):
             self.assertIn(hook, js, hook)
 
     def test_js_syntax(self):
         node = shutil.which("node")
         if node is None:
             self.skipTest("node not available")
-        for name in ("app.js", "math.js"):
+        for name in ("app.js", "math.js", "gl.js"):
             p = subprocess.run([node, "--check", os.path.join(FRONT, name)],
                                capture_output=True, text=True, timeout=60)
             self.assertEqual(p.returncode, 0, msg=name + p.stderr[-2000:])
@@ -104,6 +111,53 @@ console.log("math converter OK");
         p = subprocess.run([node, "-e", harness], capture_output=True, text=True, timeout=120)
         self.assertEqual(p.returncode, 0, msg=(p.stderr + p.stdout)[-3000:])
         self.assertIn("math converter OK", p.stdout)
+
+
+    def test_equation_exports(self):
+        """TXT/TeX downloads must carry equations only, never image data."""
+        node = shutil.which("node")
+        if node is None:
+            self.skipTest("node not available")
+        harness = r"""
+const fs = require("fs");
+const ROOT = __ROOT__;
+eval(fs.readFileSync(ROOT + "/frontend/math.js", "utf-8")
+  + ";globalThis.__m = { chawkEquationsText, chawkEquationsLatex };");
+const { chawkEquationsText, chawkEquationsLatex } = globalThis.__m;
+const assert = require("assert");
+const report = {
+  summary: { stroke_count: 2, segment_count: 3, mean_r_squared: 0.9876, mean_rmse_px: 0.42 },
+  strokes: [
+    { segments: [{ model: "line", equation: "y = 0.375x + 89.8058" }] },
+    { segments: [
+      { model: "circle", equation: "(x - 149.8533)² + (y - 149.8829)² = 49.88²" },
+      { model: "spline", equation: "freeform spline: 42 points" },
+    ] },
+  ],
+};
+const meta = { source: "drawing.png", preset: "balanced" };
+const txt = chawkEquationsText(report, meta);
+assert(txt.includes("y = 0.375x + 89.8058"), "txt missing equation");
+assert(txt.includes("freeform spline: 42 points"), "txt missing prose equation");
+assert(!txt.includes("base64"), "txt must not embed image data");
+assert(txt.split("\n")[0].startsWith("# Chawk"), "txt header line");
+const eqLines = txt.split("\n").filter((l) => l && !l.startsWith("#"));
+assert.strictEqual(eqLines.length, 3, "one equation per line, got " + eqLines.length);
+const tex = chawkEquationsLatex(report, meta);
+assert(tex.includes("\\begin{align}") && tex.includes("\\end{align}"), "tex align block");
+assert(tex.includes("&= 0.375x + 89.8058"), "tex aligned at first =");
+assert(tex.includes("\\text{freeform spline: 42 points}"), "tex prose row");
+assert(tex.split("\n")[0].startsWith("% Chawk"), "tex comment header");
+const mathRows = tex.split("\n").filter((l) => !l.startsWith("%")).join("\n");
+assert(!mathRows.includes("²") && !mathRows.includes("·"), "tex math rows must be ascii");
+const empty = chawkEquationsText({ summary: { stroke_count: 0, segment_count: 0 }, strokes: [] }, {});
+assert(empty.startsWith("# Chawk"), "empty txt header");
+assert(chawkEquationsLatex({ strokes: [] }, {}).includes("\\begin{align}"), "empty tex block");
+console.log("equation exports OK");
+""".replace("__ROOT__", repr(ROOT))
+        p = subprocess.run([node, "-e", harness], capture_output=True, text=True, timeout=120)
+        self.assertEqual(p.returncode, 0, msg=(p.stderr + p.stdout)[-3000:])
+        self.assertIn("equation exports OK", p.stdout)
 
 
 if __name__ == "__main__":

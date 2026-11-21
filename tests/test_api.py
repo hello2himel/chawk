@@ -66,6 +66,13 @@ class TestProcessBytes(unittest.TestCase):
         self.assertNotEqual(lab, cln)
         self.assertGreater(len(lab), len(cln))  # labels add ink
 
+    def test_redraw_bundle(self):
+        """A source-free redraw ships alongside the two overlays."""
+        out = server.process_image_bytes(_bytes("geometric.png"))
+        redraw = base64.b64decode(out["image_redraw_b64"])
+        self.assertTrue(redraw.startswith(PNG_MAGIC))
+        self.assertNotEqual(redraw, base64.b64decode(out["image_clean_b64"]))
+
     def test_blank_raises_no_strokes(self):
         import cv2
         import numpy as np
@@ -165,6 +172,7 @@ class TestEndpoints(unittest.TestCase):
             payload = _json.loads(out.body.decode())
             self.assertIn("report", payload)
             self.assertIn("image_png_b64", payload)
+            self.assertIn("image_redraw_b64", payload)
             self.assertGreaterEqual(payload["report"]["summary"]["stroke_count"], 4)
         asyncio.run(go())
 

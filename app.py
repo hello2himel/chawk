@@ -85,7 +85,8 @@ def process_image_bytes(
     image = load_image(data)  # ValueError on undecodable input
     result = process_image(image, cfg=cfg, output_image=None, output_json=None)
     total = sum(len(s) for s in result.stroke_segments)
-    title = f"Chawk - {len(result.strokes)} strokes, {total} equations"
+    # Web renders stay clean: the UI supplies its own chrome around the image.
+    title = None
     out = {
         "report": result.report,
         "image_png_b64": base64.b64encode(
@@ -100,6 +101,21 @@ def process_image_bytes(
             render_mod.render_png_bytes(
                 result.preprocessed, result.strokes,
                 result.stroke_segments, cfg, title=title, labels=False,
+            )
+        ).decode("ascii"),
+        # Pure redraw: no source image, equations only, ink colours + canvas
+        # colour + pen thickness from the original.
+        "image_redraw_b64": base64.b64encode(
+            render_mod.render_png_bytes(
+                result.preprocessed, result.strokes,
+                result.stroke_segments, cfg, title=None, labels=False, paper=True,
+            )
+        ).decode("ascii"),
+        # Same redraw with equation labels, for the UI's Labels toggle.
+        "image_redraw_labels_b64": base64.b64encode(
+            render_mod.render_png_bytes(
+                result.preprocessed, result.strokes,
+                result.stroke_segments, cfg, title=None, labels=True, paper=True,
             )
         ).decode("ascii"),
     }

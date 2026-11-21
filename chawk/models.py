@@ -366,7 +366,14 @@ def fit_ellipse(points: np.ndarray, cfg: Config) -> FitResult | None:
 
 
 def fit_sinusoid(points: np.ndarray, cfg: Config) -> FitResult | None:
-    """y = A*sin(B*x + C) + D, with B seeded from the segment's FFT."""
+    """y = A*sin(B*x + C) + D, fitted by harmonic least squares.
+
+    For a fixed frequency the model is linear in (a, b, D):
+        y = a*sin(Bx) + b*cos(Bx) + D
+    so each frequency costs one small lstsq instead of a 4-parameter
+    nonlinear least squares. The FFT seeds the frequency, a coarse sweep
+    picks the right period, and a bounded 1-D refinement polishes it.
+    """
     pts = np.asarray(points, dtype=np.float64)
     if len(pts) < 12:
         return None
@@ -393,50 +400,75 @@ def fit_sinusoid(points: np.ndarray, cfg: Config) -> FitResult | None:
     B0 = 2 * np.pi * f0
     if B0 * span < 1.2:
         return None  # less than ~1/5 of a period: a polynomial is honest here
-    A0 = float((np.max(vals) - np.min(vals)) / 2.0) or 1.0
-    D0 = float(vals.mean())
 
-    def model(x, A, B, C, D):
-        return A * np.sin(B * x + C) + D
+    ones = np.ones_like(iv)
 
-    best: FitResult | None = None
-    for C0 in (0.0, np.pi / 2, np.pi, -np.pi / 2):
-        for Bs in (B0, B0 * 0.5, B0 * 2.0):
-            try:
-                with warnings.catch_warnings():
-                    warnings.simplefilter("ignore")
-                    popt, _ = optimize.curve_fit(
-                        model, iv, dv, p0=[A0, Bs, C0, D0], maxfev=8000
-                    )
-            except Exception:
-                continue
-            A, B, C, D = (float(v) for v in popt)
-            if not all(np.isfinite(v) for v in (A, B, C, D)) or abs(B) < 1e-9:
-                continue
-            if abs(B) * span > 200:  # absurdly high frequency = fitting noise
-                continue
-            resid = float(np.sqrt(np.mean((model(iv, A, B, C, D) - dv) ** 2)))
-            if best is None or resid < best.params["_resid"]:
-                lo, hi = float(iv[0]), float(iv[-1])
-                var_i, var_d = ("y", "x") if steep else ("x", "y")
-                eq = (f"{var_d} = {_fmt(A, cfg.float_precision)}\u00b7sin("
-                      f"{_fmt(B, cfg.float_precision)}{var_i} "
-                      f"{'+' if C >= 0 else '-'} {_fmt(abs(C), cfg.float_precision)}) "
-                      f"{'+' if D >= 0 else '-'} {_fmt(abs(D), cfg.float_precision)}")
-                params = {"A": A, "B": B, "C": C, "D": D,
-                          "independent": var_i, "dependent": var_d,
-                          "period": float(2 * np.pi / abs(B)), "_resid": resid}
+    def solve(B: float) -> tuple[float, float, float, float]:
+        sin = np.sin(B * iv)
+        cos = np.cos(B * iv)
+        design = np.column_stack([sin, cos, ones])
+        coef, *_ = np.linalg.lstsq(design, dv, rcond=None)
+        a, b, D = (float(v) for v in coef)
+        resid = dv - (a * sin + b * cos + D)
+        return float(np.dot(resid, resid)), a, b, D
 
-                def sampler(n: int, A=A, B=B, C=C, D=D, lo=lo, hi=hi, steep=steep) -> np.ndarray:
-                    t = np.linspace(lo, hi, n)
-                    v = A * np.sin(B * t + C) + D
-                    return np.column_stack([v, t]) if steep else np.column_stack([t, v])
+    best = None
+    for scale in np.linspace(0.5, 2.0, 31):
+        B = B0 * scale
+        if B * span < 1.2 or B * span > 200:
+            continue
+        sse, a, b, D = solve(B)
+        if best is None or sse < best[0]:
+            best = (sse, B, a, b, D)
+    if best is None:
+        return None
 
-                best = FitResult("sinusoid", eq, params, sampler, n_params=4,
-                                 domain={"variable": var_i, "start": lo, "end": hi})
-    if best is not None:
-        best.params.pop("_resid", None)
-    return best
+    B_lo = max(1e-6, best[1] * 0.88)
+    B_hi = best[1] * 1.12
+    if B_lo * span < 1.2:
+        B_lo = 1.2 / span
+    if B_hi * span > 200:
+        B_hi = 200 / span
+    if B_hi > B_lo:
+        try:
+            with warnings.catch_warnings():
+                warnings.simplefilter("ignore")
+                opt = optimize.minimize_scalar(
+                    lambda B: solve(B)[0], bounds=(B_lo, B_hi),
+                    method="bounded", options={"xatol": 1e-4},
+                )
+            if opt.success and np.isfinite(opt.x):
+                sse, a, b, D = solve(float(opt.x))
+                if sse < best[0]:
+                    best = (sse, float(opt.x), a, b, D)
+        except Exception:
+            pass
+
+    sse, B, a, b, D = best
+    A = float(np.hypot(a, b))
+    C = float(np.arctan2(b, a))
+    if not all(np.isfinite(v) for v in (A, B, C, D)) or abs(B) < 1e-9:
+        return None
+    if abs(B) * span > 200:
+        return None
+    resid = float(np.sqrt(sse / len(iv)))
+
+    lo, hi = float(iv[0]), float(iv[-1])
+    var_i, var_d = ("y", "x") if steep else ("x", "y")
+    eq = (f"{var_d} = {_fmt(A, cfg.float_precision)}\u00b7sin("
+          f"{_fmt(B, cfg.float_precision)}{var_i} "
+          f"{'+' if C >= 0 else '-'} {_fmt(abs(C), cfg.float_precision)}) "
+          f"{'+' if D >= 0 else '-'} {_fmt(abs(D), cfg.float_precision)}")
+    params = {"A": A, "B": B, "C": C, "D": D,
+              "independent": var_i, "dependent": var_d,
+              "period": float(2 * np.pi / abs(B)), "_resid": resid}
+
+    def sampler(n: int, A=A, B=B, C=C, D=D, lo=lo, hi=hi, steep=steep) -> np.ndarray:
+        t = np.linspace(lo, hi, max(2, int(n)))
+        y = A * np.sin(B * t + C) + D
+        return np.column_stack([y, t]) if steep else np.column_stack([t, y])
+
+    return FitResult("sinusoid", eq, params, sampler, n_params=4)
 
 
 def fit_spline(points: np.ndarray, cfg: Config) -> FitResult | None:
@@ -504,6 +536,118 @@ _COMPLEXITY = {
     "circular_arc": 1, "circle": 1, "elliptical_arc": 2, "ellipse": 2,
     "sinusoid": 3, "spline": 6,
 }
+
+
+def _num(v: float, places: int = 2) -> str:
+    out = f"{v:.{places}f}".rstrip("0").rstrip(".")
+    return "0" if out in ("", "-0") else out
+
+
+def _fourier_line(mean: float, cos: list[float], sin: list[float],
+                  shown: int, label: str, harmonic: int = 1) -> str:
+    """One line of a real Fourier series with actual coefficients."""
+    parts = [f"{label}(t) = {_num(mean)}"]
+    for k in range(1, min(shown, len(cos) - 1) + 1):
+        a, b = cos[k], sin[k]
+        if abs(a) > 5e-3:
+            parts.append(f" + {_num(abs(a))}cos {2 * k}πt" if a >= 0
+                         else f" − {_num(abs(a))}cos {2 * k}πt")
+        if abs(b) > 5e-3:
+            parts.append(f" + {_num(abs(b))}sin {2 * k}πt" if b >= 0
+                         else f" − {_num(abs(b))}sin {2 * k}πt")
+    if harmonic > shown:
+        parts.append(" + …")
+    return "".join(parts)
+
+
+def fit_closed_spline(points: np.ndarray, cfg: Config,
+                      smoothing: float = 1.5) -> FitResult:
+    """A periodic Fourier series through a closed boundary.
+
+    Colour-region vectorisation reuses this: one compact parametric equation
+    per boundary (outer contour or hole) instead of segmenting it into many
+    analytic pieces. Coefficients are taken from the FFT of the arclength-
+    uniform contour, and just enough harmonics are kept to stay within a
+    pixel of the ink.
+    """
+    pts = np.asarray(points, dtype=np.float64)
+    if len(pts) < 6:
+        raise ValueError("need at least 6 points for a closed spline")
+    if np.linalg.norm(pts[0] - pts[-1]) < 1e-9:
+        pts = pts[:-1]
+    keep = np.ones(len(pts), dtype=bool)
+    keep[1:] = np.linalg.norm(np.diff(pts, axis=0), axis=1) > 1e-9
+    pts = pts[keep]
+    if len(pts) < 6:
+        raise ValueError("degenerate closed contour")
+
+    # Resample the polygon uniformly by arclength so the FFT sees one period.
+    closed = np.vstack([pts, pts[0]])
+    seg = np.hypot(*np.diff(closed, axis=0).T)
+    cum = np.concatenate([[0.0], np.cumsum(seg)])
+    total = float(cum[-1])
+    if total <= 1e-9:
+        raise ValueError("degenerate closed contour")
+    n = 192
+    u = np.linspace(0.0, total, n, endpoint=False)
+    x = np.interp(u, cum, closed[:, 0])
+    y = np.interp(u, cum, closed[:, 1])
+    z = x + 1j * y
+    zhat = np.fft.fft(z) / n
+
+    # Keep harmonics until the omitted amplitude is sub-pixel.
+    max_k = min(n // 2 - 2, 64)
+    k_max = 4
+    while k_max < max_k:
+        # z(t) is complex, so the spectrum is not conjugate-symmetric: the
+        # negative-frequency bins zhat[n-k] carry the opposite winding.
+        tail = np.abs(zhat[k_max + 1:n // 2]) + np.abs(zhat[n // 2 + 1:n - k_max])
+        if float(tail.sum()) <= 1.5:
+            break
+        k_max += 1
+    k_max = max(4, min(k_max, max_k))
+
+    def evaluate(t: np.ndarray) -> np.ndarray:
+        zt = np.full(np.shape(t), zhat[0], dtype=complex)
+        for k in range(1, k_max + 1):
+            zt = zt + zhat[k] * np.exp(2j * np.pi * k * t)
+            zt = zt + zhat[n - k] * np.exp(-2j * np.pi * k * t)
+        return zt
+
+    def sampler(m: int = 240) -> np.ndarray:
+        t = np.linspace(0.0, 1.0, max(3, int(m)), endpoint=False)
+        zt = evaluate(t)
+        out = np.column_stack([zt.real, zt.imag])
+        return np.vstack([out, out[0]])
+
+    curve = sampler(240)
+    perimeter = float(np.hypot(*np.diff(curve, axis=0).T).sum())
+    cos_x = [0.0]
+    sin_x = [0.0]
+    cos_y = [0.0]
+    sin_y = [0.0]
+    for k in range(1, k_max + 1):
+        a, b = zhat[k], zhat[n - k]
+        cos_x.append(float(a.real + b.real))
+        sin_x.append(float(-a.imag + b.imag))
+        cos_y.append(float(a.imag + b.imag))
+        sin_y.append(float(a.real - b.real))
+    equation = (
+        _fourier_line(float(zhat[0].real), cos_x, sin_x, 2, "x")
+        + "\n"
+        + _fourier_line(float(zhat[0].imag), cos_y, sin_y, 2, "y")
+    )
+    params = {
+        "kind": "fourier_series",
+        "harmonics": k_max,
+        "coefficients": [[round(float(c.real), 6), round(float(c.imag), 6)]
+                         for c in zhat[:k_max + 1]],
+        "perimeter": round(perimeter, 3),
+    }
+    return FitResult(
+        "closed_spline", equation, params, sampler, n_params=2 * (k_max + 1),
+        domain={"variable": "t", "start": 0.0, "end": 360.0},
+    )
 
 
 def fit_segment(points: np.ndarray, cfg: Config, closed: bool = False,

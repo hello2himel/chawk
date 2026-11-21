@@ -8,13 +8,14 @@ import time
 from dataclasses import dataclass, field
 from typing import Any, Callable
 
+import cv2
 import numpy as np
 
-from . import render as render_mod
+from . import color as color_mod, geom, ink, models, render as render_mod
 from .config import Config, build_config
 from .preprocess import Preprocessed, load_image, preprocess
 from .segment import Segment, segment_stroke
-from .trace import Stroke, trace_strokes
+from .trace import Stroke, resample_path, smooth_path, trace_strokes
 
 ProgressFn = Callable[[str, float, str], None]
 """``(stage_key, fraction_0_to_1, human_message)``"""
@@ -69,6 +70,10 @@ def _summarize(strokes, stroke_segments, cfg: Config, pre: Preprocessed,
             "point_count": int(len(stroke.points)),
             "bbox": [round(x0, 2), round(y0, 2), round(x1, 2), round(y1, 2)],
             "merged_from_pieces": int(stroke.merged_from),
+            "color": stroke.color,
+            "filled": bool(stroke.filled),
+            "fill_group": stroke.fill_group,
+            "fill_role": stroke.fill_role,
             "segment_count": len(seg_dicts),
             "segments": seg_dicts,
         })
@@ -83,6 +88,7 @@ def _summarize(strokes, stroke_segments, cfg: Config, pre: Preprocessed,
         "ink_ratio": round(float(pre.ink_ratio), 5),
         "summary": {
             "stroke_count": len(stroke_entries),
+            "fill_count": len({s.fill_group for s in strokes if s.filled}),
             "segment_count": total_segments,
             "mean_r_squared": round(float(np.mean(r2_values)), 6) if r2_values else None,
             "length_weighted_r_squared": (
@@ -118,6 +124,32 @@ def _sanitize_json(obj):
     return obj
 
 
+def _fill_strokes(pre: Preprocessed, cfg: Config) -> list[Stroke]:
+    """Turn each solid region's contours into closed, fittable paths."""
+    inv = 1.0 / pre.scale if pre.scale else 1.0
+    smoothing = 3 if pre.color_mode else max(int(cfg.smoothing_window), 7)
+    out: list[Stroke] = []
+    for region in pre.fills:
+        for contour in region.contours:
+            pts = contour.points.astype(np.float64) * inv
+            if len(pts) < 4:
+                continue
+            pts = resample_path(pts, cfg.resample_spacing, True)
+            pts = smooth_path(pts, smoothing, True)
+            if len(pts) < 3:
+                continue
+            length = float(np.hypot(*np.diff(pts, axis=0).T).sum())
+            if length < cfg.min_stroke_length:
+                continue
+            out.append(Stroke(
+                stroke_id=0, points=pts, closed=True, length=length,
+                raw_point_count=int(len(pts)), filled=True,
+                fill_group=region.fill_id, fill_role=contour.role,
+                color=region.color,
+            ))
+    return out
+
+
 def process_image(
     image_or_path,
     cfg: Config | None = None,
@@ -148,9 +180,28 @@ def process_image(
         raise ValueError("Empty image array (zero pixels).")
 
     progress("preprocessing", 0.10, "Preprocessing (threshold + skeletonize)\u2026")
-    pre = preprocess(image, cfg)
+    color_mode = bool(cfg.enable_fill and cfg.color_count > 0
+                      and color_mod.is_colorful(image, cfg))
+    if color_mode:
+        regions, bg = color_mod.vectorize(image, cfg)
+        pre = Preprocessed(
+            original=image,
+            gray=cv2.cvtColor(image, cv2.COLOR_BGR2GRAY),
+            binary=np.zeros(image.shape[:2], np.uint8),
+            skeleton=np.zeros(image.shape[:2], np.uint8),
+            scale=1.0, stroke_thickness=1.0, ink_ratio=0.0,
+            fills=regions, paper_rgb=bg, color_mode=True,
+        )
+    else:
+        pre = preprocess(image, cfg)
     timings["preprocess"] = time.perf_counter() - t0
-    if np.count_nonzero(pre.skeleton) < 10:
+    fill_points = sum(len(c.points) for f in pre.fills for c in f.contours)
+    if not pre.color_mode and (fill_points > 120_000 or len(pre.fills) > 300):
+        raise NoStrokesDetected(
+            "This looks like a photo or a very noisy scan rather than line art "
+            f"({len(pre.fills)} solid regions, {fill_points} contour points)."
+        )
+    if np.count_nonzero(pre.skeleton) < 10 and not pre.fills:
         raise NoStrokesDetected(
             "No strokes detected. The image looks blank or extremely low contrast \u2014 "
             "try a higher-contrast line drawing, or a darker pen."
@@ -160,7 +211,13 @@ def process_image(
     # gradients and uniform noise come out at 25%+ ink with a dense skeleton
     # and would otherwise hang tracing/fitting for minutes.
     skel_density = float(np.count_nonzero(pre.skeleton)) / pre.skeleton.size
-    if pre.ink_ratio > 0.25 or skel_density > 0.08:
+    # Dense skeletons are noise/photos; high ink is fine only when a few solid
+    # fills explain it (a logo) rather than a dense line network.
+    too_dense = (not pre.color_mode) and (
+        skel_density > 0.08
+        or (pre.ink_ratio > 0.25 and not (pre.fills and skel_density < 0.02))
+    )
+    if too_dense:
         raise NoStrokesDetected(
             f"No clean strokes found (ink {pre.ink_ratio:.1%} of pixels, "
             f"skeleton {skel_density:.1%}). This looks like a photo, gradient or "
@@ -175,20 +232,33 @@ def process_image(
     t1 = time.perf_counter()
     progress("tracing", 0.28, "Detecting strokes\u2026")
     strokes = trace_strokes(pre, cfg)
+    strokes.extend(_fill_strokes(pre, cfg))
     timings["trace"] = time.perf_counter() - t1
     if not strokes:
         raise NoStrokesDetected(
-            "No strokes detected \u2014 every traced path was shorter than "
-            f"min_stroke_length ({cfg.min_stroke_length}px). Try a higher-contrast or "
-            "larger image."
+            "No strokes or filled regions detected \u2014 every traced path was "
+            f"shorter than min_stroke_length ({cfg.min_stroke_length}px). Try a "
+            "higher-contrast or larger image."
         )
     progress("tracing", 0.35, f"Detected {len(strokes)} stroke(s)")
+    ink.assign_stroke_colors(pre.original, strokes)
 
     t2 = time.perf_counter()
     stroke_segments: list[list[Segment]] = []
     total = len(strokes)
     for i, stroke in enumerate(strokes):
-        segments = segment_stroke(stroke, cfg)
+        if pre.color_mode and stroke.filled:
+            try:
+                fit = models.fit_closed_spline(
+                    stroke.points, cfg, smoothing=cfg.color_spline_smoothing)
+                segments = [Segment(
+                    segment_id=1, start_index=0, end_index=len(stroke.points) - 1,
+                    points=stroke.points, fit=fit, length=stroke.length, closed=True,
+                )]
+            except Exception:
+                segments = segment_stroke(stroke, cfg)
+        else:
+            segments = segment_stroke(stroke, cfg)
         stroke_segments.append(segments)
         frac = 0.35 + 0.5 * (i + 1) / total
         progress("fitting", frac, f"Fitting curves\u2026 stroke {i + 1}/{total}")

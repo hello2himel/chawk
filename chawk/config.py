@@ -38,6 +38,35 @@ class Config:
     close_gaps: int = 0
     """Morphological closing radius used to bridge anti-aliasing gaps."""
 
+    enable_fill: bool = True
+    """Vectorise solid ink regions (filled shapes, letters, logos) as filled
+    contours instead of pretending they are strokes."""
+
+    fill_min_area: float = 120.0
+    """Working-pixel area below which a blob is left to the stroke tracer."""
+
+    fill_min_radius: float = 5.0
+    """A blob must be at least this thick (max inscribed radius, working px)."""
+
+    fill_max_blobbiness: float = 2.2
+
+    fill_max_ring_blobbiness: float = 25.0
+    """Same ratio, but for thick ring/frame components (which legitimately
+    have a large area/inradius ratio). Guards against a whole connected line
+    network being mistaken for one giant filled ring."""
+
+    # ---------------- colour illustrations ----------------
+    color_count: int = 16
+    """Palette size for colour illustrations. 0 disables the colour path."""
+
+    color_min_area: float = 40.0
+    """Colour regions smaller than this (working px) are dropped."""
+
+    color_spline_smoothing: float = 0.3
+    """Smoothing strength for each closed boundary spline (per point)."""
+    """area / (pi * r^2): ~1 for a disc, larger for long thick strokes. Only
+    blobs at or below this ratio are treated as fills."""
+
     # ---------------- tracing ----------------
     min_stroke_length: float = 12.0
     """Traced paths shorter than this (px) are dropped as noise."""
@@ -120,8 +149,9 @@ class Config:
     label_fontsize: float = 6.5
     overlay_linewidth: float = 1.6
     dpi: int = 150
-    color_by: str = "stroke"
-    """``stroke`` or ``segment`` colour cycling."""
+    color_by: str = "original"
+    """``original`` samples each stroke's pen colour from the drawing.
+    ``stroke``/``segment`` cycle the built-in palette instead."""
 
     # ---------------- misc ----------------
     max_strokes: int = 400
@@ -149,6 +179,14 @@ class Config:
               "must be 'auto', 'dark_strokes' or 'light_strokes'")
         _need("min_component_area", self.min_component_area >= 0, "must be >= 0")
         _need("close_gaps", self.close_gaps >= 0, "must be >= 0")
+        _need("fill_min_area", self.fill_min_area >= 0, "must be >= 0")
+        _need("fill_min_radius", self.fill_min_radius >= 0, "must be >= 0")
+        _need("fill_max_blobbiness", self.fill_max_blobbiness > 0, "must be > 0")
+        _need("fill_max_ring_blobbiness", self.fill_max_ring_blobbiness > 0,
+              "must be > 0")
+        _need("color_count", 0 <= self.color_count <= 64, "must be in [0, 64]")
+        _need("color_min_area", self.color_min_area >= 0, "must be >= 0")
+        _need("color_spline_smoothing", self.color_spline_smoothing >= 0, "must be >= 0")
         _need("min_stroke_length", self.min_stroke_length > 0, "must be > 0")
         _need("prune_spur_length", self.prune_spur_length >= 0, "must be >= 0")
         _need("junction_link_angle", 0 < self.junction_link_angle <= 90,
@@ -180,8 +218,8 @@ class Config:
         _need("label_fontsize", self.label_fontsize > 0, "must be > 0")
         _need("overlay_linewidth", self.overlay_linewidth > 0, "must be > 0")
         _need("dpi", 50 <= self.dpi <= 600, "must be in [50, 600]")
-        _need("color_by", self.color_by in ("stroke", "segment"),
-              "must be 'stroke' or 'segment'")
+        _need("color_by", self.color_by in ("original", "stroke", "segment"),
+              "must be 'original', 'stroke' or 'segment'")
         _need("max_strokes", self.max_strokes >= 1, "must be >= 1")
         _need("float_precision", 0 <= self.float_precision <= 6, "must be in [0, 6]")
 

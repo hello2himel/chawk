@@ -12,9 +12,11 @@ import numpy as np
 matplotlib.use("Agg")
 
 import matplotlib.pyplot as plt  # noqa: E402
+from matplotlib.patches import PathPatch  # noqa: E402
+from matplotlib.path import Path as MplPath  # noqa: E402
 from matplotlib.patheffects import withStroke  # noqa: E402
 
-from . import geom
+from . import geom, ink
 from .config import Config
 
 _PALETTE = [
@@ -95,25 +97,99 @@ def _to_rgb(image) -> "np.ndarray":
     return cv2.cvtColor(image, cv2.COLOR_BGR2RGB)
 
 
+def _signed_area(poly: np.ndarray) -> float:
+    x, y = poly[:, 0], poly[:, 1]
+    return 0.5 * float(np.sum(x * np.roll(y, -1) - np.roll(x, -1) * y))
+
+
+def _draw_fills(ax, strokes, stroke_segments, cfg: Config) -> None:
+    """Fill solid ink regions from their fitted boundary equations.
+
+    Outer contours and holes are wound in opposite directions so the non-zero
+    fill rule punches the holes out (a donut, the counter of a letter).
+    """
+    groups: dict[int, dict] = {}
+    for si, segs in enumerate(stroke_segments):
+        stroke = strokes[si] if si < len(strokes) else None
+        if stroke is None or not getattr(stroke, "filled", False):
+            continue
+        group = groups.setdefault(stroke.fill_group, {
+            "color": stroke.color or "#15161A", "polys": [],
+        })
+        parts = []
+        for seg in segs:
+            curve = seg.fit.sample(240)
+            if curve is not None and len(curve) >= 2:
+                parts.append(curve)
+        if not parts:
+            continue
+        poly = np.vstack(parts)
+        if len(poly) < 3:
+            continue
+        if np.linalg.norm(poly[0] - poly[-1]) > 1e-6:
+            poly = np.vstack([poly, poly[0]])
+        area = _signed_area(poly)
+        want_positive = stroke.fill_role != "hole"
+        if (area > 0) != want_positive:
+            poly = poly[::-1]
+        group["polys"].append(poly)
+
+    for group in groups.values():
+        verts: list[np.ndarray] = []
+        codes: list[int] = []
+        for poly in group["polys"]:
+            verts.extend(poly)
+            codes.extend([MplPath.MOVETO] + [MplPath.LINETO] * (len(poly) - 2) + [MplPath.CLOSEPOLY])
+        if not verts:
+            continue
+        patch = PathPatch(
+            MplPath(np.asarray(verts), codes),
+            facecolor=group["color"], edgecolor=group["color"],
+            linewidth=0.9, antialiased=True, zorder=2,
+        )
+        ax.add_patch(patch)
+
+
 def _build_figure(pre, strokes, stroke_segments, cfg: Config,
-                  title: str | None = None, labels: bool | None = None):
+                  title: str | None = None, labels: bool | None = None,
+                  paper: bool = False):
     """Build the annotated overlay figure (shared by file and bytes output).
 
     ``labels`` overrides ``cfg.label_equations``: True forces equation labels,
     False suppresses them. This lets callers pre-render both variants so a UI
     can toggle labels instantly without refitting.
+
+    ``paper`` drops the source image and paints the fitted equations alone on
+    the drawing's own canvas colour, at the measured pen thickness - a pure
+    redraw rather than an overlay.
     """
     image = pre.original
     h, w = _check_render_size(image)
     rgb = _to_rgb(image)
+    if paper:
+        paper_rgb = getattr(pre, "paper_rgb", None)
+        canvas = ink.to_hex(paper_rgb) if paper_rgb else ink.to_hex(ink.background_color(rgb))
+    else:
+        canvas = "#ffffff"
 
     dpi = float(cfg.dpi)
     fig = plt.figure(figsize=(w / dpi, h / dpi), dpi=dpi)
+    fig.patch.set_facecolor(canvas)
     ax = fig.add_axes((0, 0, 1, 1))
-    ax.imshow(rgb, extent=(0, w, h, 0), interpolation="antialiased")
+    ax.set_facecolor(canvas)
+    if not paper:
+        ax.imshow(rgb, extent=(0, w, h, 0), interpolation="antialiased")
     ax.set_xlim(0, w)
     ax.set_ylim(h, 0)
     ax.axis("off")
+
+    line_width = cfg.overlay_linewidth
+    if paper:
+        # Reproduce the ink width: points -> pixels is dpi/72, so px -> pt is 72/dpi.
+        thickness_px = float(pre.stroke_thickness) / (float(pre.scale) or 1.0)
+        line_width = max(0.5, thickness_px * 72.0 / dpi)
+
+    _draw_fills(ax, strokes, stroke_segments, cfg)
 
     flat: list[tuple[int, int, float]] = []  # (stroke_idx, seg_idx, length)
     for si, segs in enumerate(stroke_segments):
@@ -126,12 +202,17 @@ def _build_figure(pre, strokes, stroke_segments, cfg: Config,
     label_entries = []
     for flat_index, (si, gi, _length) in enumerate(flat):
         seg = stroke_segments[si][gi]
-        color = _color(si if cfg.color_by == "stroke" else flat_index)
+        sampled = strokes[si].color if si < len(strokes) else None
+        if cfg.color_by == "original" and sampled:
+            color = sampled
+        else:
+            color = _color(si if cfg.color_by != "segment" else flat_index)
         curve = seg.fit.sample(max(60, min(600, 4 * len(seg.points))))
         if curve is None or len(curve) < 2:
             continue
-        ax.plot(curve[:, 0], curve[:, 1], color=color, linewidth=cfg.overlay_linewidth,
-                alpha=0.95, solid_capstyle="round", zorder=3)
+        if not getattr(strokes[si], "filled", False):
+            ax.plot(curve[:, 0], curve[:, 1], color=color, linewidth=line_width,
+                    alpha=1.0 if paper else 0.95, solid_capstyle="round", zorder=3)
 
         if flat_index in label_ids:
             mid = curve[len(curve) // 2]
@@ -146,12 +227,12 @@ def _build_figure(pre, strokes, stroke_segments, cfg: Config,
         for (nx, ny, ax_, ay, text), entry in zip(placed, label_entries):
             ax.annotate(
                 text, xy=(ax_, ay), xytext=(nx, ny),
-                fontsize=cfg.label_fontsize, color="#101010", ha="center", va="center",
+                fontsize=cfg.label_fontsize, color="#FFFFFF", ha="center", va="center",
                 zorder=6,
-                bbox=dict(boxstyle="round,pad=0.22", facecolor="white", edgecolor="#555555",
-                          alpha=0.86, linewidth=0.4),
-                arrowprops=dict(arrowstyle="-", color="#555555", linewidth=0.5,
-                                shrinkA=0.0, shrinkB=1.0, alpha=0.8),
+                bbox=dict(boxstyle="round,pad=0.26", facecolor="#15161A", edgecolor="#15161A",
+                          alpha=0.92, linewidth=0.5),
+                arrowprops=dict(arrowstyle="-", color="#15161A", linewidth=0.7,
+                                shrinkA=0.0, shrinkB=1.0, alpha=0.9),
                 path_effects=[withStroke(linewidth=0.0, foreground="white")],
             )
 
@@ -165,11 +246,13 @@ def _build_figure(pre, strokes, stroke_segments, cfg: Config,
 
 
 def render(pre, strokes, stroke_segments, cfg: Config, out_path: str,
-           title: str | None = None, labels: bool | None = None) -> str:
+           title: str | None = None, labels: bool | None = None,
+           paper: bool = False) -> str:
     """Draw the original image with fitted curves + equation labels on top."""
-    fig, dpi = _build_figure(pre, strokes, stroke_segments, cfg, title=title, labels=labels)
+    fig, dpi = _build_figure(pre, strokes, stroke_segments, cfg, title=title,
+                             labels=labels, paper=paper)
     try:
-        fig.savefig(out_path, dpi=dpi, facecolor="white")
+        fig.savefig(out_path, dpi=dpi, facecolor=fig.get_facecolor())
     except Exception as exc:
         plt.close(fig)
         raise OSError(f"could not write rendered image to {out_path!r}: {exc}") from exc
@@ -178,12 +261,14 @@ def render(pre, strokes, stroke_segments, cfg: Config, out_path: str,
 
 
 def render_png_bytes(pre, strokes, stroke_segments, cfg: Config,
-                     title: str | None = None, labels: bool | None = None) -> bytes:
+                     title: str | None = None, labels: bool | None = None,
+                     paper: bool = False) -> bytes:
     """Same overlay as :func:`render` but returned as in-memory PNG bytes."""
-    fig, dpi = _build_figure(pre, strokes, stroke_segments, cfg, title=title, labels=labels)
+    fig, dpi = _build_figure(pre, strokes, stroke_segments, cfg, title=title,
+                             labels=labels, paper=paper)
     try:
         buf = io.BytesIO()
-        fig.savefig(buf, format="png", dpi=dpi, facecolor="white")
+        fig.savefig(buf, format="png", dpi=dpi, facecolor=fig.get_facecolor())
         return buf.getvalue()
     finally:
         plt.close(fig)

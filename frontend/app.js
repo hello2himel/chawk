@@ -1,564 +1,1477 @@
-/* Chawk lab UI: canvas-first, dock dropdowns, remix icons. Vanilla JS. */
+/* Chawk — front-end. Implements the "Chawk — UI UX design" boards:
+   start → check → result, with run history, layered stage, diff overlay,
+   equation list, downloads and coordinate toggle. Vanilla JS, no build step. */
 "use strict";
 
 const $ = (id) => document.getElementById(id);
-const els = {
-  health: $("health"), tune: $("tune"), tuneDot: $("tune-dot"), tunePop: $("tune-pop"),
-  presetBtn: $("preset-btn"), presetLabel: $("preset-label"), presets: $("presets"),
-  reset: $("reset"), rmse: $("rmse"), rmseVal: $("rmse-val"),
-  maxerr: $("maxerr"), maxerrVal: $("maxerr-val"), poly: $("poly"), polyVal: $("poly-val"),
-  mCircle: $("m-circle"), mEllipse: $("m-ellipse"), mSinusoid: $("m-sinusoid"),
-  mSpline: $("m-spline"),
-  serverVer: $("server-ver"),
-  dz: $("dropzone"), file: $("file"), empty: $("empty"), paper: $("paper"), scan: $("scan"),
-  go: $("go"), goIcon: $("go-icon"), goText: $("go-text"), viewbar: $("viewbar"),
-  hl: $("hl"), dlOverlay: $("dl-overlay"), labelBtn: $("labelbtn"),
-  dlPng: $("dl-png"), dlJson: $("dl-json"),
-  eqtoggle: $("eqtoggle"), fresh: $("fresh"),
-  eqsheet: $("eqsheet"), eqclose: $("eqclose"), equations: $("equations"),
-  statStrokes: $("stat-strokes"), statEqs: $("stat-eqs"), statFit: $("stat-fit"),
-  status: $("status"), error: $("error"), errorText: $("error-text"),
-  errorAction: $("error-action"), errorIcon: $("error-icon"), errorLabel: $("error-label"),
-};
-const viewBtns = [...document.querySelectorAll("[data-view]")];
-const presetBtns = [...document.querySelectorAll("[data-preset]")];
-const STORE_KEY = "chawk-settings-v1";
 const MAX_BYTES = 15 * 1024 * 1024;
-// Same cycling as the backend overlay (chawk/render.py), so dots match curves.
-const PALETTE = ["#e6194b", "#3cb44b", "#4363d8", "#f58231", "#911eb4", "#008080",
-  "#f032e6", "#bcf60c", "#fabebe", "#9a6324", "#800000", "#808000",
-  "#000075", "#e6beff", "#aaffc3", "#ffd8b1"];
-const PRESET_NAMES = { balanced: "Balanced", precise: "Precise", simple: "Simple", complex: "Dense art" };
+
+const KIND_PRESET = { clean: "precise", sketchy: "balanced", busy: "complex" };
+const MODEL_NAME = {
+  line: "Line", polynomial2: "Parabola", polynomial3: "Cubic", polynomial4: "Quartic",
+  polynomial5: "Quintic", polynomial6: "Curve", circle: "Circle", ellipse: "Ellipse",
+  elliptical_arc: "Arc", sinusoid: "Wave", spline: "Freeform", point: "Point",
+  closed_spline: "Closed curve",
+};
+const SUPER = { 2: "²", 3: "³", 4: "⁴", 5: "⁵", 6: "⁶" };
+
+const settings = {
+  sensitivity: 55, kind: "sketchy", fit: 50,
+  fill: true,
+  types: { circle: true, ellipse: true, sinusoid: true, spline: true },
+};
 
 const state = {
-  file: null, previewURL: null,
-  status: "idle", // idle | working | done | error
-  result: null,   // { report, annotatedURL, cleanURL }
-  view: "equations", sheetOpen: false,
-  controller: null, timerId: null, t0: 0,
-  urls: [],
+  file: null, url: null, name: "", bytes: 0, width: 0, height: 0,
+  runs: [], active: -1, selected: -1,
+  busy: false, screen: "start", controller: null, workTimer: null, hovering: false,
+  cardPinned: false, cardTimer: 0,
 };
 
-/* ---------- settings ---------- */
-function readSettings() {
-  const p = document.querySelector('[data-preset][aria-pressed="true"]');
-  return {
-    preset: p ? p.dataset.preset : "balanced",
-    rmse_tolerance: Number(els.rmse.value),
-    max_error_tolerance: Number(els.maxerr.value),
-    max_poly_degree: Number(els.poly.value),
-    enable_circle: els.mCircle.checked,
-    enable_ellipse: els.mEllipse.checked,
-    enable_sinusoid: els.mSinusoid.checked,
-    enable_spline: els.mSpline.checked,
-  };
+const view = { original: true, equations: true, labels: false, diff: true, blend: 70, yUp: false };
+
+/* ------------------------------------------------------------------ utils */
+function esc(s) {
+  return String(s).replace(/[&<>"']/g, (c) =>
+    ({ "&": "&amp;", "<": "&lt;", ">": "&gt;", '"': "&quot;", "'": "&#39;" }[c]));
 }
-function saveSettings() {
-  try { localStorage.setItem(STORE_KEY, JSON.stringify(readSettings())); } catch { /* private mode */ }
+function eqHTML(text) {
+  return String(text).split("\n").map((line) =>
+    esc(line)
+      .replace(/(^|[^A-Za-z])([xyt])(?![A-Za-z])/g, (_m, pre, v) => `${pre}<i>${v}</i>`)
+      .replace(/(^|[\s(])-/g, "$1−")
+  ).join("<br>");
 }
-function loadSettings() {
-  let s = null;
-  try { s = JSON.parse(localStorage.getItem(STORE_KEY)); } catch { /* ignore */ }
-  if (!s) return false;
-  if (s.preset) setPreset(s.preset, true);
-  if (s.rmse_tolerance) els.rmse.value = s.rmse_tolerance;
-  if (s.max_error_tolerance) els.maxerr.value = s.max_error_tolerance;
-  if (s.max_poly_degree) els.poly.value = s.max_poly_degree;
-  for (const [k, el] of [["enable_circle", els.mCircle], ["enable_ellipse", els.mEllipse],
-      ["enable_sinusoid", els.mSinusoid], ["enable_spline", els.mSpline]]) {
-    if (typeof s[k] === "boolean") el.checked = s[k];
+function fmt(v, p = 4) {
+  if (!Number.isFinite(v)) return "0";
+  const a = Math.abs(v);
+  if (a !== 0 && (a < 1e-3 || a >= 1e6)) return v.toExponential(Math.max(2, p - 1));
+  let s = v.toFixed(p).replace(/0+$/, "").replace(/\.$/, "");
+  if (s === "-0" || s === "") s = "0";
+  return s;
+}
+function signed(v, p = 4) {
+  return v < 0 ? " - " + fmt(-v, p) : " + " + fmt(v, p);
+}
+function round(v, d = 0) {
+  const k = 10 ** d;
+  return Math.round(v * k) / k;
+}
+function toast(text, sub) {
+  $("toast-text").innerHTML = esc(text) + (sub ? `<span class="m">${esc(sub)}</span>` : "");
+  $("toast").hidden = false;
+  clearTimeout(toast._t);
+  toast._t = setTimeout(() => { $("toast").hidden = true; }, 3200);
+}
+async function copyText(text) {
+  try { await navigator.clipboard.writeText(text); return true; }
+  catch {
+    const ta = document.createElement("textarea");
+    ta.value = text; ta.style.position = "fixed"; ta.style.opacity = "0";
+    document.body.append(ta); ta.select();
+    let ok = false;
+    try { ok = document.execCommand("copy"); } catch { ok = false; }
+    ta.remove();
+    return ok;
   }
-  return true;
 }
-function setPreset(name, silent) {
-  let known = false;
-  for (const b of presetBtns) {
-    const on = b.dataset.preset === name;
-    b.setAttribute("aria-pressed", on ? "true" : "false");
-    if (on) known = true;
-  }
-  els.presetLabel.textContent = known ? PRESET_NAMES[name] : "Custom";
-  els.tuneDot.hidden = known;
-  els.tune.setAttribute("aria-label", known ? "Tune fit" : "Tune fit (customized)");
-  if (!silent) saveSettings();
-}
-function markCustom() {
-  for (const b of presetBtns) b.setAttribute("aria-pressed", "false");
-  els.presetLabel.textContent = "Custom";
-  els.tuneDot.hidden = false;
-  saveSettings();
-}
-function paintSliderLabels() {
-  els.rmseVal.textContent = Number(els.rmse.value).toFixed(1) + "px";
-  els.maxerrVal.textContent = Number(els.maxerr.value).toFixed(1) + "px";
-  els.polyVal.textContent = els.poly.value;
+function downloadURL(url, name) {
+  const a = document.createElement("a");
+  a.href = url; a.download = name;
+  document.body.append(a); a.click(); a.remove();
 }
 
-/* ---------- drop-up menus ---------- */
-function anchorMenu(menu, btn) {
-  menu.hidden = false;
-  const r = btn.getBoundingClientRect();
-  const mw = Math.min(menu.offsetWidth || 280, window.innerWidth - 24);
-  const mh = menu.offsetHeight || 200;
-  menu.style.left = Math.max(8, Math.min(r.left + r.width / 2 - mw / 2, window.innerWidth - mw - 8)) + "px";
-  menu.style.top = Math.max(8, r.top - mh - 10) + "px";
-}
-function closeMenus() {
-  els.tunePop.hidden = true;
-  els.presets.hidden = true;
-  els.tune.setAttribute("aria-expanded", "false");
-  els.presetBtn.setAttribute("aria-expanded", "false");
-}
-function toggleMenu(menu, btn) {
-  const willOpen = menu.hidden;
-  closeMenus();
-  if (willOpen) {
-    anchorMenu(menu, btn);
-    btn.setAttribute("aria-expanded", "true");
-  }
-}
-
-/* ---------- status / toast ---------- */
-function setStatus(msg) { els.status.textContent = msg || ""; }
-function toast(message, action) {
-  els.error.hidden = !message;
-  els.errorText.textContent = message || "";
-  els.errorAction.hidden = !(action && message);
-  if (action && message) {
-    els.errorLabel.textContent = action.label;
-    els.errorIcon.className = action.icon || "ri-arrow-right-line";
-    els.errorAction.onclick = () => { hideToast(); action.run(); };
-  }
-  if (message) (action ? els.errorAction : els.error).focus();
-}
-function hideToast() { els.error.hidden = true; }
-function forgetURLs() {
-  for (const u of state.urls) URL.revokeObjectURL(u);
-  state.urls = [];
-}
-
-/* ---------- intake ---------- */
-function fmtMB(n) { return (n / 1048576).toFixed(1) + "MB"; }
-async function chooseFile(f) {
-  if (!f) return false;
-  const okType = /^image\//.test(f.type) || /\.(png|jpe?g|bmp|webp|tiff?)$/i.test(f.name);
-  if (!okType) { toast("Not an image — PNG, JPG, BMP, WEBP or TIFF."); return false; }
-  if (f.size > MAX_BYTES) { toast(`Too large (${fmtMB(f.size)}). Limit is 15MB.`); return false; }
-  if (f.size === 0) { toast("Empty file (0 bytes)."); return false; }
-  try {
-    const bmp = await createImageBitmap(f);
-    const ok = bmp.width >= 2 && bmp.height >= 2 && Math.max(bmp.width, bmp.height) <= 6000;
-    bmp.close();
-    if (!ok) { toast("Unusable size — need a real drawing, scaled under ~4000px."); return false; }
-  } catch { /* dimensions optional */ }
-  if (state.previewURL) URL.revokeObjectURL(state.previewURL);
-  state.file = f;
-  state.previewURL = URL.createObjectURL(f);
-  state.result = null;
-  state.view = "fitted";
-  els.paper.src = state.previewURL;
-  els.paper.hidden = false;
-  els.empty.hidden = true;
-  els.eqtoggle.hidden = true;
-  els.fresh.hidden = true;
-  els.labelBtn.hidden = true;
-  els.dlOverlay.hidden = true;
-  els.viewbar.hidden = true;
-  closeSheet();
-  hideToast();
-  els.go.disabled = false;
-  setStatus(`${f.name} · ${fmtMB(f.size)} — hit Trace.`);
-  return true;
-}
-async function loadSample(name) {
-  setStatus("Loading sample…");
-  try {
-    const r = await fetch("samples/" + name);
-    if (!r.ok) throw new Error();
-    const blob = await r.blob();
-    if (await chooseFile(new File([blob], name, { type: "image/png" }))) go();
-  } catch { toast("Couldn't load the sample — is the server running?"); setStatus(""); }
-}
-function fresh() {
-  if (state.previewURL) URL.revokeObjectURL(state.previewURL);
-  state.file = null; state.previewURL = null; state.result = null;
-  els.paper.hidden = true;
-  els.empty.hidden = false;
-  els.eqtoggle.hidden = true;
-  els.fresh.hidden = true;
-  els.labelBtn.hidden = true;
-  els.dlOverlay.hidden = true;
-  els.viewbar.hidden = true;
-  closeSheet();
-  hideToast();
-  els.go.disabled = true;
-  setStatus("");
-}
-
-/* ---------- job ---------- */
-const STAGES = [[0, "Uploading"], [1000, "Tracing strokes"], [2500, "Fitting equations"]];
-function tick() {
-  const el = Date.now() - state.t0;
-  let label = STAGES[0][1];
-  for (const [t, s] of STAGES) if (el >= t) label = s;
-  els.goText.textContent = `${label}… ${(el / 1000).toFixed(1)}s`;
-}
-function setWorking(on) {
-  // One button, two jobs: Trace morphs into Cancel so the slot never shifts.
-  els.go.disabled = on ? false : !state.file;
-  els.go.classList.toggle("abort", on);
-  els.goIcon.className = on ? "ri-close-line" : "ri-play-line";
-  els.scan.hidden = !on;
-  els.dz.classList.toggle("busy", on);
-  if (on) {
-    state.t0 = Date.now();
-    els.goText.textContent = "Uploading…";
-    state.timerId = setInterval(tick, 200);
-  } else {
-    clearInterval(state.timerId);
-    els.goText.textContent = "Trace";
-  }
-}
-function buildConfig() {
-  const s = readSettings();
-  return {
-    rmse_tolerance: s.rmse_tolerance,
-    max_error_tolerance: s.max_error_tolerance,
-    max_poly_degree: s.max_poly_degree,
-    enable_circle: s.enable_circle,
-    enable_ellipse: s.enable_ellipse,
-    enable_sinusoid: s.enable_sinusoid,
-    enable_spline: s.enable_spline,
-  };
-}
-async function go() {
-  if (!state.file || state.status === "working") return;
-  if (state.controller) state.controller.abort();
-  state.controller = new AbortController();
-  state.status = "working";
-  state.view = "equations";
-  hideToast();
-  forgetURLs();
-  els.eqtoggle.hidden = true;
-  els.fresh.hidden = true;
-  closeSheet();
-  setWorking(true);
-  setStatus("");
-  const s = readSettings();
-  const form = new FormData();
-  form.append("file", state.file);
-  form.append("preset", s.preset);
-  form.append("config", JSON.stringify(buildConfig()));
-  form.append("debug", "false");
-  let res;
-  try {
-    res = await fetch("/api/process", { method: "POST", body: form, signal: state.controller.signal });
-  } catch (e) {
-    setWorking(false);
-    if (e.name === "AbortError") { state.status = "idle"; setStatus("Cancelled."); }
-    else {
-      state.status = "error";
-      toast("Couldn't reach the server. Is it still running?", { label: "Retry", icon: "ri-refresh-line", run: go });
-    }
-    return;
-  }
-  setWorking(false);
-  if (!res.ok) {
-    state.status = "error";
-    let detail = res.statusText;
-    try { detail = (await res.json()).detail || detail; } catch { /* keep */ }
-    if (res.status === 422) toast(detail + " Dark lines on white work best.", { label: "Try a sample", icon: "ri-image-line", run: () => loadSample("sine_wave.png") });
-    else if (res.status === 504) toast(detail, { label: "Re-run as Simple", icon: "ri-refresh-line", run: () => { setPreset("simple"); go(); } });
-    else if (res.status === 400) toast(detail, { label: "Reset to Balanced", icon: "ri-restart-line", run: () => setPreset("balanced") });
-    else if (res.status === 413) toast(detail + " Export it smaller and retry.");
-    else toast(`Error ${res.status}: ${detail}`, { label: "Retry", icon: "ri-refresh-line", run: go });
-    els.empty.hidden = !state.file;
-    return;
-  }
-  const out = await res.json();
-  const pngURL = URL.createObjectURL(new Blob(
-    [Uint8Array.from(atob(out.image_png_b64), (c) => c.charCodeAt(0))], { type: "image/png" }));
-  state.urls.push(pngURL);
-  const cleanURL = URL.createObjectURL(new Blob(
-    [Uint8Array.from(atob(out.image_clean_b64), (c) => c.charCodeAt(0))], { type: "image/png" }));
-  state.urls.push(cleanURL);
-  state.result = { report: out.report, annotatedURL: pngURL, cleanURL };
-  state.status = "done";
-  paintResult();
-  const t = out.timings_sec && out.timings_sec.server_total;
-  setStatus(t ? `Traced in ${t}s.` : "Done.");
-  openSheet();
-}
-
-/* ---------- result ---------- */
-function countUp(el, target) {
-  const t0 = performance.now(), dur = 700;
-  (function f(t) {
-    const k = Math.min(1, (t - t0) / dur);
-    el.textContent = Math.round(target * (1 - Math.pow(1 - k, 3)));
-    if (k < 1) requestAnimationFrame(f);
-  })(t0);
-}
-function fitWord(rmse) {
-  if (rmse == null) return "—";
-  if (rmse <= 0.5) return "Excellent";
-  if (rmse <= 1) return "Good";
-  if (rmse <= 2) return "Fair";
-  return "Rough";
-}
-function paintResult() {
-  const { report } = state.result;
-  const s = report.summary;
-  els.viewbar.hidden = false;
-  setView("equations");
-  els.eqtoggle.hidden = false;
-  els.fresh.hidden = false;
-  els.labelBtn.hidden = false;
-  els.dlOverlay.hidden = false;
-  countUp(els.statStrokes, s.stroke_count);
-  countUp(els.statEqs, s.segment_count);
-  els.statFit.textContent = `${fitWord(s.mean_rmse_px)} · ~${s.mean_rmse_px}px off`;
-  els.statFit.title = `Mean R² ${s.mean_r_squared}, max RMSE ${s.max_rmse_px}px`;
-  els.dlPng.href = state.result.annotatedURL;
-  const jsonURL = URL.createObjectURL(new Blob([JSON.stringify(report, null, 2)], { type: "application/json" }));
-  state.urls.push(jsonURL);
-  els.dlJson.href = jsonURL;
-  els.equations.innerHTML = "";
-  report.strokes.forEach((st, si) => {
-    const div = document.createElement("div");
-    div.className = "stroke";
-    const models = [...new Set(st.segments.map((g) => g.model))].join(" + ");
-    const h = document.createElement("h3");
-    const dot = document.createElement("span");
-    dot.className = "dot";
-    dot.style.background = PALETTE[si % PALETTE.length];
-    h.append(dot, ` ${st.stroke_id} · ${models}`);
-    h.tabIndex = 0;
-    h.addEventListener("mouseenter", () => showHighlight(strokeBoxes(si)));
-    h.addEventListener("mouseleave", clearHighlight);
-    h.addEventListener("focus", () => showHighlight(strokeBoxes(si)));
-    h.addEventListener("blur", clearHighlight);
-    const sub = document.createElement("span");
-    sub.className = "meta";
-    sub.textContent = `${st.closed ? "closed" : "open"} · ${st.arc_length.toFixed(0)}px`;
-    h.append(sub);
-    div.append(h);
-    for (const sg of st.segments) {
-      const p = document.createElement("p");
-      p.className = "seg";
-      const top = document.createElement("span");
-      top.className = "topline";
-      const b = document.createElement("span");
-      b.className = "badge " + (sg.r_squared == null ? "" : sg.r_squared >= 0.98 ? "ok" : sg.r_squared >= 0.9 ? "warn" : "bad");
-      b.textContent = sg.model;
-      const m = document.createElement("span");
-      m.className = "meta";
-      m.textContent = `R²=${typeof sg.r_squared === "number" ? sg.r_squared.toFixed(3) : "n/a"}`;
-      top.append(b, m);
-      const eq = document.createElement("span");
-      eq.className = "eqline math";
-      if (typeof renderEquationHTML !== "undefined") eq.innerHTML = renderEquationHTML(sg.equation, sg.model);
-      else eq.textContent = sg.equation;
-      const metaline = document.createElement("span");
-      metaline.className = "metalime";
-      const rm = document.createElement("span");
-      rm.className = "meta";
-      rm.textContent = typeof sg.rmse === "number" ? sg.rmse.toFixed(2) + "px off" : "n/a";
-      const copy = document.createElement("button");
-      copy.type = "button";
-      copy.className = "copy";
-      copy.innerHTML = '<i class="ri-file-copy-line" aria-hidden="true"></i>';
-      copy.setAttribute("aria-label", `Copy LaTeX for ${sg.equation}`);
-      copy.onclick = async () => {
-        const tex = (typeof chawkToLatex !== "undefined" && chawkToLatex(sg.equation, sg.model))
-          || sg.equation;
-        const text = `\\(${tex}\\)`;
-        const doneMark = () => {
-          copy.innerHTML = '<i class="ri-check-line" aria-hidden="true"></i>';
-          setTimeout(() => { copy.innerHTML = '<i class="ri-file-copy-line" aria-hidden="true"></i>'; }, 1200);
-        };
-        try { await navigator.clipboard.writeText(text); doneMark(); }
-        catch {
-          const ta = document.createElement("textarea");
-          ta.value = text; document.body.append(ta); ta.select();
-          try { document.execCommand("copy"); doneMark(); } catch { /* clipboard blocked */ }
-          ta.remove();
-        }
-      };
-      metaline.append(rm, copy);
-      p.addEventListener("mouseenter", () => showHighlight(strokeBoxes(si, gi)));
-      p.addEventListener("mouseleave", clearHighlight);
-      p.append(top, eq, metaline);
-      if (sg.notes && sg.notes.length) {
-        const nt = document.createElement("span");
-        nt.className = "notes";
-        nt.textContent = sg.notes.join("; ");
-        p.append(nt);
-      }
-      div.append(p);
-    }
-    els.equations.append(div);
+/* ------------------------------------------------------- side-by-side sheet */
+function loadImageEl(url) {
+  return new Promise((resolve, reject) => {
+    const img = new Image();
+    img.onload = () => resolve(img);
+    img.onerror = reject;
+    img.src = url;
   });
 }
-function setView(v) {
-  state.view = v;
-  paintView();
+
+function wrapLine(ctx, text, maxW) {
+  const words = text.split(" ");
+  const lines = [];
+  let cur = "";
+  for (const w of words) {
+    const cand = cur ? cur + " " + w : w;
+    if (ctx.measureText(cand).width <= maxW || !cur) cur = cand;
+    else { lines.push(cur); cur = w; }
+  }
+  if (cur) lines.push(cur);
+  return lines;
 }
-function paintView() {
-  const labeled = state.view !== "fitted";
-  for (const b of viewBtns) b.setAttribute("aria-pressed", b.dataset.view === state.view ? "true" : "false");
-  els.labelBtn.setAttribute("aria-pressed", labeled ? "true" : "false");
-  if (!state.result) return;
-  els.paper.src = labeled ? state.result.annotatedURL : state.result.cleanURL;
-  els.paper.alt = labeled ? "drawing with fitted equations labeled"
-    : "drawing with fitted equation curves";
-  els.dlOverlay.href = els.paper.src;
-  clearHighlight();
+
+function buildSideBySideSheet(run) {
+  const items = flattenSegments(run.report);
+  const sheet = document.createElement("div");
+  sheet.className = "sbs-sheet";
+
+  const left = document.createElement("div");
+  left.className = "sbs-left";
+  const img = document.createElement("img");
+  img.alt = "";
+  img.src = run.images.redraw;
+  left.append(img);
+
+  const right = document.createElement("div");
+  right.className = "sbs-right";
+  const head = document.createElement("div");
+  head.className = "sbs-head";
+  head.innerHTML = `${items.length} equation${items.length === 1 ? "" : "s"}, ` +
+    `<span class="hl"><i>plotted</i></span>`;
+  const rule = document.createElement("div");
+  rule.className = "sbs-rule";
+  const list = document.createElement("div");
+  list.className = "sbs-list";
+  items.forEach((item, i) => {
+    const row = document.createElement("div");
+    row.className = "sbs-row";
+    const n = document.createElement("span");
+    n.className = "sbs-n";
+    n.textContent = `${i + 1}`;
+    const eq = document.createElement("div");
+    eq.className = "sbs-eq";
+    String(item.seg.equation || "").split("\n").forEach((line) => {
+      const el = document.createElement("span");
+      el.className = "sbs-line";
+      el.innerHTML = renderEquationHTML(line, item.seg.model);
+      eq.append(el);
+    });
+    row.append(n, eq);
+    list.append(row);
+  });
+  const more = document.createElement("div");
+  more.className = "sbs-more";
+  more.style.visibility = "hidden";
+  more.textContent = " ";
+  right.append(head, rule, list, more);
+  sheet.append(left, right);
+  return { sheet, list, more, items, img };
 }
-function contentRect(img) {
-  // Displayed content box of an object-fit:contain image (handles letterboxing).
-  const iw = img.naturalWidth, ih = img.naturalHeight;
-  const ew = img.clientWidth, eh = img.clientHeight;
-  if (!iw || !ih || !ew || !eh) return null;
-  const s = Math.min(ew / iw, eh / ih);
-  const w = iw * s, h = ih * s;
-  return { x: (ew - w) / 2, y: (eh - h) / 2, s, w };
-}
-function showHighlight(boxes) {
-  // boxes: [{x0,y0,x1,y1,color}] in original-image pixels.
-  clearHighlight();
-  if (!boxes || !boxes.length || !state.result) return;
-  const r = contentRect(els.paper);
-  const size = state.result.report.image_size;
-  if (!r || !size || !size.width) return;
-  const k = r.w / size.width;
-  els.hl.hidden = false;
-  for (const b of boxes) {
-    const d = document.createElement("div");
-    d.className = "hlbox";
-    d.style.left = (r.x + b.x0 * k) + "px";
-    d.style.top = (r.y + b.y0 * k) + "px";
-    d.style.width = Math.max(6, (b.x1 - b.x0) * k) + "px";
-    d.style.height = Math.max(6, (b.y1 - b.y0) * k) + "px";
-    d.style.borderColor = b.color;
-    d.style.boxShadow = `0 0 10px 2px ${b.color}`;
-    els.hl.append(d);
+
+async function sideBySideCanvas(run) {
+  if (typeof html2canvas !== "function") return plainSideBySideCanvas(run);
+  const { sheet, list, more, items, img } = buildSideBySideSheet(run);
+  document.body.append(sheet);
+  try {
+    await document.fonts.ready;
+    if (img.decode) { try { await img.decode(); } catch { /* already broken */ } }
+    // html2canvas ignores object-fit, so size the drawing explicitly.
+    const box = sheet.querySelector(".sbs-left");
+    const availW = box.clientWidth - 32;
+    const availH = box.clientHeight - 32;
+    const ar = (img.naturalWidth || 1) / (img.naturalHeight || 1);
+    let iw = availW, ih = iw / ar;
+    if (ih > availH) { ih = availH; iw = ih * ar; }
+    img.style.width = `${Math.floor(iw)}px`;
+    img.style.height = `${Math.floor(ih)}px`;
+    await new Promise((resolve) => requestAnimationFrame(() => requestAnimationFrame(resolve)));
+    // Keep only the equations that fit, then say where the rest went.
+    const listBottom = list.getBoundingClientRect().bottom;
+    let shown = 0;
+    for (const row of [...list.children]) {
+      if (row.getBoundingClientRect().bottom <= listBottom + 0.5) shown += 1;
+      else row.remove();
+    }
+    if (shown < items.length) {
+      more.textContent = `first ${shown} of ${items.length} · full list in the text export`;
+      more.style.visibility = "visible";
+    }
+    return await html2canvas(sheet, {
+      backgroundColor: "#FAF9F4", scale: 1, logging: false,
+      width: sheet.offsetWidth, height: sheet.offsetHeight,
+      windowWidth: sheet.offsetWidth, windowHeight: sheet.offsetHeight,
+    });
+  } finally {
+    sheet.remove();
   }
 }
-function clearHighlight() {
-  els.hl.innerHTML = "";
-  els.hl.hidden = true;
+
+async function plainSideBySideCanvas(run) {
+  await document.fonts.ready;
+  const items = flattenSegments(run.report);
+  const size = 2200;
+  const cv = document.createElement("canvas");
+  cv.width = size; cv.height = size;
+  const g = cv.getContext("2d");
+  const paper = "#FAF9F4", ink = "#15161A", grey = "#5A5D68", rule = "#DDD9CC";
+  g.fillStyle = paper;
+  g.fillRect(0, 0, size, size);
+
+  const half = size / 2;
+  g.strokeStyle = rule;
+  g.lineWidth = 2;
+  g.beginPath(); g.moveTo(half, 0); g.lineTo(half, size); g.stroke();
+
+  const pad = 64;
+  const img = await loadImageEl(run.images.redraw);
+  const availW = half - pad * 2;
+  const availH = size - pad * 2;
+  const ar = (img.naturalWidth || 1) / (img.naturalHeight || 1);
+  let w = availW, h = w / ar;
+  if (h > availH) { h = availH; w = h * ar; }
+  g.fillStyle = "#FFFFFF";
+  g.fillRect(pad - 8, pad - 8, availW + 16, availH + 16);
+  g.drawImage(img, pad + (availW - w) / 2, pad + (availH - h) / 2, w, h);
+  g.fillStyle = grey;
+  g.font = "500 22px 'JetBrains Mono', monospace";
+  g.fillText("FIG. 1 · DRAWN FROM THE EQUATIONS", pad, size - 36);
+
+  const x = half + pad;
+  const maxW = size - x - pad;
+  g.fillStyle = ink;
+  g.font = "700 68px 'Instrument Sans', sans-serif";
+  g.fillText(`${items.length} equations`, x, 128);
+  g.fillStyle = grey;
+  g.font = "500 26px 'Instrument Sans', sans-serif";
+  g.fillText("plotted from the ink, one per curve", x, 172);
+  g.strokeStyle = rule;
+  g.lineWidth = 2;
+  g.beginPath(); g.moveTo(x, 204); g.lineTo(size - pad, 204); g.stroke();
+
+  const n = items.length;
+  const body = n <= 8 ? { font: 40, lineH: 50, gap: 18 }
+    : n <= 24 ? { font: 32, lineH: 42, gap: 14 }
+    : { font: 26, lineH: 33, gap: 12 };
+  let y = 252;
+  const bottom = size - 80;
+  let shown = 0;
+  for (let i = 0; i < n; i++) {
+    const eq = (items[i].seg.equation || "").replace(/\s*\n\s*/g, "  ;  ");
+    const text = `${i + 1}.  ${eq}`;
+    g.font = `400 ${body.font}px 'STIX Two Text', Georgia, serif`;
+    const lines = wrapLine(g, text, maxW);
+    if (y + lines.length * body.lineH > bottom) break;
+    g.fillStyle = ink;
+    for (const line of lines) {
+      g.fillText(line, x, y);
+      y += body.lineH;
+    }
+    y += body.gap;
+    shown += 1;
+  }
+  if (shown < items.length) {
+    g.fillStyle = grey;
+    g.font = "500 22px 'Instrument Sans', sans-serif";
+    g.fillText(`Showing the first ${shown} of ${items.length} · the rest are in the text export`,
+      x, size - 36);
+  }
+  return cv;
 }
-function strokeBoxes(si, gi) {
-  const st = state.result && state.result.report.strokes[si];
-  if (!st) return [];
-  const color = PALETTE[si % PALETTE.length];
-  const segs = gi === undefined ? st.segments : st.segments.slice(gi, gi + 1);
-  return segs.map((sg) => ({
-    x0: sg.x_range[0], y0: sg.y_range[0], x1: sg.x_range[1], y1: sg.y_range[1], color,
+
+async function downloadSideBySide(run) {
+  const cv = await sideBySideCanvas(run);
+  cv.toBlob((blob) => {
+    if (blob) downloadURL(URL.createObjectURL(blob), baseName() + "-side-by-side.png");
+  }, "image/png");
+}
+
+function baseName() {
+  return (state.name || "chawk").replace(/\.[^.]+$/, "") || "chawk";
+}
+function luminance(hex) {
+  const m = /^#?([0-9a-f]{2})([0-9a-f]{2})([0-9a-f]{2})$/i.exec(hex || "");
+  if (!m) return 0;
+  const [r, g, b] = [1, 2, 3].map((i) => parseInt(m[i], 16) / 255);
+  return 0.2126 * r + 0.7152 * g + 0.0722 * b;
+}
+function dotColor(hex) {
+  return !hex || luminance(hex) > 0.82 ? "#15161A" : hex;
+}
+
+/* ------------------------------------------------------------------ screens */
+function showScreen(name) {
+  state.screen = name;
+  $("screen-start").hidden = name !== "start";
+  $("screen-check").hidden = name !== "check";
+  $("screen-working").hidden = name !== "working";
+  $("screen-result").hidden = name !== "result";
+  $("start-meta").hidden = name !== "start";
+  $("check-change").hidden = name !== "check";
+  $("result-bar").hidden = name !== "result";
+  $("bar").classList.toggle("result", name === "result");
+  $("app").classList.toggle("result", name === "result");
+  $("app").classList.toggle("check", name === "check");
+  closeMenus();
+  if (name === "check") requestAnimationFrame(fitPreview);
+  if (name !== "result") window.scrollTo(0, 0);
+}
+
+/* ------------------------------------------------------------------ intake */
+async function chooseFile(file) {
+  if (!file) return;
+  const okType = /^image\//.test(file.type) || /\.(png|jpe?g|webp|bmp|tiff?)$/i.test(file.name);
+  if (!okType) { toast("That is not an image.", "PNG, JPG, WebP, BMP or TIFF."); return; }
+  if (file.size > MAX_BYTES) { toast(`Too large (${(file.size / 1048576).toFixed(1)} MB).`, "The limit is 15 MB."); return; }
+  if (file.size === 0) { toast("Empty file (0 bytes)."); return; }
+  let width = 0, height = 0;
+  try {
+    const bmp = await createImageBitmap(file);
+    width = bmp.width; height = bmp.height; bmp.close();
+  } catch { toast("Could not read that image."); return; }
+  if (width < 2 || height < 2 || Math.max(width, height) > 6000) {
+    toast("Unusable image size.", "Keep it under 6000 px on the long side.");
+    return;
+  }
+  if (state.url) URL.revokeObjectURL(state.url);
+  for (const run of state.runs) {
+    for (const url of Object.values(run.images)) if (url) URL.revokeObjectURL(url);
+  }
+  previewCache = null;
+  state.file = file; state.name = file.name; state.bytes = file.size;
+  state.width = width; state.height = height;
+  state.url = URL.createObjectURL(file);
+  state.runs = []; state.active = -1; state.selected = -1;
+  resetView();
+  renderCheck();
+  showScreen("check");
+}
+
+function resetView() {
+  view.original = true; view.equations = true; view.labels = false;
+  view.diff = true; view.blend = 70; view.yUp = false;
+  $("blend").value = "70";
+}
+
+/* ------------------------------------------------------------------ check */
+/* The preview never overflows: it is sized to the free canvas area, so a tall
+   phone photo or a wide panorama both fit inside the card and the viewport. */
+function fitPreview() {
+  const img = $("preview-img");
+  const wrap = $("preview-wrap");
+  if (!img || !wrap || !img.naturalWidth) return;
+  const desktop = window.innerWidth >= 900;
+  const chrome = 36; // card padding + border on both axes
+  const maxW = Math.max(80, wrap.clientWidth - chrome);
+  const maxH = desktop
+    ? Math.max(120, wrap.clientHeight - chrome)
+    : Math.min(window.innerHeight * 0.56, 620);
+  const ar = img.naturalWidth / img.naturalHeight;
+  let w = maxW;
+  let h = w / ar;
+  if (h > maxH) { h = maxH; w = h * ar; }
+  img.style.width = `${Math.max(40, Math.round(w))}px`;
+  img.style.height = `${Math.max(40, Math.round(h))}px`;
+}
+
+function renderCheck() {
+  $("file-meta").textContent = `${state.name} · ${state.width}×${state.height} · ${Math.max(1, Math.round(state.bytes / 1024))} KB`;
+  $("check-error").hidden = true;
+  const img = $("preview-img");
+  img.src = state.url;
+  const onLoad = () => { fitPreview(); drawPreviewMask(); };
+  if (img.complete) onLoad();
+  else img.onload = onLoad;
+  $("sensitivity").value = String(settings.sensitivity);
+  $("fit").value = String(settings.fit);
+  $("fill-toggle").checked = settings.fill;
+  for (const row of document.querySelectorAll("[data-kind]")) {
+    const on = row.dataset.kind === settings.kind;
+    row.classList.toggle("on", on);
+    row.querySelector("input").checked = on;
+  }
+  for (const btn of document.querySelectorAll("[data-type]")) {
+    btn.setAttribute("aria-pressed", settings.types[btn.dataset.type] ? "true" : "false");
+  }
+}
+
+/* Blue "what will be traced" wash over the upload, computed locally so the
+   sensitivity slider shows the effect before spending a trace. */
+let previewCache = null;
+
+/* Paper luminance from a 96 px sample: cheap enough to run for every image
+   and accurate for tinted/kraft paper. */
+function samplePaper(img) {
+  const W = img.naturalWidth || img.width;
+  const H = img.naturalHeight || img.height;
+  if (!W || !H) return { paperLum: 250, lightPaper: true };
+  const w = 96;
+  const h = Math.max(8, Math.round((96 * H) / W));
+  const c = document.createElement("canvas");
+  c.width = w; c.height = h;
+  const ctx = c.getContext("2d", { willReadFrequently: true });
+  ctx.drawImage(img, 0, 0, w, h);
+  const data = ctx.getImageData(0, 0, w, h).data;
+  const hist = new Uint32Array(256);
+  let total = 0;
+  for (let i = 0; i < data.length; i += 4) {
+    hist[Math.min(255, Math.max(0, Math.round(
+      0.2126 * data[i] + 0.7152 * data[i + 1] + 0.0722 * data[i + 2])))]++;
+    total++;
+  }
+  let acc = 0, p10 = 0, p90 = 255;
+  for (let i = 0; i < 256; i++) {
+    acc += hist[i];
+    if (p10 === 0 && acc >= total * 0.1) p10 = i;
+    if (acc >= total * 0.9) { p90 = i; break; }
+  }
+  const lightPaper = p90 > 60;
+  return { paperLum: lightPaper ? p90 : p10, lightPaper };
+}
+
+/* Full luminance array: only needed by the Canvas2D fallback. */
+function buildLum(img, w, h) {
+  const c = document.createElement("canvas");
+  c.width = w; c.height = h;
+  const ctx = c.getContext("2d", { willReadFrequently: true });
+  ctx.drawImage(img, 0, 0, w, h);
+  const data = ctx.getImageData(0, 0, w, h).data;
+  const lum = new Float32Array(w * h);
+  for (let i = 0, p = 0; i < data.length; i += 4, p++) {
+    lum[p] = 0.2126 * data[i] + 0.7152 * data[i + 1] + 0.0722 * data[i + 2];
+  }
+  return lum;
+}
+
+function buildPreviewCache() {
+  const img = $("preview-img");
+  const W = img.naturalWidth, H = img.naturalHeight;
+  if (!W || !H) return null;
+  const scale = Math.min(1, 1400 / Math.max(W, H));
+  const w = Math.max(2, Math.round(W * scale));
+  const h = Math.max(2, Math.round(H * scale));
+  const paper = samplePaper(img);
+  const useGL = typeof ChawkGL !== "undefined" && ChawkGL.maskAvailable();
+  previewCache = {
+    w, h,
+    lightPaper: paper.lightPaper,
+    paperLum: paper.paperLum,
+    lum: useGL ? null : buildLum(img, w, h),
+  };
+  return previewCache;
+}
+
+let maskFrame = 0;
+function drawPreviewMask() {
+  cancelAnimationFrame(maskFrame);
+  maskFrame = requestAnimationFrame(() => {
+    const img = $("preview-img");
+    if (!img.complete) { img.onload = drawPreviewMask; return; }
+    const cache = previewCache || buildPreviewCache();
+    if (!cache) return;
+    const { w, h, lightPaper, paperLum } = cache;
+    const cut = 95 - 0.8 * settings.sensitivity;
+
+    const canvas = $("preview-mask");
+    canvas.width = w; canvas.height = h;
+    const ctx = canvas.getContext("2d");
+    ctx.clearRect(0, 0, w, h);
+
+    const glMask = (typeof ChawkGL !== "undefined" && ChawkGL.maskAvailable())
+      ? ChawkGL.mask(img, w, h, { paper: paperLum, cut, light: lightPaper })
+      : null;
+    if (glMask) {
+      ctx.filter = `blur(${Math.max(3, Math.round(Math.max(w, h) / 190))}px)`;
+      ctx.globalAlpha = 0.5;
+      ctx.drawImage(glMask, 0, 0, w, h);
+      ctx.filter = "none";
+      ctx.globalAlpha = 1;
+      return;
+    }
+
+    const lum = cache.lum || (cache.lum = buildLum(img, w, h));
+    const paper = paperLum;
+    const mask = document.createElement("canvas");
+    mask.width = w; mask.height = h;
+    const mctx = mask.getContext("2d");
+    const out = mctx.createImageData(w, h);
+    const od = out.data;
+    for (let p = 0, i = 0; p < lum.length; p++, i += 4) {
+      const ink = lightPaper ? lum[p] < paper - cut : lum[p] > paper + cut;
+      if (!ink) continue;
+      od[i] = 31; od[i + 1] = 63; od[i + 2] = 209; od[i + 3] = 255;
+    }
+    mctx.putImageData(out, 0, 0);
+
+    ctx.filter = `blur(${Math.max(3, Math.round(Math.max(w, h) / 190))}px)`;
+    ctx.globalAlpha = 0.5;
+    ctx.drawImage(mask, 0, 0);
+    ctx.filter = "none";
+    ctx.globalAlpha = 1;
+  });
+}
+
+function buildConfig() {
+  return {
+    threshold_mode: "adaptive",
+    adaptive_C: Math.max(1, Math.round(14 - 0.13 * settings.sensitivity)),
+    rmse_tolerance: round(3.5 - 3.0 * (settings.fit / 100), 2),
+    enable_circle: settings.types.circle,
+    enable_ellipse: settings.types.ellipse,
+    enable_sinusoid: settings.types.sinusoid,
+    enable_spline: settings.types.spline,
+    enable_fill: settings.fill,
+  };
+}
+
+async function trace() {
+  if (state.busy || !state.file) return;
+  state.busy = true;
+  $("check-error").hidden = true;
+  openWorking();
+
+  const controller = new AbortController();
+  state.controller = controller;
+  const fd = new FormData();
+  fd.append("file", state.file);
+  fd.append("preset", KIND_PRESET[settings.kind] || "balanced");
+  fd.append("config", JSON.stringify(buildConfig()));
+  const t0 = performance.now();
+  let cancelled = false;
+  try {
+    const res = await fetch("/api/process", { method: "POST", body: fd, signal: controller.signal });
+    const body = await res.json().catch(() => null);
+    if (!res.ok) {
+      const detail = (body && body.detail) || `Server error (${res.status}).`;
+      throw Object.assign(new Error(detail), { status: res.status });
+    }
+    addRun(body, Math.round(performance.now() - t0) / 1000);
+    closeWorking();
+    showScreen("result");
+    renderResult();
+  } catch (e) {
+    if (e.name === "AbortError") {
+      cancelled = true;
+      closeWorking();
+      showScreen("check");
+    } else {
+      const hint = e.status === 422 ? " Dark lines on plain paper work best — try a sample."
+        : e.status === 504 ? " Try the “Busy” setting, or a smaller image."
+        : e.status === 400 ? " Try resetting the curve types."
+        : "";
+      const msg = e instanceof TypeError ? "Couldn’t reach the server." : e.message;
+      closeWorking();
+      showScreen("check");
+      $("check-error").textContent = msg + hint;
+      $("check-error").hidden = false;
+      toast("Trace failed", msg);
+    }
+  } finally {
+    state.busy = false;
+    state.controller = null;
+    if (!cancelled) closeWorking();
+  }
+}
+
+function openWorking() {
+  $("working-img").src = state.url;
+  $("working-fig").textContent = `Fig. 1 · scanning ${state.name} for strokes`;
+  showScreen("working");
+  const started = performance.now();
+  $("working-time").textContent = "0:00";
+  clearInterval(state.workTimer);
+  state.workTimer = setInterval(() => {
+    const s = Math.floor((performance.now() - started) / 1000);
+    $("working-time").textContent = `${Math.floor(s / 60)}:${String(s % 60).padStart(2, "0")}`;
+  }, 250);
+}
+
+function closeWorking() {
+  clearInterval(state.workTimer);
+  state.workTimer = null;
+}
+
+/* ------------------------------------------------------------------ runs */
+function addRun(payload, seconds) {
+  const r = payload.report;
+  const png = (b64) => {
+    const bin = atob(b64);
+    const bytes = new Uint8Array(bin.length);
+    for (let i = 0; i < bin.length; i++) bytes[i] = bin.charCodeAt(i);
+    return URL.createObjectURL(new Blob([bytes], { type: "image/png" }));
+  };
+  const images = {
+    clean: png(payload.image_clean_b64),
+    labeled: png(payload.image_png_b64),
+    redraw: png(payload.image_redraw_b64),
+    redrawLabels: payload.image_redraw_labels_b64 ? png(payload.image_redraw_labels_b64) : null,
+  };
+  const run = {
+    report: r, images, seconds: seconds ?? payload.timings_sec?.server_total ?? 0,
+    meta: { name: state.name, width: state.width, height: state.height, bytes: state.bytes },
+    settings: { ...settings, types: { ...settings.types } },
+    config: buildConfig(),
+    label: "",
+    diff: null,
+  };
+  run.label = "";
+  state.runs.push(run);
+  state.active = state.runs.length - 1;
+  run.label = runLabel(run);
+  state.selected = -1;
+}
+
+function runLabel(run) {
+  const base = { clean: "Clean", sketchy: "Sketchy", busy: "Busy" }[run.settings.kind] || "Sketchy";
+  const idx = state.runs.indexOf(run);
+  if (idx <= 0) return base;
+  const prev = state.runs[idx - 1];
+  const d = run.settings.fit - prev.settings.fit;
+  if (d <= -6) return "Closer fit";
+  if (d >= 6) return "Fewer equations";
+  return base;
+}
+
+function activeRun() {
+  return state.runs[state.active] || null;
+}
+
+/* ------------------------------------------------------------------ result */
+function fitPlot() {
+  const run = activeRun();
+  if (!run) return;
+  const plot = $("plot");
+  const box = $("artbox");
+  if (!plot || !box) return;
+  const W = run.report.image_size.width, H = run.report.image_size.height;
+  const cs = getComputedStyle(box);
+  const availW = box.clientWidth - parseFloat(cs.paddingLeft) - parseFloat(cs.paddingRight);
+  const desktop = window.innerWidth >= 900;
+  const availH = desktop ? Math.max(240, window.innerHeight - 250) : Infinity;
+  let w = Math.max(40, availW);
+  let h = w * (H / W);
+  if (desktop && h > availH) { h = availH; w = h * (W / H); }
+  plot.style.width = Math.round(w) + "px";
+  plot.style.height = Math.round(h) + "px";
+  plot.style.aspectRatio = "auto";
+}
+window.addEventListener("resize", () => {
+  if (state.screen === "result") fitPlot();
+  if (state.screen === "check") fitPreview();
+});
+
+function renderResult() {
+  const run = activeRun();
+  if (!run) return;
+  const r = run.report;
+  const segs = flattenSegments(r);
+  if (state.selected < 0 || state.selected >= segs.length) {
+    state.selected = pickDefaultSegment(segs);
+  }
+
+  // header
+  $("run-meta").textContent = `${run.meta.name} · traced in ${(run.seconds || 0).toFixed(2)} s`;
+  renderRunChips();
+  $("run-menu-btn").innerHTML = `Run ${state.active + 1} <i class="ri-arrow-down-s-line" aria-hidden="true"></i>`;
+
+  // stage
+  const plot = $("plot");
+  const W = r.image_size.width, H = r.image_size.height;
+  plot.style.setProperty("--ar", `${W} / ${H}`);
+  plot.classList.toggle("yup", false);
+  $("layer-ghost").src = state.url;
+  paintStage();
+  fitPlot();
+  renderAxes();
+  paintChips();
+
+  // list + card
+  $("eq-count").innerHTML = `${segs.length} equation${segs.length === 1 ? "" : "s"}, <span class="hl"><i>plotted</i></span>`;
+  const tight = segs.filter((s) => !isWarn(s)).length;
+  const loose = segs.length - tight;
+  $("eq-summary").textContent = loose
+    ? `${tight} spot-on fit${tight === 1 ? "" : "s"} · ${loose} a bit wobbly`
+    : `${tight} spot-on fit${tight === 1 ? "" : "s"}`;
+  state.cardPinned = false;
+  hideCard();
+  renderRows(segs);
+  selectSegment(state.selected, false);
+
+  // lazy diff
+  requestAnimationFrame(() => setTimeout(() => drawDiff(), 30));
+}
+
+function flattenSegments(report) {
+  const out = [];
+  for (const st of report.strokes || []) {
+    for (const sg of st.segments || []) {
+      out.push({ stroke: st, seg: sg });
+    }
+  }
+  return out;
+}
+
+function strokeLabel(stroke) {
+  if (stroke.filled) {
+    return `Fill ${stroke.fill_group}${stroke.fill_role === "hole" ? " · hole" : ""}`;
+  }
+  return `Stroke ${stroke.stroke_id}`;
+}
+
+function isWarn(item) {
+  const sg = item.seg || item;
+  return (sg.max_error ?? 0) > 2 || (sg.rmse ?? 0) > 1.2;
+}
+
+function pickDefaultSegment(segs) {
+  let best = 0, bestLen = -1;
+  segs.forEach((it, i) => {
+    const l = it.seg.arc_length ?? 0;
+    if (l > bestLen) { bestLen = l; best = i; }
+  });
+  return best;
+}
+
+function renderRunChips() {
+  const runs = $("runs");
+  runs.innerHTML = "";
+  state.runs.forEach((run, i) => {
+    const b = document.createElement("button");
+    b.className = "chip";
+    b.type = "button";
+    b.textContent = `Run ${i + 1} · ${run.label}`;
+    b.setAttribute("aria-pressed", i === state.active ? "true" : "false");
+    b.onclick = () => { state.active = i; state.selected = -1; renderResult(); };
+    runs.append(b);
+  });
+  const add = document.createElement("button");
+  add.className = "chip";
+  add.type = "button";
+  add.setAttribute("aria-label", "New run");
+  add.innerHTML = '<i class="ri-add-line" aria-hidden="true"></i>';
+  add.onclick = () => { showScreen("check"); renderCheck(); };
+  runs.append(add);
+}
+
+function paintStage() {
+  const run = activeRun();
+  if (!run) return;
+  const b = view.blend / 100;
+  const ghost = $("layer-ghost");
+  const math = $("layer-math");
+  ghost.style.opacity = view.original ? String((1 - b) * 0.45) : "0";
+  ghost.style.display = view.original ? "" : "none";
+  math.style.display = view.equations ? "" : "none";
+  const src = view.labels
+    ? (run.images.redrawLabels || run.images.labeled)
+    : run.images.redraw;
+  if (math.getAttribute("src") !== src) math.src = src;
+  // "Show the wobble" marks are an inspection aid: they appear only while the
+  // pointer is over the artwork, so the equation-drawn picture stays clean.
+  $("layer-diff").style.display = view.diff && state.hovering ? "" : "none";
+  $("plot").setAttribute("aria-label", view.labels
+    ? "Your drawing redrawn from its equations, with equation labels"
+    : "Your drawing with its fitted equations");
+}
+
+function paintChips() {
+  const map = {
+    "t-original": view.original, "t-equations": view.equations,
+    "t-labels": view.labels, "t-diff": view.diff,
+    "coord-px": !view.yUp, "coord-up": view.yUp,
+  };
+  for (const [id, on] of Object.entries(map)) {
+    const el = $(id);
+    if (el) el.setAttribute("aria-pressed", on ? "true" : "false");
+  }
+}
+
+function renderAxes() {
+  const run = activeRun();
+  if (!run) return;
+  const W = run.report.image_size.width, H = run.report.image_size.height;
+  const xs = $("ticks-x"), ys = $("ticks-y");
+  xs.innerHTML = "";
+  ys.innerHTML = "";
+  for (let i = 0; i <= 4; i++) {
+    const v = Math.round((W * i) / 4);
+    const s = document.createElement("span");
+    s.textContent = String(v);
+    s.style.left = `${(i * 100) / 4}%`;
+    xs.append(s);
+  }
+  const n = 3;
+  for (let i = 0; i <= n; i++) {
+    const raw = Math.round((H * i) / n);
+    const s = document.createElement("span");
+    s.textContent = String(view.yUp ? H - raw : raw);
+    s.style.top = `${(i * 100) / n}%`;
+    ys.append(s);
+  }
+}
+
+function renderRows(segs) {
+  const wrap = $("eq-rows");
+  wrap.innerHTML = "";
+  segs.forEach((item, i) => {
+    const { stroke, seg } = item;
+    const btn = document.createElement("button");
+    btn.type = "button";
+    btn.className = "row" + (i === state.selected ? " on" : "");
+    btn.dataset.i = String(i);
+
+    const head = document.createElement("span");
+    head.style.cssText = "display:flex;align-items:center;gap:8px;width:100%";
+    const dot = document.createElement("span");
+    dot.className = "dot";
+    dot.style.background = dotColor(stroke.color);
+    const name = document.createElement("b");
+    name.textContent = MODEL_NAME[seg.model] || seg.model;
+    const st = document.createElement("span");
+    st.className = "m";
+    st.textContent = strokeLabel(stroke);
+    head.append(dot, name, st);
+    const badge = document.createElement("span");
+    if (isWarn(item)) {
+      badge.className = "warn";
+      badge.textContent = "a bit wobbly";
+    } else {
+      badge.className = "ok";
+      badge.textContent = "spot on";
+    }
+    const num = document.createElement("span");
+    num.className = "no";
+    num.textContent = `(${i + 1})`;
+    head.append(badge, num);
+
+    const eq = document.createElement("span");
+    eq.className = "eq";
+    eq.innerHTML = eqHTML(displayEquation(seg));
+
+    btn.append(head, eq);
+    const note = noteFor(seg);
+    if (note) {
+      const p = document.createElement("span");
+      p.className = "m";
+      p.textContent = note;
+      btn.append(p);
+    }
+    btn.onclick = () => {
+      if (state.cardPinned && state.selected === i) {
+        unpinCard();
+        return;
+      }
+      selectSegment(i, true);
+      state.cardPinned = true;
+      cancelCardHide();
+      showCard(i);
+    };
+    btn.onmouseenter = () => { showHighlight(item); if (!state.cardPinned) showCard(i); };
+    btn.onmouseleave = () => { hideHighlight(); scheduleCardHide(); };
+    btn.onfocus = () => { showHighlight(item); if (!state.cardPinned) showCard(i); };
+    btn.onblur = () => scheduleCardHide();
+    wrap.append(btn);
+  });
+}
+
+function noteFor(seg) {
+  const notes = [];
+  if (isWarn(seg)) {
+    const [a, b] = seg.x_range || [];
+    const at = Number.isFinite(a) && Number.isFinite(b)
+      ? ` near x = ${Math.round(a)}–${Math.round(b)}` : "";
+    notes.push(`Up to ${fmt(seg.max_error, 1)} px off${at}.`);
+  }
+  if (seg.notes && seg.notes.length) notes.push(seg.notes.join("; "));
+  return notes.join(" ");
+}
+
+function domainText(seg) {
+  const d = seg.domain || {};
+  if (d.variable === "x" || d.variable === "y") {
+    return `for ${Math.round(d.start)} ≤ ${d.variable} ≤ ${Math.round(d.end)}`;
+  }
+  if (d.variable === "theta" || d.variable === "t") {
+    if (d.end - d.start >= 359) return "full loop";
+    return `for ${Math.round(d.start)}° ≤ θ ≤ ${Math.round(d.end)}°`;
+  }
+  return seg.closed ? "closed curve" : "open curve";
+}
+
+function showCard(i) {
+  const run = activeRun();
+  if (!run) return;
+  const segs = flattenSegments(run.report);
+  if (i < 0 || i >= segs.length) return;
+  const { stroke, seg } = segs[i];
+  fillCard(i, stroke, seg);
+  $("eqcard").hidden = false;
+}
+function hideCard() {
+  $("eqcard").hidden = true;
+}
+function cancelCardHide() {
+  clearTimeout(state.cardTimer);
+}
+function scheduleCardHide() {
+  if (state.cardPinned) return;
+  cancelCardHide();
+  state.cardTimer = setTimeout(hideCard, 600);
+}
+function unpinCard() {
+  state.cardPinned = false;
+  cancelCardHide();
+  hideCard();
+}
+
+function fillCard(i, stroke, seg) {
+  $("sel-dot").style.background = dotColor(stroke.color);
+  $("sel-model").textContent = MODEL_NAME[seg.model] || seg.model;
+  $("sel-stroke").textContent = strokeLabel(stroke);
+  $("sel-eq").innerHTML = eqHTML(displayEquation(seg));
+  $("sel-meta").textContent = `${domainText(seg)} · within ${fmt(seg.rmse, 2)} px of your ink`;
+  $("sel-ok").hidden = isWarn(seg);
+  $("sel-no").textContent = `(${i + 1})`;
+}
+
+function selectSegment(i, scroll) {
+  const run = activeRun();
+  if (!run) return;
+  const segs = flattenSegments(run.report);
+  if (i < 0 || i >= segs.length) return;
+  state.selected = i;
+  const { stroke, seg } = segs[i];
+  for (const row of document.querySelectorAll("#eq-rows .row")) {
+    row.classList.toggle("on", Number(row.dataset.i) === i);
+  }
+  fillCard(i, stroke, seg);
+  if (scroll) {
+    const row = document.querySelector(`#eq-rows .row[data-i="${i}"]`);
+    if (row) row.scrollIntoView({ block: "nearest", behavior: "smooth" });
+  }
+}
+
+function showHighlight(item) {
+  const run = activeRun();
+  if (!run) return;
+  const { seg } = item;
+  const H = run.report.image_size.height;
+  const [x0, x1] = seg.x_range || [0, 0];
+  const [y0, y1] = seg.y_range || [0, 0];
+  const hl = $("hl");
+  hl.hidden = false;
+  hl.style.left = `${(x0 / run.report.image_size.width) * 100}%`;
+  hl.style.top = `${(Math.min(y0, y1) / H) * 100}%`;
+  hl.style.width = `${(Math.max(1, x1 - x0) / run.report.image_size.width) * 100}%`;
+  hl.style.height = `${(Math.max(1, Math.abs(y1 - y0)) / H) * 100}%`;
+}
+function hideHighlight() { $("hl").hidden = true; }
+
+/* ------------------------------------------------------------------ y up */
+function displayEquation(seg) {
+  if (!view.yUp) return seg.equation;
+  const run = activeRun();
+  const H = run?.report.image_size.height ?? 0;
+  const up = yUpEquation(seg, H);
+  return up ? up.eq : seg.equation;
+}
+
+function yUpEquation(seg, H) {
+  const p = seg.params || {};
+  const eq = seg.equation || "";
+  const m = seg.model || "";
+  const inner = (v) => `(${fmt(v)})`;
+  if (m === "line" && p.form === "y = m*x + b") {
+    return { eq: `y = ${fmt(-p.m)}x${signed(H - p.b)}` };
+  }
+  if (m === "line" && p.form === "x = m*y + b") {
+    return { eq: `x = ${fmt(-p.m)}y${signed(p.m * H + p.b)}` };
+  }
+  if (/^polynomial\d$/.test(m) && p.dependent === "y" && Array.isArray(p.coefficients)) {
+    const c = p.coefficients.slice();
+    c[c.length - 1] = H - c[c.length - 1];
+    for (let i = 0; i < c.length - 1; i++) c[i] = -c[i];
+    return { eq: polyString(c, Number(m.slice(10)), "x", "y") };
+  }
+  if (m === "circle" && Number.isFinite(p.h)) {
+    return { eq: `(x - ${fmt(p.h)})² + (y - ${fmt(H - p.k)})² = ${fmt(p.r)}²` };
+  }
+  if (m === "sinusoid" && p.independent === "x") {
+    return { eq: `y = ${fmt(-p.A)}·sin(${fmt(p.B)}x${signed(p.C)})${signed(H - p.D)}` };
+  }
+  if ((m === "ellipse" || m === "elliptical_arc") && Number.isFinite(p.cx)) {
+    const cy = H - p.cy, phi = -p.phi_deg;
+    const base = `((x-${fmt(p.cx)})cosφ + (y-${fmt(cy)})sinφ)²/${fmt(p.a)}² + (-(x-${fmt(p.cx)})sinφ + (y-${fmt(cy)})cosφ)²/${fmt(p.b)}² = 1, φ = ${fmt(phi, 1)}°`;
+    return { eq: base };
+  }
+  if (m === "point") {
+    return { eq: `(${fmt(p.x)}, ${fmt(H - p.y)})` };
+  }
+  return null; // spline prose, x = f(y) polynomials: pixel coordinates only
+}
+
+function polyString(coeffs, degree, indep, dep) {
+  const parts = [];
+  for (let i = 0; i <= degree; i++) {
+    const power = degree - i;
+    const c = coeffs[i];
+    if (Math.abs(c) < 1e-12 && power !== 0) continue;
+    const mag = fmt(Math.abs(c));
+    const body = power === 0 ? mag
+      : (Math.abs(c) === 1 ? "" : mag) + (power === 1 ? indep : indep + (SUPER[power] || `^${power}`));
+    parts.push({ neg: c < 0, body });
+  }
+  let s = parts.length ? (parts[0].neg ? "−" : "") + parts[0].body : "0";
+  for (let i = 1; i < parts.length; i++) s += (parts[i].neg ? " − " : " + ") + parts[i].body;
+  return `${dep} = ${s}`;
+}
+
+/* ------------------------------------------------------------------ diff */
+function drawDiff() {
+  const run = activeRun();
+  if (!run || !view.diff) { clearDiff(); return; }
+  const W = run.report.image_size.width, H = run.report.image_size.height;
+  const max = 1100;
+  const s = Math.min(1, max / Math.max(W, H));
+  const w = Math.max(2, Math.round(W * s)), h = Math.max(2, Math.round(H * s));
+  if (typeof ChawkGL !== "undefined" && ChawkGL.diffAvailable()) drawDiffGPU(run, w, h);
+  else drawDiffCPU(run, w, h);
+}
+
+function loadImage(src) {
+  return new Promise((resolve) => {
+    const im = new Image();
+    im.onload = () => resolve(im);
+    im.onerror = () => resolve(null);
+    im.src = src;
+  });
+}
+
+/* GPU path: threshold + dilate in one fragment shader, read back a small
+   mask and cluster it into ticks on the CPU (cheap: a few hundred cells). */
+function drawDiffGPU(run, w, h) {
+  Promise.all([loadImage(state.url), loadImage(run.images.redraw)]).then(([a, b]) => {
+    if (!a || !b || activeRun() !== run) return;
+    const targetW = Math.min(700, Math.max(200, w));
+    const targetH = Math.max(1, Math.round((targetW * h) / w));
+    const pa = samplePaper(a);
+    const pb = samplePaper(b);
+    const radius = Math.max(1, Math.round((2 * targetW) / w));
+    const res = ChawkGL.diff(a, b, {
+      width: targetW, height: targetH,
+      paperA: pa.paperLum, lightA: pa.lightPaper,
+      paperB: pb.paperLum, lightB: pb.lightPaper,
+      radX: radius, radY: radius,
+    });
+    if (!res) { drawDiffCPU(run, w, h); return; }
+    const { gl, width: tw, height: th } = res;
+    const px = new Uint8Array(tw * th * 4);
+    try {
+      gl.readPixels(0, 0, tw, th, gl.RGBA, gl.UNSIGNED_BYTE, px);
+    } catch {
+      drawDiffCPU(run, w, h);
+      return;
+    }
+
+    const canvas = $("layer-diff");
+    canvas.width = w; canvas.height = h;
+    const ctx = canvas.getContext("2d");
+    ctx.clearRect(0, 0, w, h);
+    const cell = Math.max(8, Math.round(Math.max(w, h) / 60));
+    const need = Math.max(4, Math.round(cell * cell * 0.05));
+    const sx = w / tw, sy = h / th;
+    ctx.strokeStyle = "#C2410C";
+    ctx.lineWidth = Math.max(1.2, w / 700);
+    ctx.lineCap = "round";
+    for (let cy = 0; cy < th; cy += cell) {
+      for (let cx = 0; cx < tw; cx += cell) {
+        let miss = 0;
+        const yEnd = Math.min(th, cy + cell), xEnd = Math.min(tw, cx + cell);
+        for (let y = cy; y < yEnd; y++) {
+          const row = (th - 1 - y) * tw; // readPixels rows are bottom-up
+          for (let x = cx; x < xEnd; x++) {
+            if (px[(row + x) * 4 + 3] > 140) miss++;
+          }
+        }
+        if (miss >= need) {
+          const tx = (cx + cell / 2) * sx;
+          const ty = (cy + cell / 2) * sy;
+          ctx.beginPath();
+          ctx.moveTo(tx, ty - cell * sy * 0.45);
+          ctx.lineTo(tx, ty + cell * sy * 0.45);
+          ctx.stroke();
+        }
+      }
+    }
+  });
+}
+
+function drawDiffCPU(run, w, h) {
+  const read = (src) => new Promise((resolve) => {
+    const im = new Image();
+    im.onload = () => {
+      const c = document.createElement("canvas");
+      c.width = w; c.height = h;
+      const x = c.getContext("2d", { willReadFrequently: true });
+      x.drawImage(im, 0, 0, w, h);
+      resolve(x.getImageData(0, 0, w, h).data);
+    };
+    im.onerror = () => resolve(null);
+    im.src = src;
+  });
+
+  Promise.all([read(state.url), read(run.images.redraw)]).then(([a, b]) => {
+    if (!a || !b || activeRun() !== run) return;
+    const inkA = inkMask(a), inkB = inkMask(b);
+    const dilB = dilate(inkB, w, h, 2);
+
+    const canvas = $("layer-diff");
+    canvas.width = w; canvas.height = h;
+    const ctx = canvas.getContext("2d");
+    ctx.clearRect(0, 0, w, h);
+    const cell = Math.max(8, Math.round(Math.max(w, h) / 60));
+    const need = Math.max(4, Math.round(cell * cell * 0.05));
+    ctx.strokeStyle = "#C2410C";
+    ctx.lineWidth = Math.max(1.2, w / 700);
+    ctx.lineCap = "round";
+    for (let cy = 0; cy < h; cy += cell) {
+      for (let cx = 0; cx < w; cx += cell) {
+        let miss = 0;
+        const yEnd = Math.min(h, cy + cell), xEnd = Math.min(w, cx + cell);
+        for (let y = cy; y < yEnd; y++) {
+          const row = y * w;
+          for (let x = cx; x < xEnd; x++) {
+            if (inkA[row + x] && !dilB[row + x]) miss++;
+          }
+        }
+        if (miss >= need) {
+          const px = cx + cell / 2, py = cy + cell / 2;
+          ctx.beginPath();
+          ctx.moveTo(px, py - cell * 0.45);
+          ctx.lineTo(px, py + cell * 0.45);
+          ctx.stroke();
+        }
+      }
+    }
+  });
+}
+
+function clearDiff() {
+  const c = $("layer-diff");
+  c.width = 0; c.height = 0;
+}
+
+function inkMask(data) {
+  // Paper colour from a luminance histogram (90th/10th percentile), so paper
+  // texture and grain are not mistaken for ink.
+  const hist = new Uint32Array(256);
+  let total = 0;
+  for (let i = 0; i < data.length; i += 16) {
+    hist[Math.min(255, Math.round(0.2126 * data[i] + 0.7152 * data[i + 1] + 0.0722 * data[i + 2]))]++;
+    total++;
+  }
+  let acc = 0, p10 = 0, p90 = 255;
+  for (let i = 0; i < 256; i++) {
+    acc += hist[i];
+    if (p10 === 0 && acc >= total * 0.1) p10 = i;
+    if (acc >= total * 0.9) { p90 = i; break; }
+  }
+  const light = p90 > 60;
+  const paper = light ? p90 : p10;
+  const out = new Uint8Array(data.length / 4);
+  for (let i = 0, p = 0; i < data.length; i += 4, p++) {
+    const l = 0.2126 * data[i] + 0.7152 * data[i + 1] + 0.0722 * data[i + 2];
+    out[p] = (light ? l < paper - 55 : l > paper + 55) ? 1 : 0;
+  }
+  return out;
+}
+
+function dilate(mask, w, h, r) {
+  let cur = mask;
+  for (let pass = 0; pass < r; pass++) {
+    const next = new Uint8Array(cur.length);
+    for (let y = 0; y < h; y++) {
+      for (let x = 0; x < w; x++) {
+        const i = y * w + x;
+        if (cur[i]) { next[i] = 1; continue; }
+        if ((x > 0 && cur[i - 1]) || (x < w - 1 && cur[i + 1]) ||
+            (y > 0 && cur[i - w]) || (y < h - 1 && cur[i + w])) next[i] = 1;
+      }
+    }
+    cur = next;
+  }
+  return cur;
+}
+
+/* ------------------------------------------------------------------ exports */
+function currentItems() {
+  const run = activeRun();
+  if (!run) return [];
+  return flattenSegments(run.report).map(({ stroke, seg }) => ({
+    stroke, seg, model: seg.model, equation: displayEquation(seg),
   }));
 }
-function openSheet() {
-  els.eqsheet.hidden = false;
-  els.eqtoggle.setAttribute("aria-expanded", "true");
-}
-function closeSheet() {
-  els.eqsheet.hidden = true;
-  els.eqtoggle.setAttribute("aria-expanded", "false");
+
+function syntheticReport(items) {
+  const run = activeRun();
+  return {
+    summary: run ? run.report.summary : {},
+    strokes: items.map((it) => ({ segments: [{ model: it.model, equation: it.equation }] })),
+  };
 }
 
-/* ---------- wiring ---------- */
-els.dz.addEventListener("click", (e) => {
-  if (e.target.closest("button") || e.target.closest("a")) return;
-  els.file.click();
-});
-els.dz.addEventListener("keydown", (e) => {
-  if (e.key === "Enter" || e.key === " ") { e.preventDefault(); els.file.click(); }
-});
-els.file.addEventListener("change", () => chooseFile(els.file.files[0]));
-for (const ev of ["dragover", "dragenter"]) {
-  document.addEventListener(ev, (e) => { e.preventDefault(); els.dz.classList.add("drag"); });
+function latexFor(seg) {
+  const eq = displayEquation(seg);
+  return (typeof chawkToLatex === "function" && chawkToLatex(eq, seg.model)) || eq;
 }
-document.addEventListener("dragleave", (e) => {
-  if (!e.relatedTarget) els.dz.classList.remove("drag");
-});
-document.addEventListener("drop", (e) => {
-  e.preventDefault();
-  els.dz.classList.remove("drag");
-  if (e.dataTransfer.files.length) chooseFile(e.dataTransfer.files[0]);
-});
-document.addEventListener("paste", (e) => {
-  const items = (e.clipboardData && e.clipboardData.files) || [];
-  if (items.length) chooseFile(items[0]);
-});
-for (const b of presetBtns) b.addEventListener("click", () => { setPreset(b.dataset.preset); closeMenus(); });
-els.presetBtn.addEventListener("click", (e) => { e.stopPropagation(); toggleMenu(els.presets, els.presetBtn); });
-els.reset.addEventListener("click", () => { setPreset("balanced"); closeMenus(); });
-els.tune.addEventListener("click", (e) => { e.stopPropagation(); toggleMenu(els.tunePop, els.tune); });
-document.addEventListener("pointerdown", (e) => {
-  if (!e.target.closest(".menu") && !e.target.closest("#tune") && !e.target.closest("#preset-btn")) closeMenus();
-});
-function toggleMenu(menu, btn) {
-  const willOpen = menu.hidden;
-  closeMenus();
-  if (willOpen) {
-    anchorMenu(menu, btn);
-    btn.setAttribute("aria-expanded", "true");
-  }
+
+function copyAllTeX(items) {
+  const report = syntheticReport(items);
+  if (typeof chawkEquationsLatex === "function") return chawkEquationsLatex(report, { source: state.name });
+  return items.map((it) => latexFor(it.seg)).join("\n");
+}
+
+function copyAllText(items) {
+  const report = syntheticReport(items);
+  if (typeof chawkEquationsText === "function") return chawkEquationsText(report, { source: state.name });
+  return items.map((it) => it.equation).join("\n");
+}
+
+/* ------------------------------------------------------------------ menus */
+function openSheet() {
+  $("sheet").hidden = false;
+  $("scrim").hidden = false;
+  $("download-btn").setAttribute("aria-expanded", "true");
+}
+function openRunMenu() {
+  const menu = $("run-menu");
+  menu.innerHTML = "";
+  state.runs.forEach((run, i) => {
+    const b = document.createElement("button");
+    b.type = "button";
+    b.className = "row" + (i === state.active ? " on" : "");
+    b.innerHTML = `<span class="dot" style="background:${dotColor(run.report.strokes?.[0]?.color)}"></span>
+      <span><b>Run ${i + 1} · ${esc(run.label)}</b><br><span class="m">${esc(run.meta.name)} · ${run.seconds.toFixed(2)} s</span></span>`;
+    b.onclick = () => { state.active = i; state.selected = -1; renderResult(); closeMenus(); };
+    menu.append(b);
+  });
+  const add = document.createElement("button");
+  add.type = "button";
+  add.className = "row";
+  add.innerHTML = '<i class="ri-add-line" aria-hidden="true"></i><b>New run</b>';
+  add.onclick = () => { closeMenus(); showScreen("check"); renderCheck(); };
+  menu.append(add);
+  menu.hidden = false;
+  $("scrim").hidden = false;
+  $("run-menu-btn").setAttribute("aria-expanded", "true");
 }
 function closeMenus() {
-  els.tunePop.hidden = true;
-  els.presets.hidden = true;
-  els.tune.setAttribute("aria-expanded", "false");
-  els.presetBtn.setAttribute("aria-expanded", "false");
+  $("sheet").hidden = true;
+  $("run-menu").hidden = true;
+  $("scrim").hidden = true;
+  $("download-btn").setAttribute("aria-expanded", "false");
+  $("run-menu-btn").setAttribute("aria-expanded", "false");
 }
-for (const el of [els.rmse, els.maxerr, els.poly, els.mCircle, els.mEllipse,
-    els.mSinusoid, els.mSpline]) {
-  el.addEventListener("input", () => { paintSliderLabels(); markCustom(); });
-}
-for (const b of viewBtns) b.addEventListener("click", () => setView(b.dataset.view));
-els.labelBtn.addEventListener("click", () => setView(state.view === "equations" ? "fitted" : "equations"));
-document.querySelectorAll("[data-sample]").forEach((b) =>
-  b.addEventListener("click", (e) => { e.stopPropagation(); loadSample(b.dataset.sample); }));
-els.go.addEventListener("click", () => {
-  if (state.status === "working" && state.controller) state.controller.abort();
-  else go();
-});
-els.eqtoggle.addEventListener("click", () => (els.eqsheet.hidden ? openSheet() : closeSheet()));
-els.eqclose.addEventListener("click", closeSheet);
-els.fresh.addEventListener("click", fresh);
-document.addEventListener("keydown", (e) => { if (e.key === "Escape") closeMenus(); });
 
-async function checkHealth() {
+/* ------------------------------------------------------------------ wiring */
+function bind() {
+  $("drop").addEventListener("click", () => $("file").click());
+  $("file").addEventListener("change", () => {
+    chooseFile($("file").files[0]);
+    $("file").value = "";
+  });
+  $("check-change").addEventListener("click", () => $("file").click());
+  $("trace").addEventListener("click", trace);
+  $("cancel").addEventListener("click", () => { if (state.controller) state.controller.abort(); });
+
+  document.addEventListener("dragover", (e) => { e.preventDefault(); $("drop")?.classList.add("drag"); });
+  document.addEventListener("dragleave", (e) => { if (!e.relatedTarget) $("drop")?.classList.remove("drag"); });
+  document.addEventListener("drop", (e) => {
+    e.preventDefault();
+    $("drop")?.classList.remove("drag");
+    const f = e.dataTransfer?.files?.[0];
+    if (f) chooseFile(f);
+  });
+  document.addEventListener("paste", (e) => {
+    const f = e.clipboardData?.files?.[0];
+    if (f) chooseFile(f);
+  });
+
+  document.querySelectorAll("[data-sample]").forEach((b) => {
+    b.addEventListener("click", async () => {
+      try {
+        const res = await fetch("samples/" + b.dataset.sample);
+        if (!res.ok) throw new Error();
+        const blob = await res.blob();
+        chooseFile(new File([blob], b.dataset.sample, { type: "image/png" }));
+      } catch { toast("Couldn’t load the sample.", "Is the server running?"); }
+    });
+  });
+
+  $("fill-toggle").addEventListener("change", (e) => { settings.fill = e.target.checked; });
+  $("sensitivity").addEventListener("input", (e) => {
+    settings.sensitivity = Number(e.target.value);
+    drawPreviewMask();
+  });
+  $("fit").addEventListener("input", (e) => { settings.fit = Number(e.target.value); });
+  document.querySelectorAll("[data-kind]").forEach((row) => {
+    row.addEventListener("click", () => {
+      settings.kind = row.dataset.kind;
+      for (const r of document.querySelectorAll("[data-kind]")) r.classList.toggle("on", r === row);
+      for (const r of document.querySelectorAll("[data-kind] input")) r.checked = r.closest("[data-kind]") === row;
+    });
+  });
+  document.querySelectorAll("[data-type]").forEach((b) => {
+    b.addEventListener("click", () => {
+      const k = b.dataset.type;
+      settings.types[k] = !settings.types[k];
+      b.setAttribute("aria-pressed", settings.types[k] ? "true" : "false");
+    });
+  });
+
+  // result toggles
+  const toggle = (id, key) => $(id).addEventListener("click", () => {
+    view[key] = !view[key];
+    paintChips();
+    paintStage();
+  });
+  toggle("t-original", "original");
+  toggle("t-equations", "equations");
+  toggle("t-labels", "labels");
+  toggle("t-diff", "diff");
+  $("coord-px").addEventListener("click", () => { view.yUp = false; paintChips(); renderAxes(); renderRows(flattenSegments(activeRun().report)); selectSegment(state.selected); });
+  $("coord-up").addEventListener("click", () => { view.yUp = true; paintChips(); renderAxes(); renderRows(flattenSegments(activeRun().report)); selectSegment(state.selected); });
+  $("blend").addEventListener("input", (e) => { view.blend = Number(e.target.value); paintStage(); });
+  $("t-hold").addEventListener("pointerdown", () => flip(true));
+  $("t-hold").addEventListener("pointerup", () => flip(false));
+  $("t-hold").addEventListener("pointerleave", () => flip(false));
+
+  $("copy-all").addEventListener("click", async () => {
+    const items = currentItems();
+    if (!items.length) return;
+    const ok = await copyText(copyAllTeX(items));
+    toast(ok ? "Copied all equations as LaTeX" : "Could not copy", ok ? `${items.length} equations` : "Select the text manually.");
+  });
+  $("sel-copy").addEventListener("click", async () => {
+    const items = currentItems();
+    const it = items[state.selected];
+    if (!it) return;
+    const ok = await copyText(latexFor(it.seg));
+    toast(ok ? "Copied LaTeX" : "Could not copy", ok ? it.seg.equation : "");
+  });
+  $("sel-desmos").addEventListener("click", async () => {
+    const it = currentItems()[state.selected];
+    if (!it) return;
+    await copyText(it.equation);
+    window.open("https://www.desmos.com/calculator", "_blank", "noopener");
+  });
+
+  $("download-btn").addEventListener("click", () => { openSheet(); });
+  $("download-mobile").addEventListener("click", () => { openSheet(); });
+  $("scrim").addEventListener("click", () => closeMenus());
+  $("run-menu-btn").addEventListener("click", () => { openRunMenu(); });
+  $("new-mobile").addEventListener("click", () => showScreen("start"));
+
+  document.querySelectorAll("[data-img]").forEach((b) => {
+    b.addEventListener("click", () => {
+      const run = activeRun();
+      if (!run) return;
+      if (b.dataset.img === "sidebyside") {
+        closeMenus();
+        downloadSideBySide(run);
+        return;
+      }
+      const map = { clean: run.images.clean, redraw: run.images.redraw };
+      const suffix = { clean: "", redraw: "-equations" }[b.dataset.img];
+      downloadURL(map[b.dataset.img], baseName() + suffix + ".png");
+      closeMenus();
+    });
+  });
+  document.querySelectorAll("[data-math]").forEach((b) => {
+    b.addEventListener("click", async () => {
+      const items = currentItems();
+      const kind = b.dataset.math;
+      if (kind === "desmos") {
+        await copyText(items.map((it) => it.equation).join("\n"));
+        window.open("https://www.desmos.com/calculator", "_blank", "noopener");
+        closeMenus();
+        return;
+      }
+      if (kind === "latex") {
+        const text = copyAllTeX(items);
+        downloadURL(URL.createObjectURL(new Blob([text], { type: "text/x-tex" })), baseName() + "-equations.tex");
+      } else if (kind === "text") {
+        const text = copyAllText(items);
+        downloadURL(URL.createObjectURL(new Blob([text], { type: "text/plain" })), baseName() + "-equations.txt");
+      } else if (kind === "json") {
+        const run = activeRun();
+        const text = JSON.stringify(run.report, null, 2);
+        downloadURL(URL.createObjectURL(new Blob([text], { type: "application/json" })), baseName() + ".json");
+      }
+      closeMenus();
+    });
+  });
+
+  $("retrace").addEventListener("click", () => { showScreen("check"); renderCheck(); });
+  $("retrace-mobile").addEventListener("click", () => { showScreen("check"); renderCheck(); });
+  $("new-run").addEventListener("click", () => showScreen("start"));
+
+  document.addEventListener("keydown", (e) => {
+    if (e.key === "Escape") { closeMenus(); unpinCard(); }
+    if (e.code === "Space" && state.screen === "result" && !isTyping(e.target)) {
+      e.preventDefault();
+      flip(true);
+    }
+  });
+  document.addEventListener("keyup", (e) => {
+    if (e.code === "Space" && state.screen === "result") { flip(false); }
+  });
+
+  $("eqcard").addEventListener("mouseenter", () => {
+    cancelCardHide();
+    const run = activeRun();
+    if (run && state.selected >= 0) showHighlight(flattenSegments(run.report)[state.selected]);
+  });
+  $("eqcard").addEventListener("mouseleave", () => {
+    hideHighlight();
+    scheduleCardHide();
+  });
+
+  $("plot").addEventListener("click", () => {
+    if (state.cardPinned) unpinCard();
+  });
+  $("plot").addEventListener("pointerenter", () => {
+    state.hovering = true;
+    paintStage();
+    const run = activeRun();
+    if (run && state.selected >= 0) showHighlight(flattenSegments(run.report)[state.selected]);
+  });
+  $("plot").addEventListener("pointermove", (e) => {
+    const run = activeRun();
+    if (!run) return;
+    const r = $("plot").getBoundingClientRect();
+    const x = ((e.clientX - r.left) / r.width) * run.report.image_size.width;
+    const y = ((e.clientY - r.top) / r.height) * run.report.image_size.height;
+    const yy = view.yUp ? run.report.image_size.height - y : y;
+    $("coords").textContent = `x ${Math.round(x)} · y ${Math.round(yy)} px`;
+  });
+  $("plot").addEventListener("pointerleave", () => {
+    state.hovering = false;
+    paintStage();
+    hideHighlight();
+    $("coords").textContent = "x — · y — px";
+  });
+}
+
+function isTyping(el) {
+  return el && (el.tagName === "INPUT" || el.tagName === "TEXTAREA" || el.isContentEditable);
+}
+
+function flip(on) {
+  if (!activeRun()) return;
+  if (on) {
+    $("layer-ghost").style.opacity = "1";
+    $("layer-ghost").style.display = "";
+    $("layer-math").style.display = "none";
+  } else {
+    paintStage();
+  }
+}
+
+async function health() {
   try {
     const r = await fetch("/health");
     if (!r.ok) throw new Error();
-    const ver = (await r.json()).version;
-    els.health.textContent = "●";
-    els.health.title = "server v" + ver + " — reachable";
-    els.health.className = "health ok";
-    els.serverVer.textContent = "server v" + ver;
+    const j = await r.json();
+    $("start-meta").textContent = `v${j.version} · connected`;
   } catch {
-    els.health.textContent = "●";
-    els.health.title = "server unreachable — start it with .venv/bin/python app.py";
-    els.health.className = "health down";
-    els.serverVer.textContent = "server unreachable";
+    $("start-meta").textContent = "offline";
   }
 }
-async function syncDefaults() {
-  try {
-    const r = await fetch("/api/presets");
-    if (!r.ok) return;
-    const d = (await r.json()).defaults || {};
-    if (d.rmse_tolerance) els.rmse.value = d.rmse_tolerance;
-    if (d.max_error_tolerance) els.maxerr.value = d.max_error_tolerance;
-    if (d.max_poly_degree) els.poly.value = d.max_poly_degree;
-    paintSliderLabels();
-  } catch { /* static defaults stand */ }
-}
 
-paintSliderLabels();
-const hadStored = loadSettings();
-paintSliderLabels();
-if (!hadStored) syncDefaults();
-checkHealth();
+bind();
+health();
+showScreen("start");
