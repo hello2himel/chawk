@@ -104,8 +104,12 @@ function wrapLine(ctx, text, maxW) {
   return lines;
 }
 
+const SHEET_ROWS = 80;  // more than can fit at 1800px; keeps the browser light
+
 function buildSideBySideSheet(run) {
-  const items = flattenSegments(run.report);
+  const all = flattenSegments(run.report);
+  const total = all.length;
+  const items = all.slice(0, SHEET_ROWS);
   const sheet = document.createElement("div");
   sheet.className = "sbs-sheet";
 
@@ -120,7 +124,7 @@ function buildSideBySideSheet(run) {
   right.className = "sbs-right";
   const head = document.createElement("div");
   head.className = "sbs-head";
-  head.innerHTML = `${items.length} equation${items.length === 1 ? "" : "s"}, ` +
+  head.innerHTML = `${total} equation${total === 1 ? "" : "s"}, ` +
     `<span class="hl"><i>plotted</i></span>`;
   const rule = document.createElement("div");
   rule.className = "sbs-rule";
@@ -149,12 +153,12 @@ function buildSideBySideSheet(run) {
   more.textContent = " ";
   right.append(head, rule, list, more);
   sheet.append(left, right);
-  return { sheet, list, more, items, img };
+  return { sheet, list, more, items, total, img };
 }
 
 async function sideBySideCanvas(run) {
   if (typeof html2canvas !== "function") return plainSideBySideCanvas(run);
-  const { sheet, list, more, items, img } = buildSideBySideSheet(run);
+  const { sheet, list, more, items, total, img } = buildSideBySideSheet(run);
   document.body.append(sheet);
   try {
     await document.fonts.ready;
@@ -176,8 +180,8 @@ async function sideBySideCanvas(run) {
       if (row.getBoundingClientRect().bottom <= listBottom + 0.5) shown += 1;
       else row.remove();
     }
-    if (shown < items.length) {
-      more.textContent = `first ${shown} of ${items.length} · full list in the text export`;
+    if (shown < total) {
+      more.textContent = `first ${shown} of ${total} · full list in the text export`;
       more.style.visibility = "visible";
     }
     return await html2canvas(sheet, {
@@ -262,11 +266,32 @@ async function plainSideBySideCanvas(run) {
   return cv;
 }
 
+function showBusy(title, sub) {
+  $("busy-title").textContent = title || "one sec — setting the type…";
+  $("busy-sub").textContent = sub || "";
+  $("busy").hidden = false;
+}
+function hideBusy() {
+  $("busy").hidden = true;
+}
+
 async function downloadSideBySide(run) {
-  const cv = await sideBySideCanvas(run);
-  cv.toBlob((blob) => {
-    if (blob) downloadURL(URL.createObjectURL(blob), baseName() + "-side-by-side.png");
-  }, "image/png");
+  const items = flattenSegments(run.report);
+  showBusy("one sec — setting the type…",
+    `${items.length} equation${items.length === 1 ? "" : "s"} · 1800×1800 PNG`);
+  try {
+    // Let the overlay paint before the canvas work starts.
+    await new Promise((resolve) => requestAnimationFrame(() => requestAnimationFrame(resolve)));
+    const cv = await sideBySideCanvas(run);
+    const blob = await new Promise((resolve) => cv.toBlob(resolve, "image/png"));
+    if (!blob) throw new Error("The sheet could not be encoded.");
+    downloadURL(URL.createObjectURL(blob), baseName() + "-side-by-side.png");
+    toast("Side-by-side sheet saved.", "PNG · 1800×1800");
+  } catch (e) {
+    toast("Could not build the sheet", e.message || String(e));
+  } finally {
+    hideBusy();
+  }
 }
 
 function baseName() {
