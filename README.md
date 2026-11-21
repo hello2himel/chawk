@@ -1,97 +1,175 @@
-# Chawk — line art → equations
+# Chawk
 
-Trace a line drawing and fit a mathematical equation to every stroke.
+**Every squiggle is a function.**
+
+Chawk reads a line drawing, finds a real equation for every stroke, and redraws the
+picture using nothing but those equations. It runs on your own machine — no account,
+no upload to someone else's server.
+
+![A drawing and its equations, side by side](docs/side-by-side.png)
 
 ## Quick start
 
+### Docker
+
 ```bash
-.venv/bin/python lineart2eq.py -i tests/images/sine_wave.png -o out/sine.png
-.venv/bin/python app.py            # web UI at http://127.0.0.1:8000
+docker run --rm -p 8010:8000 ghcr.io/hello2himel/chawk:latest
 ```
 
-## Docker
+Open **http://localhost:8010**.
 
-Build once, run anywhere Docker runs:
+Or build it locally:
 
 ```bash
 docker build -t chawk .
-docker run --rm -p 8010:8000 chawk          # http://127.0.0.1:8010
+docker run --rm -p 8010:8000 chawk
 ```
 
-The image installs the pinned `requirements.txt`, runs as a non-root user,
-and carries a `/health` check. `docker compose up --build` uses host
-networking (required on this machine, where bridge networking is unavailable)
-and serves on port 8010; override with `CHAWK_PORT=8012 docker compose up`.
-On hosts with working bridge networking, the `-p 8010:8000` form above is the
-portable option.
+### From source
 
-## Parts
+Python 3.12.
+
+```bash
+git clone https://github.com/hello2himel/chawk.git
+cd chawk
+python -m venv .venv
+source .venv/bin/activate
+pip install -r requirements.txt
+python app.py
+```
+
+Open **http://127.0.0.1:8000**.
+
+## How it works
+
+1. **Drop a doodle** — PNG, JPG or WebP up to 15MB, or pick a sample.
+2. **Check the ink** — preview what will be traced, pick the drawing type, how
+   picky the fit should be, and which curve types are allowed.
+3. **Do the maths** — every stroke is fitted.
+4. **Inspect** — the drawing is rebuilt from the equations. Hover a curve to
+   highlight it, click an equation to pin its card, click again to close it.
+
+| Start | Check |
+| --- | --- |
+| ![Start screen](docs/start.png) | ![Check screen](docs/check.png) |
+
+![Result: one wave equation and the redrawn wave](docs/result.png)
+
+## What it can find
+
+| Model | Looks like | Equation style |
+| --- | --- | --- |
+| Line | straight strokes | y = mx + b |
+| Circle | rings, dots | (x − h)² + (y − k)² = r² |
+| Ellipse / arc | ovals, curved segments | rotated conic |
+| Polynomial | gentle bends | y = ax³ + bx² + cx + d |
+| Wave | sine-like strokes | y = A·sin(Bx + C) + D |
+| Freeform spline | everything else | sampled spline |
+| Closed curve | filled blobs, colour regions | Fourier series x(t), y(t) |
+| Fill | solid letters and shapes | outer contour + holes |
+
+Each equation gets a verdict: **spot on** when it stays close to the ink,
+**a bit wobbly** when it is shown anyway with its error noted.
+
+## Downloads
+
+The **Download** menu offers:
+
+- **Drawing + equations** — your drawing with the fitted curves on top.
+- **Equations only** — the drawing rebuilt from the math alone.
+- **Side by side** — a 1:1 share-ready sheet: drawing on the left,
+  KaTeX-typeset equations on the right.
+- **Desmos, LaTeX, text and JSON** — the math, ready for other tools.
+
+The side-by-side sheet is 1800×1800 with the drawing taking about 80% of the
+width and the equation column set in a real math font.
+
+## Command line
+
+```bash
+python lineart2eq.py -i drawing.png -o out.png
+python lineart2eq.py -i drawing.png -o out.png --print-equations --json report.json
+python lineart2eq.py -i art.png -o out.png --preset precise
+```
+
+`python lineart2eq.py --help` lists every knob — thresholding, gap closing,
+tolerances, labels, DPI. Exit codes: `0` success, `2` bad input, `3` no strokes.
+
+## HTTP API
+
+```bash
+curl -X POST http://127.0.0.1:8000/api/process \
+  -F "file=@drawing.png" \
+  -F "preset=balanced" \
+  -o result.json
+```
+
+The response contains `report` (strokes, segments, equations, fit quality and the
+settings used) plus base64 PNGs: `image_png_b64`, `image_clean_b64`,
+`image_redraw_b64`, `image_redraw_labels_b64`, and optional `debug_png_b64`.
+
+- `GET /health` — liveness check
+- `GET /api/presets` — available presets
+- `POST /api/process` — `file`, plus optional `preset`, `config` (JSON), `debug`
+
+## Presets
+
+| Preset | Use it for |
+| --- | --- |
+| `simple` | quick, clean doodles; fewer, simpler equations |
+| `balanced` | the default |
+| `precise` | technical drawings; follows the ink closely |
+| `complex` | busy artwork with many strokes |
+
+Any config field can be overridden, for example
+`{"enable_fill": false}` to turn fills off or `{"color_count": 8}` to simplify a
+colour illustration.
+
+## FAQ
+
+**It says "no strokes detected" (HTTP 422).**
+The image is blank, very low contrast, or a photo/noise. Chawk is for line art;
+photos are rejected quickly rather than hanging.
+
+**My dotted line disappeared.**
+Dots smaller than `min_component_area` are treated as specks, and gaps wider than
+`merge_endpoint_distance` are not joined. Lower the first or raise the second.
+
+**Tiny text or fine detail vanishes.**
+Glyphs under about 12px are trimmed as specks. Use a larger image or lower
+`min_component_area` / `min_stroke_length`.
+
+**Two nearby lines became one.**
+Strokes closer than their own width share a centreline. Leave a little more gap.
+
+**The port is already in use.**
+`python app.py --port 8080`
+
+**Docker networking.**
+The bundled `docker-compose.yml` uses host networking because this machine cannot
+create bridge veth pairs. On a normal Docker host, prefer
+`docker run -p 8010:8000 chawk`.
+
+## Development
+
+```bash
+python -m unittest discover -s tests -v     # 72 tests
+```
 
 | Path | What |
-|---|---|
-| `chawk/` | The one pipeline (`process_image`): preprocess → trace → segment/fit → render |
-| `lineart2eq.py` | CLI (annotated PNG + JSON report + `--print-equations`) |
-| `app.py` | FastAPI backend; serves `frontend/` and `POST /api/process` |
-| `frontend/` | Dependency-free web UI (upload, tune, inspect equations) |
-| `examples/` | `api_client.py` (server client), `batch_process.py` (folder batch) |
-| `tests/` | `make_test_images.py` + `test_robustness.py` (25 tests, stdlib unittest) |
+| --- | --- |
+| `chawk/` | the pipeline: preprocess → trace → segment/fit → render |
+| `app.py` | FastAPI backend and static frontend server |
+| `frontend/` | dependency-free web UI |
+| `lineart2eq.py` | command-line interface |
+| `examples/` | API client and batch-folder script |
+| `tests/` | unit and integration tests |
 
-## CLI
+## Limits
 
-```bash
-.venv/bin/python lineart2eq.py -i drawing.png -o out.png --json out.json --preset precise
-.venv/bin/python lineart2eq.py -i art.png -o out.png --rmse-tolerance 1.0 --print-equations
-```
-
-Exit codes: `0` ok, `2` bad input/config, `3` no strokes detected.
-
-## Web
-
-```bash
-.venv/bin/python app.py --port 8000
-```
-
-- Four-step flow, desktop and phone layouts: **start** (drop/click/paste or a
-  sample) → **check** (preview of the ink that will be traced, ink sensitivity,
-  drawing type, minimalist-vs-pedantic fit, allowed curve types) → **working**
-  (scan animation, rotating status lines, timer, cancel) → **result**.
-- Result stage: the drawing as a faint ghost under the equations-only redraw on
-  graph paper, with a blend slider, labels, "show the wobble" ticks, hold Space
-  to flip to the original, Pixels / Math y-up coordinates, and hover
-  highlighting. Equations are numbered, each carries a fit verdict
-  ("spot on" / "a bit wobbly"), and up to four session runs stay available
-  as chips.
-- Downloads: current-style PNGs (drawing + equations, equations only, with
-  labels) and the math as Desmos, LaTeX, text or JSON.
-- `GET /health`, `GET /api/presets`
-- `POST /api/process` (multipart `file`, plus `preset`, `config` JSON, `debug`);
-  returns `{report, image_png_b64, image_clean_b64, image_redraw_b64,
-  image_redraw_labels_b64, debug_png_b64}` — labeled overlay, label-free twin,
-  equations-only redraw, labeled redraw, and optional mask/skeleton view.
-- Colour: each fitted curve uses the pen colour sampled from the drawing
-  (`color_by: "original"`, set `stroke`/`segment` for the palette), and the
-  redraw reuses the paper colour and measured pen width, so it reads as a
-  faithful reproduction rather than a rainbow.
-- Limits: 15MB uploads, 2 concurrent jobs, 180s timeout.
-  Dense photo/noise input is rejected (422), not hung.
-
-## Tests
-
-```bash
-.venv/bin/python -m unittest discover -s tests -v
-```
-
-## Limits (by design)
-
-- **Dotted art**: dots below `min_component_area` (default 12px) are specks;
-  gaps wider than `merge_endpoint_distance` (default 14px) won't join.
-  Tune both knobs for dotted lines.
-- **Touching strokes**: lines ~1px apart skeletonize into one centerline
-  and trace as a single stroke. Separate your strokes by more than the
-  stroke width.
-- **Tiny text**: glyphs under ~12px tall are partially removed as specks.
-  Use a larger image or lower `min_component_area` / `min_stroke_length`.
-- **Filled regions**: solid blobs, letters and frames are vectorised as filled
-  contours (outer boundary plus holes) and their boundaries are fitted as
-  equations too. Turn it off with `enable_fill: false`.
-- **Photos/noise**: rejected fast (exit 3 / HTTP 422), never hung.
+- **Photos** are out of scope; Chawk expects ink on paper.
+- **Dense sketches** can produce many equations; the `simple` preset keeps the
+  count manageable, and the side-by-side sheet shows the first equations that fit.
+- **Fills** are on by default; turn them off with `enable_fill: false`.
+- Uploads are capped at 15MB, two jobs run at a time, and a trace times out after
+  180 seconds.
