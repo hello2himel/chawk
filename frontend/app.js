@@ -25,7 +25,9 @@ const state = {
   file: null, url: null, name: "", bytes: 0, width: 0, height: 0,
   runs: [], active: -1, selected: -1,
   busy: false, screen: "start", controller: null, workTimer: null, hovering: false,
-  cardPinned: false, cardTimer: 0,
+  cardPinned: false, cardTimer: 0, busyTimer: null,
+  libSelect: false, libSelected: new Set(), pendingUndo: null, undoTimer: null,
+  confirmAll: false, confirmTimer: null,
 };
 
 const view = { original: true, equations: true, labels: false, diff: true, blend: 70, yUp: false };
@@ -266,23 +268,58 @@ async function plainSideBySideCanvas(run) {
   return cv;
 }
 
-function showBusy(title, sub) {
+function startBusyCycle(phrases) {
+  clearInterval(state.busyTimer);
+  let i = 0;
+  const show = (text) => {
+    const el = $("busy-title");
+    el.classList.remove("swap");
+    void el.offsetWidth;  // restart the little pop-in
+    el.textContent = text;
+    el.classList.add("swap");
+  };
+  show(phrases[0]);
+  state.busyTimer = setInterval(() => {
+    i = (i + 1) % phrases.length;
+    show(phrases[i]);
+  }, 900);
+}
+
+function showBusy(title, sub, phrases) {
   $("busy-title").textContent = title || "one sec — setting the type…";
   $("busy-sub").textContent = sub || "";
   $("busy").hidden = false;
+  if (phrases && phrases.length) startBusyCycle(phrases);
 }
 function hideBusy() {
+  clearInterval(state.busyTimer);
+  state.busyTimer = null;
   $("busy").hidden = true;
 }
 
 async function downloadSideBySide(run) {
   const items = flattenSegments(run.report);
-  showBusy("one sec — setting the type…",
-    `${items.length} equation${items.length === 1 ? "" : "s"} · 1800×1800 PNG`);
+  const total = items.length.toLocaleString();
+  const renderPhrases = [
+    "one sec — setting the type…",
+    `counting ${total} equations…`,
+    "drawing the right-hand column…",
+    "thinking in cosines…",
+    "lining up the math…",
+  ];
+  const savePhrases = [
+    "packing the pixels…",
+    "zipping up the PNG…",
+    "handing it to your browser…",
+    "almost there…",
+  ];
+  showBusy(renderPhrases[0],
+    `${total} equation${items.length === 1 ? "" : "s"} · 1800×1800 PNG`, renderPhrases);
   try {
     // Let the overlay paint before the canvas work starts.
     await new Promise((resolve) => requestAnimationFrame(() => requestAnimationFrame(resolve)));
     const cv = await sideBySideCanvas(run);
+    startBusyCycle(savePhrases);
     const blob = await new Promise((resolve) => cv.toBlob(resolve, "image/png"));
     if (!blob) throw new Error("The sheet could not be encoded.");
     downloadURL(URL.createObjectURL(blob), baseName() + "-side-by-side.png");
@@ -314,6 +351,7 @@ function showScreen(name) {
   $("screen-check").hidden = name !== "check";
   $("screen-working").hidden = name !== "working";
   $("screen-result").hidden = name !== "result";
+  $("screen-library").hidden = name !== "library";
   $("start-meta").hidden = name !== "start";
   $("check-change").hidden = name !== "check";
   $("result-bar").hidden = name !== "result";
@@ -323,6 +361,219 @@ function showScreen(name) {
   closeMenus();
   if (name === "check") requestAnimationFrame(fitPreview);
   if (name !== "result") window.scrollTo(0, 0);
+}
+
+/* ------------------------------------------------------------------ library */
+const WORKS_KEY = "chawk.works.v1";
+const MAX_WORKS = 12;
+
+function loadWorks() {
+  try {
+    const raw = localStorage.getItem(WORKS_KEY);
+    const list = raw ? JSON.parse(raw) : [];
+    return Array.isArray(list) ? list : [];
+  } catch { return []; }
+}
+
+function persistWorks(works) {
+  let list = works.slice();
+  while (list.length) {
+    try { localStorage.setItem(WORKS_KEY, JSON.stringify(list)); return list; }
+    catch { list.pop(); }
+  }
+  try { localStorage.setItem(WORKS_KEY, "[]"); } catch { /* private mode */ }
+  return list;
+}
+
+function updateLibraryBadge() {
+  const n = loadWorks().length;
+  const badge = $("library-count");
+  badge.textContent = String(n);
+  badge.hidden = n === 0;
+}
+
+async function imageUrlToWebP(url, max, quality) {
+  if (!url) return null;
+  const img = await loadImageEl(url);
+  const scale = Math.min(1, max / Math.max(img.naturalWidth || 1, img.naturalHeight || 1));
+  const w = Math.max(1, Math.round((img.naturalWidth || 1) * scale));
+  const h = Math.max(1, Math.round((img.naturalHeight || 1) * scale));
+  const cv = document.createElement("canvas");
+  cv.width = w; cv.height = h;
+  const g = cv.getContext("2d");
+  g.fillStyle = "#fff";
+  g.fillRect(0, 0, w, h);
+  g.drawImage(img, 0, 0, w, h);
+  return cv.toDataURL("image/webp", quality);
+}
+
+async function saveWork(run) {
+  try {
+    const source = await imageUrlToWebP(state.url, 900, 0.82);
+    const thumb = await imageUrlToWebP(run.images.redraw, 460, 0.8);
+    if (!source || !thumb) return;
+    const count = run.report?.summary?.segment_count || 0;
+    const record = {
+      id: `${Date.now()}-${Math.random().toString(36).slice(2, 7)}`,
+      name: run.meta.name || state.name || "untitled",
+      at: Date.now(),
+      w: run.meta.width || state.width,
+      h: run.meta.height || state.height,
+      count,
+      settings: JSON.parse(JSON.stringify(settings)),
+      source,
+      thumb,
+    };
+    let works = loadWorks().filter((w) => !(w.name === record.name && w.count === count));
+    works.unshift(record);
+    works = works.slice(0, MAX_WORKS);
+    const stored = persistWorks(works);
+    updateLibraryBadge();
+    if (stored.length < works.length) {
+      toast("Library is full", "The oldest work was removed.");
+    }
+  } catch { /* storage may be unavailable; tracing still works */ }
+}
+
+function workDate(at) {
+  try {
+    return new Date(at).toLocaleDateString(undefined, { day: "numeric", month: "short" });
+  } catch { return ""; }
+}
+
+function showUndo(works) {
+  state.pendingUndo = works;
+  $("undo-text").textContent = `${works.length} work${works.length === 1 ? "" : "s"} deleted`;
+  $("undo").hidden = false;
+  clearTimeout(state.undoTimer);
+  state.undoTimer = setTimeout(hideUndo, 6000);
+}
+
+function hideUndo() {
+  state.pendingUndo = null;
+  clearTimeout(state.undoTimer);
+  $("undo").hidden = true;
+}
+
+function toggleWork(id) {
+  if (state.libSelected.has(id)) state.libSelected.delete(id);
+  else state.libSelected.add(id);
+  renderLibrary();
+}
+
+async function openWork(id) {
+  const work = loadWorks().find((w) => w.id === id);
+  if (!work) return;
+  try {
+    const blob = await (await fetch(work.source)).blob();
+    const file = new File([blob], work.name || "saved.webp", { type: blob.type || "image/webp" });
+    if (work.settings) {
+      Object.assign(settings, work.settings);
+      settings.types = { ...settings.types };
+    }
+    await chooseFile(file);
+    trace();
+  } catch {
+    toast("Could not open that work", "The saved copy may be damaged.");
+  }
+}
+
+function deleteWork(id) {
+  const works = loadWorks();
+  const removed = works.filter((w) => w.id === id);
+  if (!removed.length) return;
+  persistWorks(works.filter((w) => w.id !== id));
+  state.libSelected.delete(id);
+  renderLibrary();
+  updateLibraryBadge();
+  showUndo(removed);
+}
+
+function deleteSelected() {
+  if (!state.libSelected.size) return;
+  const works = loadWorks();
+  const removed = works.filter((w) => state.libSelected.has(w.id));
+  persistWorks(works.filter((w) => !state.libSelected.has(w.id)));
+  state.libSelected.clear();
+  state.libSelect = false;
+  renderLibrary();
+  updateLibraryBadge();
+  if (removed.length) showUndo(removed);
+}
+
+function renderLibrary() {
+  const works = loadWorks();
+  const grid = $("lib-grid");
+  grid.innerHTML = "";
+  grid.hidden = works.length === 0;
+  $("lib-empty").hidden = works.length > 0;
+  $("lib-select").hidden = works.length === 0;
+  $("lib-delete-all").hidden = works.length === 0 || state.libSelect;
+  $("lib-select").textContent = state.libSelect ? "Done" : "Select";
+  $("lib-select").setAttribute("aria-pressed", state.libSelect ? "true" : "false");
+  $("lib-bar").hidden = !(state.libSelect && works.length > 0);
+  $("lib-selcount").textContent = `${state.libSelected.size} selected`;
+  $("lib-sel-delete").disabled = state.libSelected.size === 0;
+  $("lib-note").textContent = works.length
+    ? `${works.length} of ${MAX_WORKS} works · ${Math.round(JSON.stringify(works).length / 1024)} KB in this browser`
+    : "";
+
+  for (const w of works) {
+    const card = document.createElement("article");
+    const picked = state.libSelected.has(w.id);
+    card.className = "work" + (picked ? " sel" : "");
+    card.tabIndex = 0;
+
+    const thumb = document.createElement("div");
+    thumb.className = "workthumb";
+    const img = document.createElement("img");
+    img.src = w.thumb;
+    img.alt = "";
+    thumb.append(img);
+
+    const body = document.createElement("div");
+    body.className = "workbody";
+    const name = document.createElement("div");
+    name.className = "workname";
+    name.textContent = w.name;
+    const meta = document.createElement("div");
+    meta.className = "workmeta";
+    meta.textContent = `${w.count} equation${w.count === 1 ? "" : "s"} · ${workDate(w.at)}`;
+    const row = document.createElement("div");
+    row.className = "workrow";
+    const open = document.createElement("button");
+    open.type = "button";
+    open.className = "btn workopen";
+    open.textContent = "Open";
+    open.hidden = state.libSelect;
+    open.onclick = (e) => { e.stopPropagation(); openWork(w.id); };
+    const del = document.createElement("button");
+    del.type = "button";
+    del.className = "workdel";
+    del.setAttribute("aria-label", `Delete ${w.name}`);
+    del.innerHTML = '<i class="ri-delete-bin-line" aria-hidden="true"></i>';
+    del.hidden = state.libSelect;
+    del.onclick = (e) => { e.stopPropagation(); deleteWork(w.id); };
+    row.append(open, del);
+    body.append(name, meta, row);
+
+    if (state.libSelect) {
+      const chk = document.createElement("span");
+      chk.className = "workcheck";
+      chk.innerHTML = picked ? '<i class="ri-check-line" aria-hidden="true"></i>' : "";
+      card.append(chk);
+    }
+
+    card.append(thumb, body);
+    card.onclick = () => { if (state.libSelect) toggleWork(w.id); else openWork(w.id); };
+    card.onkeydown = (e) => {
+      if (e.key === "Enter" || e.key === " ") {
+        e.preventDefault();
+        if (state.libSelect) toggleWork(w.id); else openWork(w.id);
+      }
+    };
+    grid.append(card);
+  }
 }
 
 /* ------------------------------------------------------------------ intake */
@@ -707,6 +958,11 @@ function renderResult() {
 
   // lazy diff
   requestAnimationFrame(() => setTimeout(() => drawDiff(), 30));
+
+  if (!run.saved) {
+    run.saved = true;
+    saveWork(run).catch(() => {});
+  }
 }
 
 function flattenSegments(report) {
@@ -1290,6 +1546,54 @@ function bind() {
   });
   $("check-change").addEventListener("click", () => $("file").click());
   $("trace").addEventListener("click", trace);
+  $("library-btn").addEventListener("click", () => {
+    state.libSelect = false;
+    state.libSelected.clear();
+    renderLibrary();
+    showScreen("library");
+  });
+  $("lib-new").addEventListener("click", () => showScreen("start"));
+  $("lib-empty-new").addEventListener("click", () => showScreen("start"));
+  $("lib-select").addEventListener("click", () => {
+    state.libSelect = !state.libSelect;
+    state.libSelected.clear();
+    renderLibrary();
+  });
+  $("lib-delete-all").addEventListener("click", () => {
+    if (!state.confirmAll) {
+      state.confirmAll = true;
+      $("lib-delete-all").textContent = "Really delete all?";
+      clearTimeout(state.confirmTimer);
+      state.confirmTimer = setTimeout(() => {
+        state.confirmAll = false;
+        $("lib-delete-all").textContent = "Delete all";
+      }, 3200);
+      return;
+    }
+    state.confirmAll = false;
+    clearTimeout(state.confirmTimer);
+    $("lib-delete-all").textContent = "Delete all";
+    const works = loadWorks();
+    persistWorks([]);
+    renderLibrary();
+    updateLibraryBadge();
+    if (works.length) showUndo(works);
+  });
+  $("lib-sel-cancel").addEventListener("click", () => {
+    state.libSelect = false;
+    state.libSelected.clear();
+    renderLibrary();
+  });
+  $("lib-sel-delete").addEventListener("click", deleteSelected);
+  $("undo-btn").addEventListener("click", () => {
+    if (!state.pendingUndo) return;
+    const restored = state.pendingUndo.concat(loadWorks()).slice(0, MAX_WORKS);
+    persistWorks(restored);
+    hideUndo();
+    renderLibrary();
+    updateLibraryBadge();
+  });
+  updateLibraryBadge();
   $("cancel").addEventListener("click", () => { if (state.controller) state.controller.abort(); });
 
   document.addEventListener("dragover", (e) => { e.preventDefault(); $("drop")?.classList.add("drag"); });

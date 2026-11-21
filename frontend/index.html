@@ -15,6 +15,12 @@
       Chawk
     </div>
 
+    <button class="chip libbtn" id="library-btn" type="button" aria-label="Previous works">
+      <i class="ri-history-line" aria-hidden="true"></i>
+      <span class="hide-m">Previous</span>
+      <span class="libcount" id="library-count" hidden>0</span>
+    </button>
+
     <span class="m hide-m" id="start-meta">v1.1.0 · connected</span>
 
     <button class="btn" id="check-change" hidden>
@@ -82,6 +88,37 @@
       </div>
       <p class="hand">↑ yes, that circle is just algebra</p>
     </section>
+  </main>
+
+  <!-- ============================= LIBRARY ============================= -->
+  <main class="library" id="screen-library" hidden>
+    <div class="libhead">
+      <div>
+        <p class="fig" style="margin:0 0 8px">YOUR WORK · THIS BROWSER</p>
+        <h1 class="h" style="font-size:clamp(34px,5vw,50px)">Previous works, <span class="hl"><i>kept</i></span>.</h1>
+        <p class="m" style="margin-top:6px">Open one to run it again, or tidy up.</p>
+      </div>
+      <div class="libtools">
+        <button class="chip" id="lib-select" aria-pressed="false">Select</button>
+        <button class="chip" id="lib-delete-all">Delete all</button>
+        <button class="btn" id="lib-new"><i class="ri-add-line" aria-hidden="true"></i> New doodle</button>
+      </div>
+    </div>
+
+    <div class="libgrid" id="lib-grid"></div>
+
+    <div class="libempty" id="lib-empty" hidden>
+      <svg width="84" height="84" viewBox="0 0 64 64" aria-hidden="true"><g transform="rotate(-24 32 32)"><rect x="18" y="4" width="28" height="56" rx="8" fill="#fff" stroke="#15161A" stroke-width="3"></rect><path d="M18 46h28v6a8 8 0 0 1-8 8H26a8 8 0 0 1-8-8z" fill="#ECE8DD" stroke="#15161A" stroke-width="3"></path><circle cx="26" cy="22" r="6" fill="#fff" stroke="#15161A" stroke-width="2.5"></circle><circle cx="38" cy="22" r="6" fill="#fff" stroke="#15161A" stroke-width="2.5"></circle><circle cx="27" cy="23" r="2" fill="#15161A"></circle><circle cx="37" cy="23" r="2" fill="#15161A"></circle><path d="M24 36c3-5 5-5 8 0s5 5 8 0" fill="none" stroke="#1F3FD1" stroke-width="3" stroke-linecap="round"></path></g></svg>
+      <p class="hand" style="font-size:26px;margin-top:14px">nothing saved yet — draw something.</p>
+      <button class="btn bp" id="lib-empty-new">New doodle</button>
+    </div>
+
+    <div class="libbar" id="lib-bar" hidden>
+      <span class="m" id="lib-selcount">0 selected</span>
+      <button class="btn" id="lib-sel-cancel">Cancel</button>
+      <button class="btn danger" id="lib-sel-delete">Delete selected</button>
+    </div>
+    <p class="m libnote" id="lib-note"></p>
   </main>
 
   <!-- ============================= CHECK ============================= -->
@@ -266,7 +303,7 @@
 
 <div class="menu runmenu" id="run-menu" role="menu" aria-label="Runs" hidden></div>
 
-<div class="busy" id="busy" role="status" aria-live="polite" hidden>
+<div class="busy" id="busy" role="status" aria-live="off" hidden>
   <div class="busycard">
     <svg class="busymascot" viewBox="0 0 64 64" aria-hidden="true">
       <g transform="rotate(-24 32 32)">
@@ -289,6 +326,8 @@
     </span>
   </div>
 </div>
+
+<div class="undo" id="undo" hidden><span id="undo-text"></span><button class="undo-btn" id="undo-btn">Undo</button></div>
 
 <div class="toast" id="toast" role="alert" aria-live="assertive" hidden><span id="toast-text"></span></div>
 
