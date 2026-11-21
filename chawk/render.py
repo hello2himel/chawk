@@ -145,7 +145,7 @@ def _draw_fills(ax, strokes, stroke_segments, cfg: Config) -> None:
         patch = PathPatch(
             MplPath(np.asarray(verts), codes),
             facecolor=group["color"], edgecolor=group["color"],
-            linewidth=0.9, antialiased=True, zorder=2,
+            linewidth=cfg.fill_edge_width, antialiased=True, zorder=2,
         )
         ax.add_patch(patch)
 
@@ -260,6 +260,44 @@ def render(pre, strokes, stroke_segments, cfg: Config, out_path: str,
     return out_path
 
 
+def _clean_paper_specks(png: bytes, paper_rgb) -> bytes:
+    """Inpaint tiny paper-coloured specks on dark-paper redraws.
+
+    Fitted fill boundaries leave hairline gaps; with a dark canvas they read
+    as black dust. Large paper areas (silhouettes, water) are untouched.
+    """
+    paper = np.array(paper_rgb[::-1], dtype=np.int16)  # RGB -> BGR
+    luma = 0.114 * paper[0] + 0.587 * paper[1] + 0.299 * paper[2]
+    if luma > 90:
+        return png
+    img = cv2.imdecode(np.frombuffer(png, np.uint8), cv2.IMREAD_COLOR)
+    if img is None:
+        return png
+    mask = (np.abs(img.astype(np.int16) - paper).max(axis=2) < 16).astype(np.uint8)
+    count, labels, stats, _ = cv2.connectedComponentsWithStats(mask, connectivity=8)
+    if count <= 1:
+        return png
+    small = np.zeros(count, dtype=bool)
+    small[1:] = stats[1:, cv2.CC_STAT_AREA] < 400
+    clean = small[labels].astype(np.uint8)
+
+    # Also catch tiny dark fringes that are not exactly the paper colour
+    # (antialiasing at boundaries). Large dark shapes stay untouched.
+    dark = (img.max(axis=2) < 45).astype(np.uint8)
+    dcount, dlabels, dstats, _ = cv2.connectedComponentsWithStats(dark, connectivity=8)
+    if dcount > 1:
+        dsmall = np.zeros(dcount, dtype=bool)
+        dsmall[1:] = dstats[1:, cv2.CC_STAT_AREA] < 260
+        clean |= dsmall[dlabels].astype(np.uint8)
+
+    if not clean.any():
+        return png
+    clean = cv2.dilate(clean, np.ones((3, 3), np.uint8), iterations=1)
+    out = cv2.inpaint(img, clean, 2, cv2.INPAINT_TELEA)
+    ok, buf = cv2.imencode(".png", out)
+    return buf.tobytes() if ok else png
+
+
 def render_png_bytes(pre, strokes, stroke_segments, cfg: Config,
                      title: str | None = None, labels: bool | None = None,
                      paper: bool = False) -> bytes:
@@ -269,7 +307,10 @@ def render_png_bytes(pre, strokes, stroke_segments, cfg: Config,
     try:
         buf = io.BytesIO()
         fig.savefig(buf, format="png", dpi=dpi, facecolor=fig.get_facecolor())
-        return buf.getvalue()
+        data = buf.getvalue()
+        if paper and not labels and getattr(pre, "fills", None) and getattr(pre, "paper_rgb", None):
+            data = _clean_paper_specks(data, pre.paper_rgb)
+        return data
     finally:
         plt.close(fig)
 

@@ -117,3 +117,5 @@ def vectorize(image: np.ndarray, cfg: Config) -> tuple[list[FillRegion], tuple[i
     for n, region in enumerate(regions, start=1):
         region.fill_id = n
     return regions, tuple(int(v) for v in rgb[bg])
+
+

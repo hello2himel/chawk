@@ -62,6 +62,10 @@ class Config:
     color_min_area: float = 40.0
     """Colour regions smaller than this (working px) are dropped."""
 
+    fill_edge_width: float = 2.2
+    """Edge stroke (pt) used to overlap neighbouring fills; without it the
+    paper shows through the seams as dark specks."""
+
     color_spline_smoothing: float = 0.3
     """Smoothing strength for each closed boundary spline (per point)."""
     """area / (pi * r^2): ~1 for a disc, larger for long thick strokes. Only
@@ -186,6 +190,7 @@ class Config:
               "must be > 0")
         _need("color_count", 0 <= self.color_count <= 64, "must be in [0, 64]")
         _need("color_min_area", self.color_min_area >= 0, "must be >= 0")
+        _need("fill_edge_width", self.fill_edge_width > 0, "must be > 0")
         _need("color_spline_smoothing", self.color_spline_smoothing >= 0, "must be >= 0")
         _need("min_stroke_length", self.min_stroke_length > 0, "must be > 0")
         _need("prune_spur_length", self.prune_spur_length >= 0, "must be >= 0")
