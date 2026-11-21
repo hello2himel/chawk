@@ -9,6 +9,22 @@ Trace a line drawing and fit a mathematical equation to every stroke.
 .venv/bin/python app.py            # web UI at http://127.0.0.1:8000
 ```
 
+## Docker
+
+Build once, run anywhere Docker runs:
+
+```bash
+docker build -t chawk .
+docker run --rm -p 8010:8000 chawk          # http://127.0.0.1:8010
+```
+
+The image installs the pinned `requirements.txt`, runs as a non-root user,
+and carries a `/health` check. `docker compose up --build` uses host
+networking (required on this machine, where bridge networking is unavailable)
+and serves on port 8010; override with `CHAWK_PORT=8012 docker compose up`.
+On hosts with working bridge networking, the `-p 8010:8000` form above is the
+portable option.
+
 ## Parts
 
 | Path | What |

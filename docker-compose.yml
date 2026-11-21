@@ -1,0 +1,10 @@
+services:
+  chawk:
+    build: .
+    image: chawk:latest
+    # Bridge networking is unavailable on this host, so bind the host port
+    # directly. Override with CHAWK_PORT=8012 docker compose up.
+    network_mode: host
+    environment:
+      PORT: ${CHAWK_PORT:-8010}
+    restart: unless-stopped

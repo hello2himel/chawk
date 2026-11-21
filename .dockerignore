@@ -1,0 +1,11 @@
+.venv/
+__pycache__/
+*.py[cod]
+*.log
+.git/
+.gitignore
+out/
+tests/
+UI_BRIEF.md
+examples/
+.DS_Store
