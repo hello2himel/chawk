@@ -294,22 +294,22 @@ input[type=range]{width:100%;accent-color:#1F3FD1;min-height:32px}
 .social-sheet{position:absolute;left:-20000px;top:0;width:1080px;height:1350px;display:flex;flex-direction:column;background:#F8F7F3;color:#111;font-family:'Instrument Sans',sans-serif}
 .social-art{width:1080px;height:720px;flex:none;overflow:hidden;background:#F8F7F3}
 .social-art img{display:block;width:1080px;height:720px}
-.social-panel{width:1080px;height:630px;padding:32px;box-sizing:border-box;display:flex;flex-direction:column;gap:14px}
+.social-panel{width:1080px;height:630px;padding:28px 32px;box-sizing:border-box;display:flex;flex-direction:column;gap:8px}
 .social-top{display:flex;gap:24px;align-items:center;flex:1;min-height:0}
 .social-copy{width:420px;flex:none;display:flex;flex-direction:column}
-.social-headline{display:flex;flex-direction:column;align-items:flex-start;gap:0;margin-top:2px}
+.social-headline{display:flex;flex-wrap:wrap;align-items:baseline;column-gap:14px;row-gap:0;margin-top:0}
 .social-lead{font-family:'Caveat','Segoe Script',cursive;font-weight:600;font-size:30px;line-height:1;color:#1F3FD1}
-.social-count{font-family:'Instrument Sans',sans-serif;font-weight:800;font-size:120px;line-height:.95;letter-spacing:-.045em;white-space:nowrap;color:#111}
-.social-word{font-family:'STIX Two Text',Georgia,serif;font-style:italic;font-weight:700;font-size:48px;line-height:1.05;color:#111}
+.social-count{font-family:'Instrument Sans',sans-serif;font-weight:800;font-size:110px;line-height:.95;letter-spacing:-.045em;white-space:nowrap;color:#111}
+.social-word{font-family:'STIX Two Text',Georgia,serif;font-style:italic;font-weight:700;font-size:44px;line-height:1.05;color:#111}
 .social-word .hl{padding:0 .05em}
 .social-eqs{flex:1;min-width:0;max-height:100%;overflow:hidden;display:flex;flex-direction:column;gap:8px}
-.social-list{flex:none;display:flex;flex-direction:column;gap:6px;margin-top:0;position:relative}
+.social-list{flex:1;min-height:0;overflow:hidden;display:flex;flex-direction:column;gap:5px;margin-top:2px;position:relative;width:100%}
 .social-eq{display:flex;gap:8px;align-items:flex-start}
 .social-eq .n{font-family:'JetBrains Mono',monospace;font-weight:700;font-size:11px;line-height:1.5;color:#8A8D98;padding-top:4px;min-width:18px;flex:none}
 .social-eq .social-maths{display:flex;flex-direction:column;gap:1px;flex:1;min-width:0}
-.social-eq .social-math{font-family:'STIX Two Text',Georgia,serif;font-size:26px;line-height:1.2;color:#15161A;min-width:0;white-space:nowrap;overflow:hidden}
+.social-eq .social-math{font-family:'STIX Two Text',Georgia,serif;font-size:26px;line-height:1.18;color:#15161A;min-width:0;white-space:nowrap;overflow:hidden}
 .social-eq .social-math.cont{padding-left:1.05em}
-.social-more{font-family:'Instrument Sans',sans-serif;font-size:20px;font-weight:600;color:#5A5D68;margin-top:10px}
+.social-more{font-family:'Instrument Sans',sans-serif;font-size:20px;font-weight:600;color:#5A5D68;margin-top:0}
 .social-footwrap{margin-top:auto;padding-top:4px;flex:none;display:flex;align-items:center;gap:18px}
 .social-foot{display:flex;align-items:center;gap:8px;font-weight:800;font-size:26px;color:#111;white-space:nowrap}
 .social-foot svg{display:block}

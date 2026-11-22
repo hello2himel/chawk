@@ -2,7 +2,7 @@
 
 **Every squiggle is a function.**
 
-<img src="docs/demo-poster.webp" width="400" alt="Demo poster: a serene blue river above the 3,605 equations that redraw it">
+<img src="docs/poster-demo.webp" width="400" alt="Demo poster: a serene blue river above the 3,605 equations that redraw it">
 
 *A demo poster: the drawing in a 3:2 window, its 3,605 equations below.*
 

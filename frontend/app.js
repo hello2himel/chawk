@@ -227,11 +227,25 @@ async function sheetCanvas(run) {
   headline.className = "social-headline";
   headline.append(count, word);
 
-  const copy = document.createElement("div");
-  copy.className = "social-copy";
+  const head = document.createElement("div");
+  head.className = "social-head";
+  head.append(lead, headline);
 
   const list = document.createElement("div");
   list.className = "social-list";
+
+  const more = document.createElement("div");
+  more.className = "social-more";
+
+  const footwrap = document.createElement("div");
+  footwrap.className = "social-footwrap";
+  const foot = document.createElement("div");
+  foot.className = "social-foot";
+  foot.innerHTML = `<svg width="22" height="22" viewBox="0 0 16 16" fill="currentColor" aria-hidden="true"><path d="${GITHUB_MARK}"></path></svg><span>OPEN SOURCE</span>`;
+  const url = document.createElement("div");
+  url.className = "social-url";
+  url.textContent = "github.com/hello2himel/chawk";
+  footwrap.append(foot, url);
 
   const pool = [];
   for (const it of items) {
@@ -239,8 +253,7 @@ async function sheetCanvas(run) {
       if (line.trim()) pool.push({ line: line.trim().replace(/\s+/g, " "), model: it.seg.model });
     }
   }
-  const chosen = pool.slice(0, 12);
-  chosen.forEach((p, i) => {
+  pool.slice(0, 24).forEach((p, i) => {
     const row = document.createElement("div");
     row.className = "social-eq";
     const n = document.createElement("span");
@@ -257,40 +270,12 @@ async function sheetCanvas(run) {
     list.append(row);
   });
 
-  const more = document.createElement("div");
-  more.className = "social-more";
-
-  copy.append(lead, headline, more);
-  const eqs = document.createElement("div");
-  eqs.className = "social-eqs";
-  eqs.append(list);
-
-  const top = document.createElement("div");
-  top.className = "social-top";
-  top.append(copy, eqs);
-
-  const footwrap = document.createElement("div");
-  footwrap.className = "social-footwrap";
-  const foot = document.createElement("div");
-  foot.className = "social-foot";
-  foot.innerHTML = `<svg width="22" height="22" viewBox="0 0 16 16" fill="currentColor" aria-hidden="true"><path d="${GITHUB_MARK}"></path></svg><span>OPEN SOURCE</span>`;
-  const url = document.createElement("div");
-  url.className = "social-url";
-  url.textContent = "github.com/hello2himel/chawk";
-  footwrap.append(foot, url);
-
-  panel.append(top, footwrap);
+  panel.append(head, list, more, footwrap);
   sheet.append(art, panel);
   document.body.append(sheet);
   try {
     await document.fonts.ready;
     await new Promise((resolve) => requestAnimationFrame(() => requestAnimationFrame(resolve)));
-    let size = 120;
-    count.style.fontSize = `${size}px`;
-    while (count.scrollWidth > 420 && size > 88) {
-      size -= 2;
-      count.style.fontSize = `${size}px`;
-    }
     const fitLine = (el) => {
       let fs = 26;
       el.style.fontSize = `${fs}px`;
@@ -316,13 +301,19 @@ async function sheetCanvas(run) {
         }
       }
     }
-    // keep only the rows that fit the space above the footer
-    const avail = top.clientHeight;
-    while (list.scrollHeight > avail && list.lastElementChild) {
+    // full-width list: keep every row that fits, then close with the remainder
+    while (list.scrollHeight > list.clientHeight && list.lastElementChild) {
       list.lastElementChild.remove();
     }
     const shown = list.children.length;
     if (total > shown) more.textContent = `… and ${formatCount(total - shown)} more.`;
+    const drawW = word.getBoundingClientRect().width;
+    let size = 110;
+    count.style.fontSize = `${size}px`;
+    while (size > 80 && count.getBoundingClientRect().width + 14 + drawW > 1016) {
+      size -= 2;
+      count.style.fontSize = `${size}px`;
+    }
     return await html2canvas(sheet, {
       backgroundColor: "#F8F7F3", scale: 2, logging: false,
       width: 1080, height: 1350, windowWidth: 1080, windowHeight: 1350,
