@@ -2,13 +2,14 @@
 
 **Every squiggle is a function.**
 
-Chawk reads a line drawing, finds a real equation for every stroke, and redraws the
-picture using nothing but those equations. It runs on your own machine — no account,
+Chawk reads a line drawing (or flat-colour illustration), finds a real equation for
+every stroke or region, and redraws the picture using nothing but those equations. It runs on your own machine — no account,
 no upload to someone else's server.
 
-<img src="docs/demo.webp" width="400" alt="A serene blue river with boats beside the 1,475 equations that redraw it">
-
-*A demo poster: the drawing on the left, its 1,475 equations on the right.*
+| The input | The output |
+| --- | --- |
+| <img src="docs/demo-input.webp" width="260" alt="Input: a serene blue river with traditional boats"> | <img src="docs/demo.webp" width="320" alt="Output: the square poster built from 1,475 equations"> |
+| *A 2:3 source image* | *A square poster built from 1,475 equations* |
 
 ## Quick start
 
