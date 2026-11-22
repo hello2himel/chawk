@@ -309,7 +309,7 @@ input[type=range]{width:100%;accent-color:#1F3FD1;min-height:32px}
 .social-eq .social-maths{display:flex;flex-direction:column;gap:1px;width:100%;min-width:0;text-align:center}
 .social-eq .social-math{font-family:'STIX Two Text',Georgia,serif;font-size:26px;line-height:1.18;color:#15161A;min-width:0;white-space:nowrap;overflow:hidden;text-align:center}
 .social-eq .social-math.cont{}
-.social-more{font-family:'Instrument Sans',sans-serif;font-size:20px;font-weight:600;color:#5A5D68;margin-top:-6px;text-align:center;width:100%}
+.social-more{font-family:'Instrument Sans',sans-serif;font-size:20px;font-weight:600;color:#5A5D68;margin:16px 0;text-align:center;width:100%}
 .social-footwrap{margin-top:auto;padding-top:10px;flex:none;display:flex;align-items:center;justify-content:space-between;gap:16px;border-top:1px solid rgba(21,22,26,.14)}
 .social-brand{display:flex;align-items:center;gap:9px;font-weight:800;font-size:24px;color:#111;white-space:nowrap}
 .social-brandname{letter-spacing:-.03em}
