@@ -8,8 +8,8 @@ no upload to someone else's server.
 
 | The input | The output |
 | --- | --- |
-| <img src="docs/demo-input.webp" width="260" alt="Input: a serene blue river with traditional boats"> | <img src="docs/demo.webp" width="320" alt="Output: the square poster built from 1,475 equations"> |
-| *A 2:3 source image* | *A square poster built from 1,475 equations* |
+| <img src="docs/demo-input.webp" width="260" alt="Input: a serene blue river with traditional boats"> | <img src="docs/demo-output.webp" width="320" alt="Output: the square poster built from 1,475 equations"> |
+| *A photo taken with a camera.* | *A square poster built from 1,475 equations* |
 
 ## Quick start
 
