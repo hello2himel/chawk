@@ -79,19 +79,17 @@ The **Download** menu offers:
 
 - **Drawing + equations** — your drawing with the fitted curves on top.
 - **Equations only** — the drawing rebuilt from the math alone.
-- **Side by side** — a 4:5 social poster (1080×1350): the drawing rebuilt
-  from the equations in a 2:3 window at the top-left, the equation count at
-  the top of the right column, a legible numbered list of the real equations
-  beside it, and the project footer under the image. Preview it with a 3:4
-  Instagram grid overlay before downloading.
+- **Side by side** — a square 1800×1800 social poster: the drawing rebuilt
+  from the equations in a 2:3 window on the left, and "drawn using", the
+  count, a legible numbered KaTeX list of the real equations and the project
+  footer on the right. It downloads directly.
 - **Desmos, LaTeX, text and JSON** — the math, ready for other tools.
 
-The side-by-side poster is 1080×1350 (4:5), drawn at 2× for crisp text. The
-drawing gets a true 2:3 window (the usual source aspect) with the footer and
-motto in the band below; the right column carries "drawn using", the count and
-a numbered list of the actual equations, set large enough to read. The preview
-includes an Instagram 3:4 grid check so you can see exactly what the profile
-grid will crop.
+The side-by-side poster is a 1800×1800 square, composed as DOM + KaTeX and
+rasterised once. The drawing gets a true 2:3 window (1200×1800); the right
+column carries "drawn using", the count, a numbered KaTeX list of the actual
+equations and the GitHub footer. The list is filled only until the column is
+full, and the poster is cached per run.
 
 ## Command line
 

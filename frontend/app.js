@@ -135,120 +135,133 @@ function roundedRect(g, x, y, w, h, r) {
 }
 
 /* 4:5 social poster, drawn straight onto a 2x canvas (no DOM, no HTML rasteriser). */
+async function croppedDataURL(url, w, h) {
+  const img = await loadImageEl(url);
+  const cv = document.createElement("canvas");
+  cv.width = w; cv.height = h;
+  const g = cv.getContext("2d");
+  const cover = Math.max(w / (img.naturalWidth || 1), h / (img.naturalHeight || 1));
+  const cw = (img.naturalWidth || 1) * cover;
+  const ch = (img.naturalHeight || 1) * cover;
+  g.drawImage(img, (w - cw) / 2, (h - ch) / 2, cw, ch);
+  return cv.toDataURL("image/png");
+}
+
+/* 1800x1800 square poster: drawn image left, KaTeX equations right. */
 async function sheetCanvas(run) {
   await document.fonts.ready;
   const items = flattenSegments(run.report);
-  const total = items.length;
-  const label = formatCount(total);
-  const W = 1080, H = 1350, S = 2;
-  const hi = document.createElement("canvas");
-  hi.width = W * S; hi.height = H * S;
-  const g = hi.getContext("2d");
-  g.scale(S, S);
+  const label = formatCount(items.length);
+  const artURL = await croppedDataURL(run.images.redraw || state.url, 1200, 1800);
 
-  const LEFT = 720, PANEL = W - LEFT, SAFE = 50;
-  const TX = LEFT + SAFE, TW = PANEL - SAFE * 2;
-  const paper = "#F8F7F3", ink = "#111111", accent = "#FFE066";
+  const sheet = document.createElement("div");
+  sheet.className = "social-sheet";
 
-  g.fillStyle = paper;
-  g.fillRect(0, 0, W, H);
+  const art = document.createElement("div");
+  art.className = "social-art";
+  const img = document.createElement("img");
+  img.src = artURL;
+  img.alt = "";
+  art.append(img);
 
-  // left: a 2:3 artwork window at the top — the usual source aspect, no
-  // letterboxing and no forced full-height crop.
-  const img = await loadImageEl(run.images.redraw || state.url);
-  const ART_W = LEFT, ART_H = Math.round(LEFT * 1.5);
-  const cover = Math.max(ART_W / (img.naturalWidth || 1), ART_H / (img.naturalHeight || 1));
-  const cw = (img.naturalWidth || 1) * cover;
-  const ch = (img.naturalHeight || 1) * cover;
-  g.save();
-  g.beginPath(); g.rect(0, 0, ART_W, ART_H); g.clip();
-  g.drawImage(img, (ART_W - cw) / 2, (ART_H - ch) / 2, cw, ch);
-  g.restore();
+  const panel = document.createElement("div");
+  panel.className = "social-panel";
 
-  // right panel: "drawn using" + count, then the actual equations
-  const PANEL_X = LEFT;
-  g.font = "600 24px 'Caveat', 'Segoe Script', cursive";
-  g.fillStyle = "#1F3FD1";
-  g.textBaseline = "alphabetic";
-  g.fillText("drawn using", TX, 66);
+  const lead = document.createElement("div");
+  lead.className = "social-lead";
+  lead.textContent = "drawn using";
 
-  const numSize = fitTextSize(g, label, TW, 92, 46, "'STIX Two Text', Georgia, serif", "800");
-  g.font = `800 ${numSize}px 'STIX Two Text', Georgia, serif`;
-  g.fillStyle = ink;
-  const numBaseline = 82 + numSize * 0.84;
-  g.fillText(label, TX, numBaseline);
+  const count = document.createElement("div");
+  count.className = "social-count";
+  count.textContent = label;
 
-  const wordSize = fitTextSize(g, "equations", TW, 36, 22, "'STIX Two Text', Georgia, serif", "700", "italic");
-  g.font = `italic 700 ${wordSize}px 'STIX Two Text', Georgia, serif`;
-  const wordW = g.measureText("equations").width;
-  const wordBaseline = numBaseline + wordSize * 1.16;
-  g.fillStyle = accent;
-  g.fillRect(TX - 3, wordBaseline - wordSize * 0.58, Math.min(TW, wordW) + 6, wordSize * 0.7);
-  g.fillStyle = ink;
-  g.fillText("equations", TX, wordBaseline);
+  const word = document.createElement("div");
+  word.className = "social-word";
+  word.innerHTML = '<span class="hl"><i>equations</i></span>';
 
-  // the actual equations, set big enough to read
+  const list = document.createElement("div");
+  list.className = "social-list";
+
   const pool = [];
   for (const it of items) {
     for (const line of String(it.seg.equation || "").split("\n")) {
-      if (line.trim()) pool.push(line.trim().replace(/\s+/g, " "));
+      if (line.trim()) pool.push({ line: line.trim().replace(/\s+/g, " "), model: it.seg.model });
     }
   }
-  if (!pool.length) pool.push("x(t) = 0");
 
-  const listTop = wordBaseline + 34;
-  let y = listTop, n = 0;
-  for (const eq of pool) {
-    g.font = "400 14px 'STIX Two Text', Georgia, serif";
-    const lines = wrapLine(g, eq, TW - 22);
-    if (y + lines.length * 19 > 1300) break;
-    g.fillStyle = "#8A8D98";
-    g.font = "700 9px 'JetBrains Mono', monospace";
-    g.fillText(String(n + 1).padStart(2, "0"), TX, y + 3);
-    g.fillStyle = "#15161A";
-    g.font = "400 14px 'STIX Two Text', Georgia, serif";
-    let ly = y;
-    for (const line of lines) {
-      g.fillText(line, TX + 22, ly);
-      ly += 19;
-    }
-    y = ly + 8;
-    n += 1;
+  let rows = 0;
+  for (const p of pool) {
+    const row = document.createElement("div");
+    row.className = "social-eq";
+    const n = document.createElement("span");
+    n.className = "n";
+    n.textContent = String(rows + 1).padStart(2, "0");
+    const q = document.createElement("span");
+    q.className = "social-math";
+    q.innerHTML = renderEquationHTML(p.line, p.model);
+    row.append(n, q);
+    list.append(row);
+    rows += 1;
+    if (rows >= 48) break;
   }
 
-  const fade = g.createLinearGradient(0, 1240, 0, 1300);
-  fade.addColorStop(0, "rgba(248,247,243,0)");
-  fade.addColorStop(1, "rgba(248,247,243,1)");
-  g.fillStyle = fade;
-  g.fillRect(PANEL_X, 1240, PANEL, 60);
+  const fade = document.createElement("div");
+  fade.className = "social-fade";
 
-  // left band: footer + the motto
-  const footX = 50, footY = 1128;
-  g.save();
-  g.translate(footX, footY - 14);
-  g.scale(28 / 16, 28 / 16);
-  g.fillStyle = ink;
-  g.fill(new Path2D(GITHUB_MARK));
-  g.restore();
+  const footwrap = document.createElement("div");
+  footwrap.className = "social-footwrap";
+  const foot = document.createElement("div");
+  foot.className = "social-foot";
+  foot.innerHTML = `<svg width="26" height="26" viewBox="0 0 16 16" fill="currentColor" aria-hidden="true"><path d="${GITHUB_MARK}"></path></svg><span>OPEN SOURCE</span>`;
+  const url = document.createElement("div");
+  url.className = "social-url";
+  url.textContent = "github.com/hello2himel/chawk";
+  footwrap.append(foot, url);
 
-  g.fillStyle = ink;
-  g.textBaseline = "middle";
-  g.font = "800 28px 'Instrument Sans', sans-serif";
-  g.fillText("OPEN SOURCE", footX + 40, footY);
-
-  const url = "github.com/hello2himel/chawk";
-  const urlSize = fitTextSize(g, url, LEFT - 100, 24, 15, "'Instrument Sans', sans-serif", "700");
-  g.font = `700 ${urlSize}px 'Instrument Sans', sans-serif`;
-  g.fillText(url, footX, footY + 38);
-
-  g.font = "600 30px 'Caveat', 'Segoe Script', cursive";
-  g.fillStyle = "#1F3FD1";
-  g.fillText("every squiggle is a function.", footX, 1250);
-
-  const out = document.createElement("canvas");
-  out.width = W; out.height = H;
-  out.getContext("2d").drawImage(hi, 0, 0, W, H);
-  return out;
+  const headline = document.createElement("div");
+  headline.className = "social-headline";
+  headline.append(count, word);
+  panel.append(lead, headline, list, fade, footwrap);
+  sheet.append(art, panel);
+  document.body.append(sheet);
+  try {
+    await document.fonts.ready;
+    await new Promise((resolve) => requestAnimationFrame(() => requestAnimationFrame(resolve)));
+    // fit each equation after KaTeX fonts and layout have settled
+    for (const row of [...list.children]) {
+      const q = row.querySelector(".social-math");
+      let fs = 20;
+      q.style.fontSize = `${fs}px`;
+      while (q.scrollWidth > q.clientWidth && fs > 14) {
+        fs -= 1;
+        q.style.fontSize = `${fs}px`;
+      }
+    }
+    // drop rows that do not fit the column
+    while (list.scrollHeight > list.clientHeight + 2 && list.lastElementChild) {
+      list.lastElementChild.remove();
+      rows -= 1;
+    }
+    // keep the count huge, but let it share one line with "equations" when
+    // that is possible; only wrap when it genuinely cannot fit.
+    let size = 150;
+    count.style.fontSize = `${size}px`;
+    while (count.scrollWidth > 500 && size > 80) {
+      size -= 4;
+      count.style.fontSize = `${size}px`;
+    }
+    const wordW = word.getBoundingClientRect().width;
+    while (size > 100 && count.getBoundingClientRect().width + 14 + wordW > 500) {
+      size -= 2;
+      count.style.fontSize = `${size}px`;
+    }
+    return await html2canvas(sheet, {
+      backgroundColor: "#F8F7F3", scale: 1, logging: false,
+      width: 1800, height: 1800, windowWidth: 1800, windowHeight: 1800,
+    });
+  } finally {
+    sheet.remove();
+  }
 }
 
 async function sheetBlob(run) {
@@ -259,14 +272,6 @@ async function sheetBlob(run) {
   run.sheetBlob = blob;
   run.sheetURL = URL.createObjectURL(blob);
   return blob;
-}
-
-function openSheetPreview(run) {
-  state.sheetRun = run;
-  $("sheet-img").src = run.sheetURL;
-  $("crop-bars").hidden = true;
-  $("sheet-crop-toggle").checked = false;
-  $("sheet-preview").hidden = false;
 }
 
 function startBusyCycle(phrases) {
@@ -301,20 +306,22 @@ function hideBusy() {
 async function downloadSideBySide(run) {
   const items = flattenSegments(run.report);
   const total = formatCount(items.length);
-  const renderPhrases = [
+  const phrases = [
     "one sec — setting the type…",
     `counting ${total} equations…`,
     "composing the poster…",
-    "lining up the math…",
+    "packing the PNG…",
+    "handing it to your browser…",
   ];
-  showBusy(renderPhrases[0], `${total} equation${items.length === 1 ? "" : "s"} · 1080×1350 poster`, renderPhrases);
+  showBusy(phrases[0], `${total} equation${items.length === 1 ? "" : "s"} · 1800×1800 poster`, phrases);
   try {
     await new Promise((resolve) => requestAnimationFrame(() => requestAnimationFrame(resolve)));
     const t0 = performance.now();
     await sheetBlob(run);
     const wait = Math.max(0, 420 - (performance.now() - t0));
     if (wait) await new Promise((resolve) => setTimeout(resolve, wait));
-    openSheetPreview(run);
+    downloadURL(run.sheetURL, baseName() + "-side-by-side.png");
+    toast("Side-by-side sheet saved.", "1800×1800 PNG");
   } catch (e) {
     toast("Could not build the poster", e.message || String(e));
   } finally {
@@ -420,6 +427,10 @@ async function saveWork(run) {
     works = works.slice(0, MAX_WORKS);
     const stored = persistWorks(works);
     updateLibraryBadge();
+  fetch("/health")
+    .then((r) => (r.ok ? r.json() : null))
+    .then((d) => { if (d && d.version) $("start-meta").textContent = `v${d.version} · connected`; })
+    .catch(() => {});
     if (stored.length < works.length) {
       toast("Library is full", "The oldest work was removed.");
     }
@@ -1673,17 +1684,6 @@ function bind() {
   });
 
   $("download-btn").addEventListener("click", () => { openSheet(); });
-  $("sheet-close").addEventListener("click", () => { $("sheet-preview").hidden = true; });
-  $("sheet-download").addEventListener("click", () => {
-    const run = state.sheetRun;
-    if (run && run.sheetURL) downloadURL(run.sheetURL, baseName() + "-side-by-side.png");
-  });
-  $("sheet-crop-toggle").addEventListener("change", (e) => {
-    $("crop-bars").hidden = !e.target.checked;
-  });
-  $("sheet-preview").addEventListener("click", (e) => {
-    if (e.target.id === "sheet-preview") $("sheet-preview").hidden = true;
-  });
   $("download-mobile").addEventListener("click", () => { openSheet(); });
   $("scrim").addEventListener("click", () => closeMenus());
   $("run-menu-btn").addEventListener("click", () => { openRunMenu(); });

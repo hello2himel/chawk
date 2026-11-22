@@ -21,7 +21,7 @@
       <span class="libcount" id="library-count" hidden>0</span>
     </button>
 
-    <span class="m hide-m" id="start-meta">v1.1.0 · connected</span>
+    <span class="m hide-m" id="start-meta">v1.1.6 · connected</span>
 
     <button class="btn" id="check-change" hidden>
       <span class="hide-m">Choose another</span><span class="show-m">Change</span>
@@ -290,7 +290,7 @@
   </button>
   <button role="menuitem" class="row dl-item" data-img="sidebyside">
     <svg width="56" height="40" viewBox="0 0 56 40" aria-hidden="true" style="flex:none"><rect width="56" height="40" rx="5" fill="#FAF9F4" stroke="#DDD9CC"></rect><rect x="5" y="5" width="20" height="30" rx="2" fill="#fff" stroke="#DDD9CC"></rect><path d="M9 26C13 16 16 16 21 25" fill="none" stroke="#0F6E5A" stroke-width="1.6" stroke-linecap="round"></path><path d="M31 11h19M31 17h19M31 23h13M31 29h16" stroke="#15161A" stroke-opacity=".45" stroke-width="1.5" stroke-linecap="round"></path></svg>
-    <span><b style="font-size:14px">Side by side</b><br><span class="m">A 4:5 poster — the artwork on the left, the equations on the right</span></span>
+    <span><b style="font-size:14px">Side by side</b><br><span class="m">A square poster — the drawn image on the left, the equations on the right</span></span>
   </button>
   <p class="m" style="font-weight:600;padding:10px 10px 6px;border-top:1px solid #E9E5DA;margin-top:6px">Copy or save the math</p>
   <div style="display:flex;gap:6px;flex-wrap:wrap;padding:0 8px 8px">
@@ -327,33 +327,15 @@
   </div>
 </div>
 
-<div class="sheetpreview" id="sheet-preview" hidden>
-  <div class="sheetcard">
-    <div class="sheethead">
-      <div><b>Side-by-side poster</b><span class="m">1080 × 1350 · 4:5</span></div>
-      <button class="ib" id="sheet-close" aria-label="Close preview"><i class="ri-close-line" aria-hidden="true"></i></button>
-    </div>
-    <div class="sheetstage" id="sheet-stage">
-      <img id="sheet-img" alt="Side-by-side poster">
-      <div class="cropbars" id="crop-bars" hidden>
-        <span class="cropframe"></span>
-        <span class="croplabel">3:4 grid crop</span>
-      </div>
-    </div>
-    <div class="sheetcontrols">
-      <label class="sheetcheck"><input type="checkbox" id="sheet-crop-toggle"> Grid check (3:4)</label>
-      <button class="btn bp" id="sheet-download"><i class="ri-download-line" aria-hidden="true"></i> Download PNG</button>
-    </div>
-    <p class="m" style="text-align:center;margin:0">Text stays 50 px inside every edge.</p>
-  </div>
-</div>
-
 <div class="undo" id="undo" hidden><span id="undo-text"></span><button class="undo-btn" id="undo-btn">Undo</button></div>
 
 <div class="toast" id="toast" role="alert" aria-live="assertive" hidden><span id="toast-text"></span></div>
 
 <input type="file" id="file" accept="image/png,image/jpeg,image/webp,image/bmp,image/tiff" hidden>
 
+<link rel="stylesheet" href="/vendor/katex/katex.min.css">
+<script src="/vendor/katex/katex.min.js" defer></script>
+<script src="/vendor/html2canvas.min.js" defer></script>
 <script src="gl.js" defer></script>
 <script src="math.js" defer></script>
 <script src="app.js" defer></script>
