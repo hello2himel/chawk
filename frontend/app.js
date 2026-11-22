@@ -135,16 +135,36 @@ function roundedRect(g, x, y, w, h, r) {
 }
 
 /* 4:5 social poster, drawn straight onto a 2x canvas (no DOM, no HTML rasteriser). */
-async function croppedDataURL(url, w, h) {
+async function fittedDataURL(url, w, h) {
   const img = await loadImageEl(url);
   const cv = document.createElement("canvas");
   cv.width = w; cv.height = h;
   const g = cv.getContext("2d");
-  const cover = Math.max(w / (img.naturalWidth || 1), h / (img.naturalHeight || 1));
-  const cw = (img.naturalWidth || 1) * cover;
-  const ch = (img.naturalHeight || 1) * cover;
-  g.drawImage(img, (w - cw) / 2, (h - ch) / 2, cw, ch);
+  g.fillStyle = "#F8F7F3";
+  g.fillRect(0, 0, w, h);
+  // fit, never crop: a 2:3 source fills exactly; anything else is letterboxed
+  const scale = Math.min(w / (img.naturalWidth || 1), h / (img.naturalHeight || 1));
+  const iw = (img.naturalWidth || 1) * scale;
+  const ih = (img.naturalHeight || 1) * scale;
+  g.drawImage(img, (w - iw) / 2, (h - ih) / 2, iw, ih);
   return cv.toDataURL("image/png");
+}
+
+function splitAtOperator(text) {
+  let depth = 0;
+  const ops = [];
+  for (let i = 0; i < text.length; i++) {
+    const ch = text[i];
+    if (ch === "(") depth += 1;
+    else if (ch === ")") depth = Math.max(0, depth - 1);
+    else if (depth === 0 && (ch === "+" || ch === "−" || ch === "-")
+      && text[i - 1] === " " && text[i + 1] === " ") ops.push(i);
+  }
+  if (!ops.length) return null;
+  const mid = text.length / 2;
+  let best = ops[0];
+  for (const p of ops) if (Math.abs(p - mid) < Math.abs(best - mid)) best = p;
+  return [text.slice(0, best).trim(), text.slice(best).trim()];
 }
 
 /* 1800x1800 square poster: drawn image left, KaTeX equations right. */
@@ -152,7 +172,7 @@ async function sheetCanvas(run) {
   await document.fonts.ready;
   const items = flattenSegments(run.report);
   const label = formatCount(items.length);
-  const artURL = await croppedDataURL(run.images.redraw || state.url, 1200, 1800);
+  const artURL = await fittedDataURL(run.images.redraw || state.url, 2400, 3600);
 
   const sheet = document.createElement("div");
   sheet.className = "social-sheet";
@@ -196,17 +216,18 @@ async function sheetCanvas(run) {
     const n = document.createElement("span");
     n.className = "n";
     n.textContent = String(rows + 1).padStart(2, "0");
-    const q = document.createElement("span");
+    const maths = document.createElement("div");
+    maths.className = "social-maths";
+    const q = document.createElement("div");
     q.className = "social-math";
     q.innerHTML = renderEquationHTML(p.line, p.model);
-    row.append(n, q);
+    maths.append(q);
+    row.__eq = p;
+    row.append(n, maths);
     list.append(row);
     rows += 1;
     if (rows >= 48) break;
   }
-
-  const fade = document.createElement("div");
-  fade.className = "social-fade";
 
   const footwrap = document.createElement("div");
   footwrap.className = "social-footwrap";
@@ -221,20 +242,38 @@ async function sheetCanvas(run) {
   const headline = document.createElement("div");
   headline.className = "social-headline";
   headline.append(count, word);
-  panel.append(lead, headline, list, fade, footwrap);
+  panel.append(lead, headline, list, footwrap);
   sheet.append(art, panel);
   document.body.append(sheet);
   try {
     await document.fonts.ready;
     await new Promise((resolve) => requestAnimationFrame(() => requestAnimationFrame(resolve)));
-    // fit each equation after KaTeX fonts and layout have settled
-    for (const row of [...list.children]) {
-      const q = row.querySelector(".social-math");
-      let fs = 20;
-      q.style.fontSize = `${fs}px`;
-      while (q.scrollWidth > q.clientWidth && fs > 14) {
+    // fit each equation after KaTeX fonts and layout have settled: give it a
+    // big size, split at an operator when needed, then shrink only as a last
+    // resort so the maths stays readable.
+    const fitLine = (el) => {
+      let fs = 26;
+      el.style.fontSize = `${fs}px`;
+      while (el.scrollWidth > el.clientWidth && fs > 20) {
         fs -= 1;
-        q.style.fontSize = `${fs}px`;
+        el.style.fontSize = `${fs}px`;
+      }
+    };
+    for (const row of [...list.children]) {
+      const maths = row.querySelector(".social-maths");
+      const first = maths.querySelector(".social-math");
+      fitLine(first);
+      if (first.scrollWidth > first.clientWidth && row.__eq) {
+        const parts = splitAtOperator(row.__eq.line);
+        if (parts) {
+          first.innerHTML = renderEquationHTML(parts[0], row.__eq.model);
+          fitLine(first);
+          const second = document.createElement("div");
+          second.className = "social-math cont";
+          second.innerHTML = renderEquationHTML(parts[1], row.__eq.model);
+          maths.append(second);
+          fitLine(second);
+        }
       }
     }
     // drop rows that do not fit the column
@@ -256,7 +295,7 @@ async function sheetCanvas(run) {
       count.style.fontSize = `${size}px`;
     }
     return await html2canvas(sheet, {
-      backgroundColor: "#F8F7F3", scale: 1, logging: false,
+      backgroundColor: "#F8F7F3", scale: 2, logging: false,
       width: 1800, height: 1800, windowWidth: 1800, windowHeight: 1800,
     });
   } finally {
@@ -321,7 +360,7 @@ async function downloadSideBySide(run) {
     const wait = Math.max(0, 420 - (performance.now() - t0));
     if (wait) await new Promise((resolve) => setTimeout(resolve, wait));
     downloadURL(run.sheetURL, baseName() + "-side-by-side.png");
-    toast("Side-by-side sheet saved.", "1800×1800 PNG");
+    toast("Side-by-side sheet saved.", "3600×3600 PNG");
   } catch (e) {
     toast("Could not build the poster", e.message || String(e));
   } finally {

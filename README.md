@@ -79,14 +79,14 @@ The **Download** menu offers:
 
 - **Drawing + equations** — your drawing with the fitted curves on top.
 - **Equations only** — the drawing rebuilt from the math alone.
-- **Side by side** — a square 1800×1800 social poster: the drawing rebuilt
+- **Side by side** — a square 3600×3600 social poster: the drawing rebuilt
   from the equations in a 2:3 window on the left, and "drawn using", the
   count, a legible numbered KaTeX list of the real equations and the project
   footer on the right. It downloads directly.
 - **Desmos, LaTeX, text and JSON** — the math, ready for other tools.
 
-The side-by-side poster is a 1800×1800 square, composed as DOM + KaTeX and
-rasterised once. The drawing gets a true 2:3 window (1200×1800); the right
+The side-by-side poster is a 3600×3600 square (the 1800 design rasterised at
+2× for crisp text), composed as DOM + KaTeX. The drawing gets a true 2:3 window (1200×1800); other aspect ratios are fitted inside it, never cropped. The right
 column carries "drawn using", the count, a numbered KaTeX list of the actual
 equations and the GitHub footer. The list is filled only until the column is
 full, and the poster is cached per run.
