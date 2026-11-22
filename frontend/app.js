@@ -223,13 +223,9 @@ async function sheetCanvas(run) {
   word.className = "social-word";
   word.innerHTML = '<span class="hl"><i>equations</i></span>';
 
-  const headline = document.createElement("div");
-  headline.className = "social-headline";
-  headline.append(count, word);
-
   const head = document.createElement("div");
   head.className = "social-head";
-  head.append(lead, headline);
+  head.append(lead, count, word);
 
   const list = document.createElement("div");
   list.className = "social-list";
@@ -239,13 +235,13 @@ async function sheetCanvas(run) {
 
   const footwrap = document.createElement("div");
   footwrap.className = "social-footwrap";
-  const foot = document.createElement("div");
-  foot.className = "social-foot";
-  foot.innerHTML = `<svg width="22" height="22" viewBox="0 0 16 16" fill="currentColor" aria-hidden="true"><path d="${GITHUB_MARK}"></path></svg><span>OPEN SOURCE</span>`;
+  const brand = document.createElement("div");
+  brand.className = "social-brand";
+  brand.innerHTML = `<svg width="30" height="30" viewBox="0 0 64 64" aria-hidden="true"><g transform="rotate(-24 32 32)"><rect x="18" y="4" width="28" height="56" rx="8" fill="#fff" stroke="#15161A" stroke-width="3"></rect><path d="M18 46h28v6a8 8 0 0 1-8 8H26a8 8 0 0 1-8-8z" fill="#ECE8DD" stroke="#15161A" stroke-width="3"></path><circle cx="26" cy="22" r="6" fill="#fff" stroke="#15161A" stroke-width="2.5"></circle><circle cx="38" cy="22" r="6" fill="#fff" stroke="#15161A" stroke-width="2.5"></circle><circle cx="27" cy="23" r="2" fill="#15161A"></circle><circle cx="37" cy="23" r="2" fill="#15161A"></circle><path d="M24 36c3-5 5-5 8 0s5 5 8 0" fill="none" stroke="#1F3FD1" stroke-width="3" stroke-linecap="round"></path></g></svg><span class="social-brandname">Chawk</span><span class="social-tag">open source</span>`;
   const url = document.createElement("div");
   url.className = "social-url";
   url.textContent = "github.com/hello2himel/chawk";
-  footwrap.append(foot, url);
+  footwrap.append(brand, url);
 
   const pool = [];
   for (const it of items) {
@@ -256,9 +252,6 @@ async function sheetCanvas(run) {
   pool.slice(0, 24).forEach((p, i) => {
     const row = document.createElement("div");
     row.className = "social-eq";
-    const n = document.createElement("span");
-    n.className = "n";
-    n.textContent = String(i + 1).padStart(2, "0");
     const maths = document.createElement("div");
     maths.className = "social-maths";
     const q = document.createElement("div");
@@ -266,9 +259,13 @@ async function sheetCanvas(run) {
     q.innerHTML = renderEquationHTML(p.line, p.model);
     maths.append(q);
     row.__eq = p;
-    row.append(n, maths);
+    row.append(maths);
     list.append(row);
   });
+
+  const fade = document.createElement("div");
+  fade.className = "social-fade";
+  list.append(fade);
 
   panel.append(head, list, more, footwrap);
   sheet.append(art, panel);
@@ -301,16 +298,18 @@ async function sheetCanvas(run) {
         }
       }
     }
-    // full-width list: keep every row that fits, then close with the remainder
-    while (list.scrollHeight > list.clientHeight && list.lastElementChild) {
-      list.lastElementChild.remove();
+    // let the last row run under the bottom fade, so the list reads as continuing
+    const cut = list.clientHeight;
+    let shown = 0;
+    for (const row of list.querySelectorAll(".social-eq")) {
+      if (row.offsetTop < cut) shown += 1;
     }
-    const shown = list.children.length;
     if (total > shown) more.textContent = `… and ${formatCount(total - shown)} more.`;
+    const leadW = lead.getBoundingClientRect().width;
     const drawW = word.getBoundingClientRect().width;
     let size = 110;
     count.style.fontSize = `${size}px`;
-    while (size > 80 && count.getBoundingClientRect().width + 14 + drawW > 1016) {
+    while (size > 80 && leadW + 14 + count.getBoundingClientRect().width + 14 + drawW > 1016) {
       size -= 2;
       count.style.fontSize = `${size}px`;
     }
