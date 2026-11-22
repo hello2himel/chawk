@@ -272,3 +272,20 @@ input[type=range]{width:100%;accent-color:#1F3FD1;min-height:32px}
  .libtools{width:100%}
  .libtools .btn{flex:1}
 }
+
+/* ---------- side-by-side poster preview ---------- */
+.sheetpreview{position:fixed;inset:0;z-index:40;display:flex;align-items:center;justify-content:center;background:rgba(21,22,26,.5);backdrop-filter:blur(2px);padding:18px}
+.sheetcard{background:#FAF9F4;border:1px solid #DDD9CC;border-radius:16px;padding:14px 14px 12px;display:flex;flex-direction:column;gap:10px;max-width:min(94vw,680px);max-height:94vh;box-shadow:0 24px 60px rgba(21,22,26,.28)}
+.sheethead{display:flex;align-items:flex-start;justify-content:space-between;gap:12px}
+.sheethead b{font-size:14px}
+.sheethead .m{display:block;margin-top:2px}
+.sheetstage{position:relative;display:inline-block;align-self:center;line-height:0;max-width:100%;max-height:64vh}
+.sheetstage img{display:block;max-width:100%;max-height:64vh;width:auto;height:auto;border-radius:8px}
+.cropbars{position:absolute;inset:0;pointer-events:none}
+.cropbars::before,.cropbars::after{content:"";position:absolute;top:0;bottom:0;width:3.148%;background:rgba(21,22,26,.58)}
+.cropbars::before{left:0}
+.cropbars::after{right:0}
+.cropframe{position:absolute;top:0;bottom:0;left:3.148%;right:3.148%;border:1.5px dashed rgba(255,255,255,.92)}
+.croplabel{position:absolute;top:8px;left:50%;transform:translateX(-50%);background:#15161A;color:#fff;font:600 9px/1 'JetBrains Mono',monospace;padding:4px 7px;border-radius:5px;letter-spacing:.06em;text-transform:uppercase;white-space:nowrap}
+.sheetcontrols{display:flex;align-items:center;justify-content:space-between;gap:10px;flex-wrap:wrap}
+.sheetcheck{display:flex;align-items:center;gap:6px;font-size:13px;font-weight:600;cursor:pointer}

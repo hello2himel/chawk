@@ -106,166 +106,190 @@ function wrapLine(ctx, text, maxW) {
   return lines;
 }
 
-const SHEET_ROWS = 80;  // more than can fit at 1800px; keeps the browser light
+const GITHUB_MARK = "M8 0C3.58 0 0 3.58 0 8c0 3.54 2.29 6.53 5.47 7.59.4.07.55-.17.55-.38 0-.19-.01-.82-.01-1.49-2.01.37-2.53-.49-2.69-.94-.09-.23-.48-.94-.82-1.13-.28-.15-.68-.52-.01-.53.63-.01 1.08.58 1.23.82.72 1.21 1.87.87 2.33.66.07-.52.28-.87.51-1.07-1.78-.2-3.64-.89-3.64-3.95 0-.87.31-1.59.82-2.15-.08-.2-.36-1.02.08-2.12 0 0 .67-.21 2.2.82.64-.18 1.32-.27 2-.27s1.36.09 2 .27c1.53-1.04 2.2-.82 2.2-.82.44 1.1.16 1.92.08 2.12.51.56.82 1.27.82 2.15 0 3.07-1.87 3.75-3.65 3.95.29.25.54.73.54 1.48 0 1.07-.01 1.93-.01 2.2 0 .21.15.46.55.38A8.01 8.01 0 0016 8c0-4.42-3.58-8-8-8z";
 
-function buildSideBySideSheet(run) {
-  const all = flattenSegments(run.report);
-  const total = all.length;
-  const items = all.slice(0, SHEET_ROWS);
-  const sheet = document.createElement("div");
-  sheet.className = "sbs-sheet";
-
-  const left = document.createElement("div");
-  left.className = "sbs-left";
-  const img = document.createElement("img");
-  img.alt = "";
-  img.src = run.images.redraw;
-  left.append(img);
-
-  const right = document.createElement("div");
-  right.className = "sbs-right";
-  const head = document.createElement("div");
-  head.className = "sbs-head";
-  head.innerHTML = `${total} equation${total === 1 ? "" : "s"}, ` +
-    `<span class="hl"><i>plotted</i></span>`;
-  const rule = document.createElement("div");
-  rule.className = "sbs-rule";
-  const list = document.createElement("div");
-  list.className = "sbs-list";
-  items.forEach((item, i) => {
-    const row = document.createElement("div");
-    row.className = "sbs-row";
-    const n = document.createElement("span");
-    n.className = "sbs-n";
-    n.textContent = `${i + 1}`;
-    const eq = document.createElement("div");
-    eq.className = "sbs-eq";
-    String(item.seg.equation || "").split("\n").forEach((line) => {
-      const el = document.createElement("span");
-      el.className = "sbs-line";
-      el.innerHTML = renderEquationHTML(line, item.seg.model);
-      eq.append(el);
-    });
-    row.append(n, eq);
-    list.append(row);
-  });
-  const more = document.createElement("div");
-  more.className = "sbs-more";
-  more.style.visibility = "hidden";
-  more.textContent = " ";
-  right.append(head, rule, list, more);
-  sheet.append(left, right);
-  return { sheet, list, more, items, total, img };
+function formatCount(n) {
+  return Number(n || 0).toLocaleString("en-US");
 }
 
-async function sideBySideCanvas(run) {
-  if (typeof html2canvas !== "function") return plainSideBySideCanvas(run);
-  const { sheet, list, more, items, total, img } = buildSideBySideSheet(run);
-  document.body.append(sheet);
-  try {
-    await document.fonts.ready;
-    if (img.decode) { try { await img.decode(); } catch { /* already broken */ } }
-    // html2canvas ignores object-fit, so size the drawing explicitly.
-    const box = sheet.querySelector(".sbs-left");
-    const availW = box.clientWidth - 32;
-    const availH = box.clientHeight - 32;
-    const ar = (img.naturalWidth || 1) / (img.naturalHeight || 1);
-    let iw = availW, ih = iw / ar;
-    if (ih > availH) { ih = availH; iw = ih * ar; }
-    img.style.width = `${Math.floor(iw)}px`;
-    img.style.height = `${Math.floor(ih)}px`;
-    await new Promise((resolve) => requestAnimationFrame(() => requestAnimationFrame(resolve)));
-    // Keep only the equations that fit, then say where the rest went.
-    const listBottom = list.getBoundingClientRect().bottom;
-    let shown = 0;
-    for (const row of [...list.children]) {
-      if (row.getBoundingClientRect().bottom <= listBottom + 0.5) shown += 1;
-      else row.remove();
-    }
-    if (shown < total) {
-      more.textContent = `first ${shown} of ${total} · full list in the text export`;
-      more.style.visibility = "visible";
-    }
-    return await html2canvas(sheet, {
-      backgroundColor: "#FAF9F4", scale: 1, logging: false,
-      width: sheet.offsetWidth, height: sheet.offsetHeight,
-      windowWidth: sheet.offsetWidth, windowHeight: sheet.offsetHeight,
-    });
-  } finally {
-    sheet.remove();
+function fitTextSize(g, text, maxW, maxSize, minSize, family, weight = "700", style = "") {
+  let size = maxSize;
+  const pre = style ? `${style} ` : "";
+  while (size > minSize) {
+    g.font = `${pre}${weight} ${size}px ${family}`;
+    if (g.measureText(text).width <= maxW) break;
+    size -= 2;
   }
+  return size;
 }
 
-async function plainSideBySideCanvas(run) {
+function roundedRect(g, x, y, w, h, r) {
+  g.beginPath();
+  if (typeof g.roundRect === "function") { g.roundRect(x, y, w, h, r); return; }
+  g.moveTo(x + r, y);
+  g.arcTo(x + w, y, x + w, y + h, r);
+  g.arcTo(x + w, y + h, x, y + h, r);
+  g.arcTo(x, y + h, x, y, r);
+  g.arcTo(x, y, x + w, y, r);
+  g.closePath();
+}
+
+/* 4:5 social poster, drawn straight onto a 2x canvas (no DOM, no HTML rasteriser). */
+async function sheetCanvas(run) {
   await document.fonts.ready;
   const items = flattenSegments(run.report);
-  const size = 2200;
-  const cv = document.createElement("canvas");
-  cv.width = size; cv.height = size;
-  const g = cv.getContext("2d");
-  const paper = "#FAF9F4", ink = "#15161A", grey = "#5A5D68", rule = "#DDD9CC";
+  const total = items.length;
+  const label = formatCount(total);
+  const W = 1080, H = 1350, S = 2;
+  const hi = document.createElement("canvas");
+  hi.width = W * S; hi.height = H * S;
+  const g = hi.getContext("2d");
+  g.scale(S, S);
+
+  const LEFT = 648, PANEL = W - LEFT, SAFE = 50;
+  const TX = LEFT + SAFE, TW = PANEL - SAFE * 2;
+  const paper = "#F8F7F3", ink = "#111111", accent = "#FFE066";
+
   g.fillStyle = paper;
-  g.fillRect(0, 0, size, size);
+  g.fillRect(0, 0, W, H);
 
-  const half = size / 2;
-  g.strokeStyle = rule;
-  g.lineWidth = 2;
-  g.beginPath(); g.moveTo(half, 0); g.lineTo(half, size); g.stroke();
+  // left: a 2:3 artwork window at the top — the usual source aspect, no
+  // letterboxing and no forced full-height crop.
+  const img = await loadImageEl(state.url || run.images.redraw);
+  const ART_W = LEFT, ART_H = Math.round(LEFT * 1.5);
+  const cover = Math.max(ART_W / (img.naturalWidth || 1), ART_H / (img.naturalHeight || 1));
+  const cw = (img.naturalWidth || 1) * cover;
+  const ch = (img.naturalHeight || 1) * cover;
+  g.save();
+  g.beginPath(); g.rect(0, 0, ART_W, ART_H); g.clip();
+  g.drawImage(img, (ART_W - cw) / 2, (ART_H - ch) / 2, cw, ch);
+  g.restore();
 
-  const pad = 64;
-  const img = await loadImageEl(run.images.redraw);
-  const availW = half - pad * 2;
-  const availH = size - pad * 2;
-  const ar = (img.naturalWidth || 1) / (img.naturalHeight || 1);
-  let w = availW, h = w / ar;
-  if (h > availH) { h = availH; w = h * ar; }
-  g.fillStyle = "#FFFFFF";
-  g.fillRect(pad - 8, pad - 8, availW + 16, availH + 16);
-  g.drawImage(img, pad + (availW - w) / 2, pad + (availH - h) / 2, w, h);
-  g.fillStyle = grey;
-  g.font = "500 22px 'JetBrains Mono', monospace";
-  g.fillText("FIG. 1 · DRAWN FROM THE EQUATIONS", pad, size - 36);
-
-  const x = half + pad;
-  const maxW = size - x - pad;
+  // count + "equations" in the paper band under the artwork
+  const headX = 50, headW = LEFT - 100;
+  const numTop = ART_H + 62;
+  const numSize = fitTextSize(g, label, headW, 168, 64, "'STIX Two Text', Georgia, serif", "800");
+  g.font = `800 ${numSize}px 'STIX Two Text', Georgia, serif`;
   g.fillStyle = ink;
-  g.font = "700 68px 'Instrument Sans', sans-serif";
-  g.fillText(`${items.length} equations`, x, 128);
-  g.fillStyle = grey;
-  g.font = "500 26px 'Instrument Sans', sans-serif";
-  g.fillText("plotted from the ink, one per curve", x, 172);
-  g.strokeStyle = rule;
-  g.lineWidth = 2;
-  g.beginPath(); g.moveTo(x, 204); g.lineTo(size - pad, 204); g.stroke();
+  g.textBaseline = "alphabetic";
+  const numBaseline = numTop + numSize * 0.84;
+  g.fillText(label, headX, numBaseline);
 
-  const n = items.length;
-  const body = n <= 8 ? { font: 40, lineH: 50, gap: 18 }
-    : n <= 24 ? { font: 32, lineH: 42, gap: 14 }
-    : { font: 26, lineH: 33, gap: 12 };
-  let y = 252;
-  const bottom = size - 80;
-  let shown = 0;
-  for (let i = 0; i < n; i++) {
-    const eq = (items[i].seg.equation || "").replace(/\s*\n\s*/g, "  ;  ");
-    const text = `${i + 1}.  ${eq}`;
-    g.font = `400 ${body.font}px 'STIX Two Text', Georgia, serif`;
-    const lines = wrapLine(g, text, maxW);
-    if (y + lines.length * body.lineH > bottom) break;
-    g.fillStyle = ink;
-    for (const line of lines) {
-      g.fillText(line, x, y);
-      y += body.lineH;
+  const wordSize = fitTextSize(g, "equations", headW, 52, 28, "'STIX Two Text', Georgia, serif", "700", "italic");
+  g.font = `italic 700 ${wordSize}px 'STIX Two Text', Georgia, serif`;
+  const wordW = g.measureText("equations").width;
+  const wordBaseline = numBaseline + wordSize * 1.18;
+  g.fillStyle = accent;
+  g.fillRect(headX - 3, wordBaseline - wordSize * 0.58, Math.min(headW, wordW) + 6, wordSize * 0.7);
+  g.fillStyle = ink;
+  g.fillText("equations", headX, wordBaseline);
+
+  // equation texture: actual fitted equations, clipped and faded
+  const pool = [];
+  for (const it of items) {
+    for (const line of String(it.seg.equation || "").split("\n")) {
+      if (line.trim()) pool.push(line.trim());
     }
-    y += body.gap;
-    shown += 1;
   }
-  if (shown < items.length) {
-    g.fillStyle = grey;
-    g.font = "500 22px 'Instrument Sans', sans-serif";
-    g.fillText(`Showing the first ${shown} of ${items.length} · the rest are in the text export`,
-      x, size - 36);
+  if (!pool.length) pool.push("x(t) = 0");
+  const wallTop = 50;
+  g.save();
+  g.beginPath(); g.rect(LEFT, wallTop, PANEL, H - wallTop); g.clip();
+  g.font = "400 11px 'JetBrains Mono', monospace";
+  g.fillStyle = "#B7B3AB";
+  g.textBaseline = "top";
+  let y = wallTop, i = 0;
+  while (y < H) {
+    const line = pool[i % pool.length];
+    g.fillText(line.length > 50 ? line.slice(0, 50) : line, TX, y);
+    y += 16;
+    i += 1;
   }
-  return cv;
+  g.restore();
+
+  const fade = g.createLinearGradient(0, 860, 0, 1090);
+  fade.addColorStop(0, "rgba(248,247,243,0)");
+  fade.addColorStop(1, "rgba(248,247,243,1)");
+  g.fillStyle = fade;
+  g.fillRect(LEFT, 860, PANEL, 230);
+  // Clean band for the card and footer: no texture behind readable text.
+  g.fillStyle = paper;
+  g.fillRect(LEFT, 1088, PANEL, H - 1088);
+
+  // one equation, big, in an outlined card
+  const cardX = TX, cardY = 990, cardW = TW, cardH = 178;
+  g.fillStyle = paper;
+  g.strokeStyle = ink;
+  g.lineWidth = 3;
+  roundedRect(g, cardX, cardY, cardW, cardH, 14);
+  g.fill();
+  g.stroke();
+  g.fillStyle = "#6F6B63";
+  g.font = "700 10px 'JetBrains Mono', monospace";
+  g.textBaseline = "top";
+  g.fillText(`EQUATION #1 OF ${label}`, cardX + 16, cardY + 14);
+
+  const first = (items[0]?.seg.equation || "x(t) = 0").split("\n")[0].trim();
+  let eqSize = fitTextSize(g, first, cardW - 32, 26, 16, "'STIX Two Text', Georgia, serif", "700");
+  g.font = `700 ${eqSize}px 'STIX Two Text', Georgia, serif`;
+  let eqLines = wrapLine(g, first, cardW - 32);
+  if (eqLines.length > 3) {
+    eqSize = 18;
+    g.font = `700 ${eqSize}px 'STIX Two Text', Georgia, serif`;
+    eqLines = wrapLine(g, first, cardW - 32);
+  }
+  g.fillStyle = ink;
+  let ey = cardY + 50;
+  for (const line of eqLines.slice(0, 3)) {
+    g.fillText(line, cardX + 16, ey);
+    ey += eqSize * 1.16;
+  }
+
+  // footer
+  const footX = TX, footY = 1190;
+  g.save();
+  g.translate(footX, footY - 12);
+  g.scale(22 / 16, 22 / 16);
+  g.fillStyle = ink;
+  g.fill(new Path2D(GITHUB_MARK));
+  g.restore();
+
+  g.fillStyle = ink;
+  g.textBaseline = "middle";
+  g.font = "800 26px 'Instrument Sans', sans-serif";
+  g.fillText("OPEN SOURCE", footX + 32, footY);
+
+  const url = "github.com/hello2himel/chawk";
+  const urlSize = fitTextSize(g, url, TW, 24, 15, "'Instrument Sans', sans-serif", "700");
+  g.font = `700 ${urlSize}px 'Instrument Sans', sans-serif`;
+  g.fillText(url, footX, footY + 30);
+
+  g.font = "600 21px 'Instrument Sans', sans-serif";
+  g.fillStyle = "#5A5D68";
+  g.fillText("@hello2himel", footX, footY + 58);
+
+  const out = document.createElement("canvas");
+  out.width = W; out.height = H;
+  out.getContext("2d").drawImage(hi, 0, 0, W, H);
+  return out;
+}
+
+async function sheetBlob(run) {
+  if (run.sheetBlob) return run.sheetBlob;
+  const cv = await sheetCanvas(run);
+  const blob = await new Promise((resolve) => cv.toBlob(resolve, "image/png"));
+  if (!blob) throw new Error("The poster could not be encoded.");
+  run.sheetBlob = blob;
+  run.sheetURL = URL.createObjectURL(blob);
+  return blob;
+}
+
+function openSheetPreview(run) {
+  state.sheetRun = run;
+  $("sheet-img").src = run.sheetURL;
+  $("crop-bars").hidden = true;
+  $("sheet-crop-toggle").checked = false;
+  $("sheet-preview").hidden = false;
 }
 
 function startBusyCycle(phrases) {
@@ -274,7 +298,7 @@ function startBusyCycle(phrases) {
   const show = (text) => {
     const el = $("busy-title");
     el.classList.remove("swap");
-    void el.offsetWidth;  // restart the little pop-in
+    void el.offsetWidth;
     el.textContent = text;
     el.classList.add("swap");
   };
@@ -299,33 +323,23 @@ function hideBusy() {
 
 async function downloadSideBySide(run) {
   const items = flattenSegments(run.report);
-  const total = items.length.toLocaleString();
+  const total = formatCount(items.length);
   const renderPhrases = [
     "one sec — setting the type…",
     `counting ${total} equations…`,
-    "drawing the right-hand column…",
-    "thinking in cosines…",
+    "composing the poster…",
     "lining up the math…",
   ];
-  const savePhrases = [
-    "packing the pixels…",
-    "zipping up the PNG…",
-    "handing it to your browser…",
-    "almost there…",
-  ];
-  showBusy(renderPhrases[0],
-    `${total} equation${items.length === 1 ? "" : "s"} · 1800×1800 PNG`, renderPhrases);
+  showBusy(renderPhrases[0], `${total} equation${items.length === 1 ? "" : "s"} · 1080×1350 poster`, renderPhrases);
   try {
-    // Let the overlay paint before the canvas work starts.
     await new Promise((resolve) => requestAnimationFrame(() => requestAnimationFrame(resolve)));
-    const cv = await sideBySideCanvas(run);
-    startBusyCycle(savePhrases);
-    const blob = await new Promise((resolve) => cv.toBlob(resolve, "image/png"));
-    if (!blob) throw new Error("The sheet could not be encoded.");
-    downloadURL(URL.createObjectURL(blob), baseName() + "-side-by-side.png");
-    toast("Side-by-side sheet saved.", "PNG · 1800×1800");
+    const t0 = performance.now();
+    await sheetBlob(run);
+    const wait = Math.max(0, 420 - (performance.now() - t0));
+    if (wait) await new Promise((resolve) => setTimeout(resolve, wait));
+    openSheetPreview(run);
   } catch (e) {
-    toast("Could not build the sheet", e.message || String(e));
+    toast("Could not build the poster", e.message || String(e));
   } finally {
     hideBusy();
   }
@@ -595,6 +609,9 @@ async function chooseFile(file) {
   if (state.url) URL.revokeObjectURL(state.url);
   for (const run of state.runs) {
     for (const url of Object.values(run.images)) if (url) URL.revokeObjectURL(url);
+    if (run.sheetURL) URL.revokeObjectURL(run.sheetURL);
+    run.sheetBlob = null;
+    run.sheetURL = null;
   }
   previewCache = null;
   state.file = file; state.name = file.name; state.bytes = file.size;
@@ -1679,6 +1696,17 @@ function bind() {
   });
 
   $("download-btn").addEventListener("click", () => { openSheet(); });
+  $("sheet-close").addEventListener("click", () => { $("sheet-preview").hidden = true; });
+  $("sheet-download").addEventListener("click", () => {
+    const run = state.sheetRun;
+    if (run && run.sheetURL) downloadURL(run.sheetURL, baseName() + "-side-by-side.png");
+  });
+  $("sheet-crop-toggle").addEventListener("change", (e) => {
+    $("crop-bars").hidden = !e.target.checked;
+  });
+  $("sheet-preview").addEventListener("click", (e) => {
+    if (e.target.id === "sheet-preview") $("sheet-preview").hidden = true;
+  });
   $("download-mobile").addEventListener("click", () => { openSheet(); });
   $("scrim").addEventListener("click", () => closeMenus());
   $("run-menu-btn").addEventListener("click", () => { openRunMenu(); });
