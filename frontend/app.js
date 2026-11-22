@@ -135,18 +135,41 @@ function roundedRect(g, x, y, w, h, r) {
 }
 
 /* 4:5 social poster, drawn straight onto a 2x canvas (no DOM, no HTML rasteriser). */
-async function fittedDataURL(url, w, h) {
+async function fittedDataURL(url, w, h, pad = 0) {
   const img = await loadImageEl(url);
   const cv = document.createElement("canvas");
   cv.width = w; cv.height = h;
   const g = cv.getContext("2d");
-  g.fillStyle = "#F8F7F3";
+  g.fillStyle = "#FAF9F4";
   g.fillRect(0, 0, w, h);
-  // fit, never crop: a 2:3 source fills exactly; anything else is letterboxed
-  const scale = Math.min(w / (img.naturalWidth || 1), h / (img.naturalHeight || 1));
+  // graph-paper mat: the padding reads as a sheet the drawing sits on
+  const step = 80;             // 40 css px
+  const major = step * 5;
+  for (let x = 0; x <= w; x += step) {
+    const isMajor = x % major === 0;
+    g.strokeStyle = isMajor ? "rgba(31,63,209,.16)" : "rgba(31,63,209,.075)";
+    g.lineWidth = isMajor ? 3 : 2;
+    g.beginPath(); g.moveTo(x, 0); g.lineTo(x, h); g.stroke();
+  }
+  for (let y = 0; y <= h; y += step) {
+    const isMajor = y % major === 0;
+    g.strokeStyle = isMajor ? "rgba(31,63,209,.16)" : "rgba(31,63,209,.075)";
+    g.lineWidth = isMajor ? 3 : 2;
+    g.beginPath(); g.moveTo(0, y); g.lineTo(w, y); g.stroke();
+  }
+  // fit, never crop: a 2:3 source fills the padded window; anything else is
+  // letterboxed inside it
+  const innerW = Math.max(1, w - pad * 2);
+  const innerH = Math.max(1, h - pad * 2);
+  const scale = Math.min(innerW / (img.naturalWidth || 1), innerH / (img.naturalHeight || 1));
   const iw = (img.naturalWidth || 1) * scale;
   const ih = (img.naturalHeight || 1) * scale;
-  g.drawImage(img, (w - iw) / 2, (h - ih) / 2, iw, ih);
+  const ix = pad + (innerW - iw) / 2;
+  const iy = pad + (innerH - ih) / 2;
+  g.drawImage(img, ix, iy, iw, ih);
+  g.strokeStyle = "rgba(21,22,26,.12)";
+  g.lineWidth = 2;
+  g.strokeRect(ix, iy, iw, ih);
   return cv.toDataURL("image/png");
 }
 
@@ -172,7 +195,7 @@ async function sheetCanvas(run) {
   await document.fonts.ready;
   const items = flattenSegments(run.report);
   const label = formatCount(items.length);
-  const artURL = await fittedDataURL(run.images.redraw || state.url, 2400, 3600);
+  const artURL = await fittedDataURL(run.images.redraw || state.url, 2400, 3600, 128);
 
   const sheet = document.createElement("div");
   sheet.className = "social-sheet";
