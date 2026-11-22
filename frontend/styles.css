@@ -311,3 +311,6 @@ input[type=range]{width:100%;accent-color:#1F3FD1;min-height:32px}
 .social-foot{display:flex;align-items:center;gap:10px;font-weight:800;font-size:26px;color:#111}
 .social-foot svg{display:block}
 .social-url{font-weight:700;font-size:24px;margin-top:8px;white-space:nowrap;color:#111}
+
+.social-list{position:relative}
+.social-fade{position:absolute;left:0;right:0;bottom:0;height:72px;background:linear-gradient(rgba(248,247,243,0),#F8F7F3);pointer-events:none}

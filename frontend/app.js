@@ -210,7 +210,8 @@ async function sheetCanvas(run) {
   }
 
   let rows = 0;
-  for (const p of pool) {
+  for (let i = 0; i < 48 && pool.length; i++) {
+    const p = pool[i % pool.length];
     const row = document.createElement("div");
     row.className = "social-eq";
     const n = document.createElement("span");
@@ -226,8 +227,10 @@ async function sheetCanvas(run) {
     row.append(n, maths);
     list.append(row);
     rows += 1;
-    if (rows >= 48) break;
   }
+  const fade = document.createElement("div");
+  fade.className = "social-fade";
+  list.append(fade);
 
   const footwrap = document.createElement("div");
   footwrap.className = "social-footwrap";
@@ -259,7 +262,7 @@ async function sheetCanvas(run) {
         el.style.fontSize = `${fs}px`;
       }
     };
-    for (const row of [...list.children]) {
+    for (const row of list.querySelectorAll(".social-eq")) {
       const maths = row.querySelector(".social-maths");
       const first = maths.querySelector(".social-math");
       fitLine(first);
@@ -275,11 +278,6 @@ async function sheetCanvas(run) {
           fitLine(second);
         }
       }
-    }
-    // drop rows that do not fit the column
-    while (list.scrollHeight > list.clientHeight + 2 && list.lastElementChild) {
-      list.lastElementChild.remove();
-      rows -= 1;
     }
     // keep the count huge, but let it share one line with "equations" when
     // that is possible; only wrap when it genuinely cannot fit.
