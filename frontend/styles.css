@@ -294,7 +294,7 @@ input[type=range]{width:100%;accent-color:#1F3FD1;min-height:32px}
 .social-sheet{position:absolute;left:-20000px;top:0;width:1080px;height:1350px;display:flex;flex-direction:column;background:#F8F7F3;color:#111;font-family:'Instrument Sans',sans-serif}
 .social-art{width:1080px;height:720px;flex:none;overflow:hidden;background:#F8F7F3}
 .social-art img{display:block;width:1080px;height:720px}
-.social-panel{width:1080px;height:630px;padding:28px 32px;box-sizing:border-box;display:flex;flex-direction:column;gap:8px}
+.social-panel{width:1080px;height:630px;padding:14px 32px 28px;box-sizing:border-box;display:flex;flex-direction:column;gap:8px}
 .social-top{display:flex;gap:24px;align-items:center;flex:1;min-height:0}
 .social-copy{width:420px;flex:none;display:flex;flex-direction:column}
 .social-head{display:flex;flex-wrap:wrap;align-items:baseline;justify-content:center;column-gap:14px;row-gap:0;width:100%}
