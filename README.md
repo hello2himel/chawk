@@ -6,9 +6,9 @@ Chawk reads a line drawing, finds a real equation for every stroke, and redraws 
 picture using nothing but those equations. It runs on your own machine — no account,
 no upload to someone else's server.
 
-<img src="docs/demo.webp" width="400" alt="A stylised sunset portrait beside the 2,655 equations that redraw it">
+<img src="docs/demo.webp" width="400" alt="A serene blue river with boats beside the 1,475 equations that redraw it">
 
-*A demo sheet: the drawing on the left, its 2,655 equations on the right.*
+*A demo poster: the drawing on the left, its 1,475 equations on the right.*
 
 ## Quick start
 
