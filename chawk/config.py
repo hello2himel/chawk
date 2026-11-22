@@ -62,7 +62,7 @@ class Config:
     color_min_area: float = 40.0
     """Colour regions smaller than this (working px) are dropped."""
 
-    fill_edge_width: float = 2.2
+    fill_edge_width: float = 1.2
     """Edge stroke (pt) used to overlap neighbouring fills; without it the
     paper shows through the seams as dark specks."""
 

@@ -38,6 +38,7 @@ def is_colorful(image: np.ndarray, cfg: Config) -> bool:
     lab = cv2.cvtColor(small, cv2.COLOR_BGR2LAB).reshape(-1, 3).astype(np.float32)
     k = min(8, len(lab))
     criteria = (cv2.TERM_CRITERIA_EPS + cv2.TERM_CRITERIA_MAX_ITER, 12, 1.0)
+    cv2.setRNGSeed(0)
     _c, _l, centers = cv2.kmeans(lab, k, None, criteria, 1, cv2.KMEANS_PP_CENTERS)
     centers = centers.astype(np.float32)
     d = ((lab[:, None, :] - centers[None, :, :]) ** 2).sum(axis=2)
@@ -69,6 +70,7 @@ def vectorize(image: np.ndarray, cfg: Config) -> tuple[list[FillRegion], tuple[i
     step = max(1, len(flat) // 60_000)
     samples = flat[::step]
     criteria = (cv2.TERM_CRITERIA_EPS + cv2.TERM_CRITERIA_MAX_ITER, 20, 1.0)
+    cv2.setRNGSeed(0)
     _compactness, _labels, centers = cv2.kmeans(
         samples, k, None, criteria, 2, cv2.KMEANS_PP_CENTERS)
     centers = centers.astype(np.float32)

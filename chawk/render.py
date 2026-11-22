@@ -102,7 +102,8 @@ def _signed_area(poly: np.ndarray) -> float:
     return 0.5 * float(np.sum(x * np.roll(y, -1) - np.roll(x, -1) * y))
 
 
-def _draw_fills(ax, strokes, stroke_segments, cfg: Config) -> None:
+def _draw_fills(ax, strokes, stroke_segments, cfg: Config,
+                edge_width: float | None = None) -> None:
     """Fill solid ink regions from their fitted boundary equations.
 
     Outer contours and holes are wound in opposite directions so the non-zero
@@ -145,7 +146,7 @@ def _draw_fills(ax, strokes, stroke_segments, cfg: Config) -> None:
         patch = PathPatch(
             MplPath(np.asarray(verts), codes),
             facecolor=group["color"], edgecolor=group["color"],
-            linewidth=cfg.fill_edge_width, antialiased=True, zorder=2,
+            linewidth=edge_width or cfg.fill_edge_width, antialiased=True, zorder=2,
         )
         ax.add_patch(patch)
 
@@ -189,7 +190,15 @@ def _build_figure(pre, strokes, stroke_segments, cfg: Config,
         thickness_px = float(pre.stroke_thickness) / (float(pre.scale) or 1.0)
         line_width = max(0.5, thickness_px * 72.0 / dpi)
 
-    _draw_fills(ax, strokes, stroke_segments, cfg)
+    edge = cfg.fill_edge_width
+    paper = getattr(pre, "paper_rgb", None)
+    if paper:
+        luma = 0.299 * paper[0] + 0.587 * paper[1] + 0.114 * paper[2]
+        # Dark-paper fills need a broader seam overlap; light paper keeps the
+        # thinner, more faithful edge.
+        if luma < 90:
+            edge = max(edge, 2.2)
+    _draw_fills(ax, strokes, stroke_segments, cfg, edge)
 
     flat: list[tuple[int, int, float]] = []  # (stroke_idx, seg_idx, length)
     for si, segs in enumerate(stroke_segments):
