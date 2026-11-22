@@ -2,9 +2,9 @@
 
 **Every squiggle is a function.**
 
-<img src="docs/demo-output.webp" width="400" alt="Demo poster: a serene blue river beside the 1,475 equations that redraw it">
+<img src="docs/demo-output.webp" width="400" alt="Demo poster: a serene blue river above the 3,605 equations that redraw it">
 
-*A demo poster: the drawing on the left, its 1,475 equations on the right.*
+*A demo poster: the drawing in a 3:2 window, its 3,605 equations below.*
 
 Chawk reads a line drawing (or flat-colour illustration), finds a real equation for
 every stroke or region, and redraws the picture using nothing but those equations. It runs on your own machine — no account,

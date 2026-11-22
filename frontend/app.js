@@ -194,8 +194,9 @@ function splitAtOperator(text) {
 async function sheetCanvas(run) {
   await document.fonts.ready;
   const items = flattenSegments(run.report);
-  const label = formatCount(items.length);
-  const artURL = await fittedDataURL(run.images.redraw || state.url, 2400, 3600, 128);
+  const total = items.length;
+  const label = formatCount(total);
+  const artURL = await fittedDataURL(run.images.redraw || state.url, 2160, 1440, 48);
 
   const sheet = document.createElement("div");
   sheet.className = "social-sheet";
@@ -222,6 +223,13 @@ async function sheetCanvas(run) {
   word.className = "social-word";
   word.innerHTML = '<span class="hl"><i>equations</i></span>';
 
+  const headline = document.createElement("div");
+  headline.className = "social-headline";
+  headline.append(count, word);
+
+  const copy = document.createElement("div");
+  copy.className = "social-copy";
+
   const list = document.createElement("div");
   list.className = "social-list";
 
@@ -231,15 +239,13 @@ async function sheetCanvas(run) {
       if (line.trim()) pool.push({ line: line.trim().replace(/\s+/g, " "), model: it.seg.model });
     }
   }
-
-  let rows = 0;
-  for (let i = 0; i < 48 && pool.length; i++) {
-    const p = pool[i % pool.length];
+  const chosen = pool.slice(0, 12);
+  chosen.forEach((p, i) => {
     const row = document.createElement("div");
     row.className = "social-eq";
     const n = document.createElement("span");
     n.className = "n";
-    n.textContent = String(rows + 1).padStart(2, "0");
+    n.textContent = String(i + 1).padStart(2, "0");
     const maths = document.createElement("div");
     maths.className = "social-maths";
     const q = document.createElement("div");
@@ -249,34 +255,42 @@ async function sheetCanvas(run) {
     row.__eq = p;
     row.append(n, maths);
     list.append(row);
-    rows += 1;
-  }
-  const fade = document.createElement("div");
-  fade.className = "social-fade";
-  list.append(fade);
+  });
+
+  const more = document.createElement("div");
+  more.className = "social-more";
+
+  copy.append(lead, headline, more);
+  const eqs = document.createElement("div");
+  eqs.className = "social-eqs";
+  eqs.append(list);
+
+  const top = document.createElement("div");
+  top.className = "social-top";
+  top.append(copy, eqs);
 
   const footwrap = document.createElement("div");
   footwrap.className = "social-footwrap";
   const foot = document.createElement("div");
   foot.className = "social-foot";
-  foot.innerHTML = `<svg width="26" height="26" viewBox="0 0 16 16" fill="currentColor" aria-hidden="true"><path d="${GITHUB_MARK}"></path></svg><span>OPEN SOURCE</span>`;
+  foot.innerHTML = `<svg width="22" height="22" viewBox="0 0 16 16" fill="currentColor" aria-hidden="true"><path d="${GITHUB_MARK}"></path></svg><span>OPEN SOURCE</span>`;
   const url = document.createElement("div");
   url.className = "social-url";
   url.textContent = "github.com/hello2himel/chawk";
   footwrap.append(foot, url);
 
-  const headline = document.createElement("div");
-  headline.className = "social-headline";
-  headline.append(count, word);
-  panel.append(lead, headline, list, footwrap);
+  panel.append(top, footwrap);
   sheet.append(art, panel);
   document.body.append(sheet);
   try {
     await document.fonts.ready;
     await new Promise((resolve) => requestAnimationFrame(() => requestAnimationFrame(resolve)));
-    // fit each equation after KaTeX fonts and layout have settled: give it a
-    // big size, split at an operator when needed, then shrink only as a last
-    // resort so the maths stays readable.
+    let size = 120;
+    count.style.fontSize = `${size}px`;
+    while (count.scrollWidth > 420 && size > 88) {
+      size -= 2;
+      count.style.fontSize = `${size}px`;
+    }
     const fitLine = (el) => {
       let fs = 26;
       el.style.fontSize = `${fs}px`;
@@ -302,22 +316,16 @@ async function sheetCanvas(run) {
         }
       }
     }
-    // keep the count huge, but let it share one line with "equations" when
-    // that is possible; only wrap when it genuinely cannot fit.
-    let size = 150;
-    count.style.fontSize = `${size}px`;
-    while (count.scrollWidth > 500 && size > 80) {
-      size -= 4;
-      count.style.fontSize = `${size}px`;
+    // keep only the rows that fit the space above the footer
+    const avail = top.clientHeight;
+    while (list.scrollHeight > avail && list.lastElementChild) {
+      list.lastElementChild.remove();
     }
-    const wordW = word.getBoundingClientRect().width;
-    while (size > 100 && count.getBoundingClientRect().width + 14 + wordW > 500) {
-      size -= 2;
-      count.style.fontSize = `${size}px`;
-    }
+    const shown = list.children.length;
+    if (total > shown) more.textContent = `… and ${formatCount(total - shown)} more.`;
     return await html2canvas(sheet, {
       backgroundColor: "#F8F7F3", scale: 2, logging: false,
-      width: 1800, height: 1800, windowWidth: 1800, windowHeight: 1800,
+      width: 1080, height: 1350, windowWidth: 1080, windowHeight: 1350,
     });
   } finally {
     sheet.remove();
@@ -381,7 +389,7 @@ async function downloadSideBySide(run) {
     const wait = Math.max(0, 420 - (performance.now() - t0));
     if (wait) await new Promise((resolve) => setTimeout(resolve, wait));
     downloadURL(run.sheetURL, baseName() + "-side-by-side.png");
-    toast("Side-by-side sheet saved.", "3600×3600 PNG");
+    toast("Side-by-side sheet saved.", "2160×2700 PNG");
   } catch (e) {
     toast("Could not build the poster", e.message || String(e));
   } finally {
