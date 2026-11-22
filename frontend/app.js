@@ -146,7 +146,7 @@ async function sheetCanvas(run) {
   const g = hi.getContext("2d");
   g.scale(S, S);
 
-  const LEFT = 648, PANEL = W - LEFT, SAFE = 50;
+  const LEFT = 720, PANEL = W - LEFT, SAFE = 50;
   const TX = LEFT + SAFE, TW = PANEL - SAFE * 2;
   const paper = "#F8F7F3", ink = "#111111", accent = "#FFE066";
 
@@ -155,7 +155,7 @@ async function sheetCanvas(run) {
 
   // left: a 2:3 artwork window at the top — the usual source aspect, no
   // letterboxing and no forced full-height crop.
-  const img = await loadImageEl(state.url || run.images.redraw);
+  const img = await loadImageEl(run.images.redraw || state.url);
   const ART_W = LEFT, ART_H = Math.round(LEFT * 1.5);
   const cover = Math.max(ART_W / (img.naturalWidth || 1), ART_H / (img.naturalHeight || 1));
   const cw = (img.naturalWidth || 1) * cover;
@@ -165,108 +165,85 @@ async function sheetCanvas(run) {
   g.drawImage(img, (ART_W - cw) / 2, (ART_H - ch) / 2, cw, ch);
   g.restore();
 
-  // count + "equations" in the paper band under the artwork
-  const headX = 50, headW = LEFT - 100;
-  const numTop = ART_H + 62;
-  const numSize = fitTextSize(g, label, headW, 168, 64, "'STIX Two Text', Georgia, serif", "800");
+  // right panel: "drawn using" + count, then the actual equations
+  const PANEL_X = LEFT;
+  g.font = "600 24px 'Caveat', 'Segoe Script', cursive";
+  g.fillStyle = "#1F3FD1";
+  g.textBaseline = "alphabetic";
+  g.fillText("drawn using", TX, 66);
+
+  const numSize = fitTextSize(g, label, TW, 92, 46, "'STIX Two Text', Georgia, serif", "800");
   g.font = `800 ${numSize}px 'STIX Two Text', Georgia, serif`;
   g.fillStyle = ink;
-  g.textBaseline = "alphabetic";
-  const numBaseline = numTop + numSize * 0.84;
-  g.fillText(label, headX, numBaseline);
+  const numBaseline = 82 + numSize * 0.84;
+  g.fillText(label, TX, numBaseline);
 
-  const wordSize = fitTextSize(g, "equations", headW, 52, 28, "'STIX Two Text', Georgia, serif", "700", "italic");
+  const wordSize = fitTextSize(g, "equations", TW, 36, 22, "'STIX Two Text', Georgia, serif", "700", "italic");
   g.font = `italic 700 ${wordSize}px 'STIX Two Text', Georgia, serif`;
   const wordW = g.measureText("equations").width;
-  const wordBaseline = numBaseline + wordSize * 1.18;
+  const wordBaseline = numBaseline + wordSize * 1.16;
   g.fillStyle = accent;
-  g.fillRect(headX - 3, wordBaseline - wordSize * 0.58, Math.min(headW, wordW) + 6, wordSize * 0.7);
+  g.fillRect(TX - 3, wordBaseline - wordSize * 0.58, Math.min(TW, wordW) + 6, wordSize * 0.7);
   g.fillStyle = ink;
-  g.fillText("equations", headX, wordBaseline);
+  g.fillText("equations", TX, wordBaseline);
 
-  // equation texture: actual fitted equations, clipped and faded
+  // the actual equations, set big enough to read
   const pool = [];
   for (const it of items) {
     for (const line of String(it.seg.equation || "").split("\n")) {
-      if (line.trim()) pool.push(line.trim());
+      if (line.trim()) pool.push(line.trim().replace(/\s+/g, " "));
     }
   }
   if (!pool.length) pool.push("x(t) = 0");
-  const wallTop = 50;
-  g.save();
-  g.beginPath(); g.rect(LEFT, wallTop, PANEL, H - wallTop); g.clip();
-  g.font = "400 11px 'JetBrains Mono', monospace";
-  g.fillStyle = "#B7B3AB";
-  g.textBaseline = "top";
-  let y = wallTop, i = 0;
-  while (y < H) {
-    const line = pool[i % pool.length];
-    g.fillText(line.length > 50 ? line.slice(0, 50) : line, TX, y);
-    y += 16;
-    i += 1;
-  }
-  g.restore();
 
-  const fade = g.createLinearGradient(0, 860, 0, 1090);
+  const listTop = wordBaseline + 34;
+  let y = listTop, n = 0;
+  for (const eq of pool) {
+    g.font = "400 14px 'STIX Two Text', Georgia, serif";
+    const lines = wrapLine(g, eq, TW - 22);
+    if (y + lines.length * 19 > 1300) break;
+    g.fillStyle = "#8A8D98";
+    g.font = "700 9px 'JetBrains Mono', monospace";
+    g.fillText(String(n + 1).padStart(2, "0"), TX, y + 3);
+    g.fillStyle = "#15161A";
+    g.font = "400 14px 'STIX Two Text', Georgia, serif";
+    let ly = y;
+    for (const line of lines) {
+      g.fillText(line, TX + 22, ly);
+      ly += 19;
+    }
+    y = ly + 8;
+    n += 1;
+  }
+
+  const fade = g.createLinearGradient(0, 1240, 0, 1300);
   fade.addColorStop(0, "rgba(248,247,243,0)");
   fade.addColorStop(1, "rgba(248,247,243,1)");
   g.fillStyle = fade;
-  g.fillRect(LEFT, 860, PANEL, 230);
-  // Clean band for the card and footer: no texture behind readable text.
-  g.fillStyle = paper;
-  g.fillRect(LEFT, 1088, PANEL, H - 1088);
+  g.fillRect(PANEL_X, 1240, PANEL, 60);
 
-  // one equation, big, in an outlined card
-  const cardX = TX, cardY = 990, cardW = TW, cardH = 178;
-  g.fillStyle = paper;
-  g.strokeStyle = ink;
-  g.lineWidth = 3;
-  roundedRect(g, cardX, cardY, cardW, cardH, 14);
-  g.fill();
-  g.stroke();
-  g.fillStyle = "#6F6B63";
-  g.font = "700 10px 'JetBrains Mono', monospace";
-  g.textBaseline = "top";
-  g.fillText(`EQUATION #1 OF ${label}`, cardX + 16, cardY + 14);
-
-  const first = (items[0]?.seg.equation || "x(t) = 0").split("\n")[0].trim();
-  let eqSize = fitTextSize(g, first, cardW - 32, 26, 16, "'STIX Two Text', Georgia, serif", "700");
-  g.font = `700 ${eqSize}px 'STIX Two Text', Georgia, serif`;
-  let eqLines = wrapLine(g, first, cardW - 32);
-  if (eqLines.length > 3) {
-    eqSize = 18;
-    g.font = `700 ${eqSize}px 'STIX Two Text', Georgia, serif`;
-    eqLines = wrapLine(g, first, cardW - 32);
-  }
-  g.fillStyle = ink;
-  let ey = cardY + 50;
-  for (const line of eqLines.slice(0, 3)) {
-    g.fillText(line, cardX + 16, ey);
-    ey += eqSize * 1.16;
-  }
-
-  // footer
-  const footX = TX, footY = 1190;
+  // left band: footer + the motto
+  const footX = 50, footY = 1128;
   g.save();
-  g.translate(footX, footY - 12);
-  g.scale(22 / 16, 22 / 16);
+  g.translate(footX, footY - 14);
+  g.scale(28 / 16, 28 / 16);
   g.fillStyle = ink;
   g.fill(new Path2D(GITHUB_MARK));
   g.restore();
 
   g.fillStyle = ink;
   g.textBaseline = "middle";
-  g.font = "800 26px 'Instrument Sans', sans-serif";
-  g.fillText("OPEN SOURCE", footX + 32, footY);
+  g.font = "800 28px 'Instrument Sans', sans-serif";
+  g.fillText("OPEN SOURCE", footX + 40, footY);
 
   const url = "github.com/hello2himel/chawk";
-  const urlSize = fitTextSize(g, url, TW, 24, 15, "'Instrument Sans', sans-serif", "700");
+  const urlSize = fitTextSize(g, url, LEFT - 100, 24, 15, "'Instrument Sans', sans-serif", "700");
   g.font = `700 ${urlSize}px 'Instrument Sans', sans-serif`;
-  g.fillText(url, footX, footY + 30);
+  g.fillText(url, footX, footY + 38);
 
-  g.font = "600 21px 'Instrument Sans', sans-serif";
-  g.fillStyle = "#5A5D68";
-  g.fillText("@hello2himel", footX, footY + 58);
+  g.font = "600 30px 'Caveat', 'Segoe Script', cursive";
+  g.fillStyle = "#1F3FD1";
+  g.fillText("every squiggle is a function.", footX, 1250);
 
   const out = document.createElement("canvas");
   out.width = W; out.height = H;
