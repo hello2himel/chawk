@@ -2464,13 +2464,13 @@ let menuTrigger = null;
 
 function openSheet(trigger) {
   closeMenus();
-  const btn = trigger || $("download-btn");
+  const btn = trigger || $("download-menu-btn");
   const menu = $("sheet");
   menu.hidden = false;
   positionMenu(menu, btn);
   $("scrim").hidden = false;
-  $("download-btn").setAttribute("aria-expanded", String(btn === $("download-btn")));
-  $("download-mobile").setAttribute("aria-expanded", String(btn === $("download-mobile")));
+  $("download-menu-btn").setAttribute("aria-expanded", String(btn === $("download-menu-btn")));
+  $("download-mobile-menu").setAttribute("aria-expanded", String(btn === $("download-mobile-menu")));
   document.body.classList.add("menu-open");
   menuTrigger = btn;
   btn.focus({ preventScroll: true });
@@ -2479,8 +2479,8 @@ function closeMenus() {
   const wasOpen = !$("sheet").hidden;
   $("sheet").hidden = true;
   $("scrim").hidden = true;
-  $("download-btn").setAttribute("aria-expanded", "false");
-  $("download-mobile").setAttribute("aria-expanded", "false");
+  $("download-menu-btn").setAttribute("aria-expanded", "false");
+  $("download-mobile-menu").setAttribute("aria-expanded", "false");
   document.body.classList.remove("menu-open");
   if (wasOpen && menuTrigger && menuTrigger.offsetParent !== null) {
     menuTrigger.focus({ preventScroll: true });
@@ -2748,16 +2748,24 @@ function bind() {
     window.open("https://www.desmos.com/calculator", "_blank", "noopener");
   });
 
-  $("download-btn").addEventListener("click", () => {
-    if ($("sheet").hidden) openSheet($("download-btn")); else closeMenus();
+  function downloadPoster() {
+    const run = activeRun();
+    if (!run) return;
+    closeMenus();
+    downloadSideBySide(run);
+  }
+  $("download-btn").addEventListener("click", downloadPoster);
+  $("download-mobile").addEventListener("click", downloadPoster);
+  $("download-menu-btn").addEventListener("click", () => {
+    if ($("sheet").hidden) openSheet($("download-menu-btn")); else closeMenus();
   });
-  $("download-mobile").addEventListener("click", () => {
-    if ($("sheet").hidden) openSheet($("download-mobile")); else closeMenus();
+  $("download-mobile-menu").addEventListener("click", () => {
+    if ($("sheet").hidden) openSheet($("download-mobile-menu")); else closeMenus();
   });
   $("scrim").addEventListener("click", () => closeMenus());
   document.addEventListener("pointerdown", (e) => {
     if ($("sheet").hidden) return;
-    if (e.target.closest("#sheet,#download-btn,#download-mobile")) return;
+    if (e.target.closest("#sheet,#download-menu-btn,#download-mobile-menu")) return;
     closeMenus();
   });
 

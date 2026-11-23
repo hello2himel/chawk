@@ -35,9 +35,14 @@
       <div class="resultbar" id="result-bar" hidden>
         <div class="result-actions">
           <button class="iconbtn" id="retrace" type="button" title="Try again" aria-label="Try again"><i class="ri ri-refresh-line" aria-hidden="true"></i><span>Try again</span></button>
-          <button class="btn bp download" id="download-btn" type="button" title="Download" aria-label="Download" aria-haspopup="menu" aria-expanded="false">
-            <i class="ri ri-download-line" aria-hidden="true"></i><span>Download</span><i class="ri ri-arrow-down-s-line download-caret" aria-hidden="true"></i>
-          </button>
+          <div class="download-split">
+            <button class="btn bp download" id="download-btn" type="button" title="Download poster" aria-label="Download poster">
+              <i class="ri ri-download-line" aria-hidden="true"></i><span>Download</span>
+            </button>
+            <button class="btn bp download-arrow" id="download-menu-btn" type="button" title="More download options" aria-label="More download options" aria-haspopup="menu" aria-expanded="false">
+              <i class="ri ri-arrow-down-s-line" aria-hidden="true"></i>
+            </button>
+          </div>
         </div>
       </div>
     </div>
@@ -297,7 +302,10 @@
     </div>
 
     <div class="actbar">
-      <button class="btn bp act-primary" id="download-mobile" aria-haspopup="menu" aria-expanded="false"><i class="ri-download-line" aria-hidden="true"></i> Download</button>
+      <div class="download-split act-split">
+        <button class="btn bp act-primary" id="download-mobile"><i class="ri-download-line" aria-hidden="true"></i> Download</button>
+        <button class="btn bp download-arrow" id="download-mobile-menu" type="button" title="More download options" aria-label="More download options" aria-haspopup="menu" aria-expanded="false"><i class="ri ri-arrow-down-s-line" aria-hidden="true"></i></button>
+      </div>
       <button class="btn btn-lg" id="retrace-mobile">Try again</button>
     </div>
   </div>
