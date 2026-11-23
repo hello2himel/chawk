@@ -2490,47 +2490,15 @@ function closeMenus() {
 
 /* ------------------------------------------------------------------ wiring */
 /* ------------------------------------------------------------------ hero demo */
-const demo = { slides: [], index: 0, layer: 0, timer: null, busy: false };
-const DEMO_INTERVAL = 8000;
+const demo = { slides: [], index: 0 };
 
 function renderDemoText(slide) {
   const equations = slide.equations || [];
   const more = Math.max(0, (slide.count || 0) - equations.length);
   $("demo-eqs").innerHTML = equations
-    .map((eq) => `<span class="f" style="display:block;width:100%;text-align:center">${esc(eq)}</span>`)
+    .map((eq) => `<span class="f">${esc(eq)}</span>`)
     .join("") + (more ? `<span class="demo-more">…and ${more.toLocaleString()} more</span>` : "");
   $("demo-quip").textContent = slide.quip || "";
-}
-
-function prefersReducedMotion() {
-  return window.matchMedia("(prefers-reduced-motion: reduce)").matches;
-}
-
-function waveClip(p) {
-  const n = 8;
-  const y = p * 115;
-  const points = ["0% 0%", "100% 0%"];
-  for (let i = n; i >= 0; i--) {
-    const x = (i / n) * 100;
-    const wobble = Math.sin((i / n) * Math.PI * 3 + p * 7) * 2.8;
-    points.push(`${x.toFixed(2)}% ${Math.max(0, y + wobble).toFixed(2)}%`);
-  }
-  return `polygon(${points.join(", ")})`;
-}
-
-function animateWave(img) {
-  return new Promise((resolve) => {
-    const start = performance.now();
-    const duration = 1050;
-    const step = (now) => {
-      const p = Math.min(1, (now - start) / duration);
-      img.style.clipPath = waveClip(p);
-      if (p < 1) requestAnimationFrame(step);
-      else resolve();
-    };
-    img.style.clipPath = waveClip(0);
-    requestAnimationFrame(step);
-  });
 }
 
 async function initDemo() {
@@ -2538,46 +2506,83 @@ async function initDemo() {
     const res = await fetch("assets/demo-slides.json");
     if (!res.ok) return;
     const slides = await res.json();
-    if (!Array.isArray(slides) || slides.length < 2) return;
+    if (!Array.isArray(slides) || !slides.length) return;
     demo.slides = slides;
-    const first = slides[0];
-    const a = $("demo-slide-a");
-    a.src = first.src;
-    a.alt = first.alt;
-    renderDemoText(first);
-    a.classList.remove("demo-intro");
-    if (!prefersReducedMotion()) animateWave(a);
-    for (const slide of slides.slice(1)) { const im = new Image(); im.src = slide.src; }
-    demo.timer = setInterval(nextDemo, DEMO_INTERVAL);
-  } catch {
-    $("demo-slide-a")?.classList.remove("demo-intro");
-  }
-}
 
-async function nextDemo() {
-  if (demo.busy || !demo.slides.length) return;
-  demo.busy = true;
-  try {
-    const next = (demo.index + 1) % demo.slides.length;
-    const slide = demo.slides[next];
-    const active = demo.layer === 0 ? $("demo-slide-a") : $("demo-slide-b");
-    const incoming = demo.layer === 0 ? $("demo-slide-b") : $("demo-slide-a");
-    incoming.src = slide.src;
-    incoming.alt = slide.alt;
-    incoming.removeAttribute("aria-hidden");
-    try { await incoming.decode(); } catch { /* still swap */ }
-    incoming.classList.add("on");
-    active.classList.add("under");
-    renderDemoText(slide);
-    if (!prefersReducedMotion()) await animateWave(incoming);
-    incoming.style.clipPath = "";
-    active.classList.remove("on", "under");
-    active.setAttribute("aria-hidden", "true");
-    demo.layer = 1 - demo.layer;
-    demo.index = next;
-  } finally {
-    demo.busy = false;
-  }
+    const deck = $("demo-deck");
+    deck.innerHTML = slides.map((s, i) => `
+      <figure class="deck-card${i === 0 ? " is-active" : ""}" data-i="${i}">
+        <img src="${esc(s.src)}" width="720" height="480" alt="${esc(s.alt || "")}" draggable="false">
+        <figcaption class="deck-count">${Number(s.count || 0).toLocaleString()} equations</figcaption>
+      </figure>`).join("");
+
+    const dots = $("demo-dots");
+    dots.innerHTML = slides.map((s, i) =>
+      `<button class="dot${i === 0 ? " is-active" : ""}" type="button" data-i="${i}" aria-label="Show proof ${i + 1}" aria-pressed="${i === 0}"></button>`).join("");
+
+    const cards = [...deck.querySelectorAll(".deck-card")];
+    const dotEls = [...dots.querySelectorAll(".dot")];
+    const gap = () => parseFloat(getComputedStyle(deck).gap) || 10;
+    const step = () => cards[0] ? cards[0].getBoundingClientRect().width + gap() : 0;
+
+    const paint = (i) => {
+      const n = ((i % slides.length) + slides.length) % slides.length;
+      demo.index = n;
+      cards.forEach((c, j) => c.classList.toggle("is-active", j === n));
+      dotEls.forEach((d, j) => {
+        d.classList.toggle("is-active", j === n);
+        d.setAttribute("aria-pressed", String(j === n));
+      });
+      renderDemoText(slides[n]);
+    };
+
+    const go = (i) => {
+      const n = ((i % slides.length) + slides.length) % slides.length;
+      const card = cards[n];
+      if (!card) return;
+      const left = card.offsetLeft - (deck.clientWidth - card.offsetWidth) / 2;
+      deck.scrollTo({ left: Math.max(0, left), behavior: "smooth" });
+      paint(n);
+    };
+
+    deck.addEventListener("scroll", () => {
+      const s = step();
+      if (!s) return;
+      paint(Math.round(deck.scrollLeft / s));
+    }, { passive: true });
+
+    dotEls.forEach((d) => d.addEventListener("click", () => go(Number(d.dataset.i))));
+    $("demo-prev").addEventListener("click", () => go(demo.index - 1));
+    $("demo-next").addEventListener("click", () => go(demo.index + 1));
+    deck.addEventListener("keydown", (e) => {
+      if (e.key === "ArrowRight") { e.preventDefault(); go(demo.index + 1); }
+      if (e.key === "ArrowLeft") { e.preventDefault(); go(demo.index - 1); }
+    });
+
+    let down = null;
+    deck.addEventListener("pointerdown", (e) => {
+      if (e.target.closest("button")) return;
+      down = { x: e.clientX, left: deck.scrollLeft, id: e.pointerId };
+      deck.setPointerCapture(e.pointerId);
+      deck.style.scrollSnapType = "none";
+    });
+    deck.addEventListener("pointermove", (e) => {
+      if (!down || e.pointerId !== down.id) return;
+      deck.scrollLeft = down.left - (e.clientX - down.x);
+    });
+    const endDrag = () => {
+      if (!down) return;
+      down = null;
+      deck.style.scrollSnapType = "x mandatory";
+      const s = step();
+      if (s) go(Math.round(deck.scrollLeft / s));
+    };
+    deck.addEventListener("pointerup", endDrag);
+    deck.addEventListener("pointercancel", endDrag);
+
+    paint(0);
+    requestAnimationFrame(() => { deck.scrollLeft = 0; });
+  } catch { /* static first card remains */ }
 }
 
 function bind() {

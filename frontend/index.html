@@ -78,7 +78,7 @@
           <button class="chip" data-sample="parabola_line.png">Curve</button>
         </div>
       </div>
-      <p class="m">Best on dark lines and plain paper. Photos of your cat are adorable but out of scope. PNG, JPG or WebP, up to 15 MB.</p>
+      <p class="m">Best on dark lines and plain paper. Cat photos are adorable — this one became 743 equations. PNG, JPG or WebP, up to 15 MB.</p>
       <div class="home-links">
         <button class="home-link" id="home-archive" type="button">
           <i class="ri ri-history-line" aria-hidden="true"></i><span>Archive</span>
@@ -90,19 +90,27 @@
     </section>
 
     <section class="demo paper">
-      <div class="demo-stage">
-        <img class="demo-slide on demo-intro" id="demo-slide-a" src="assets/river-still.webp" width="720" height="480"
-             alt="The river and boats, rebuilt from their equations">
-        <img class="demo-slide" id="demo-slide-b" width="720" height="480" alt="" aria-hidden="true">
+      <div class="demo-inner">
+        <div class="deckwrap">
+          <div class="deck" id="demo-deck" tabindex="0" aria-label="Proofs. Use the arrow keys to browse.">
+            <figure class="deck-card is-active" data-i="0">
+              <img src="assets/river-still.webp" width="720" height="480" alt="The river and boats, rebuilt from their equations">
+              <figcaption class="deck-count">4,017 equations</figcaption>
+            </figure>
+          </div>
+          <button class="deck-arrow prev" id="demo-prev" type="button" aria-label="Previous proof"><svg viewBox="0 0 16 16" fill="none" stroke="currentColor" stroke-width="1.7" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><path d="M10 3 5 8l5 5"/></svg></button>
+          <button class="deck-arrow next" id="demo-next" type="button" aria-label="Next proof"><svg viewBox="0 0 16 16" fill="none" stroke="currentColor" stroke-width="1.7" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><path d="m6 3 5 5-5 5"/></svg></button>
+        </div>
+        <p class="hand demo-quip" id="demo-quip">↑ the whole river is just algebra.</p>
+        <div class="eq demo-eqs" id="demo-eqs">
+          <span class="f">x(t) = 140.86 − 0.37cos 2πt + 2.77sin 2πt</span>
+          <span class="f">y(t) = 600.3 − 1.69cos 2πt − 0.4sin 2πt − 0.01sin 4πt</span>
+          <span class="f">x(t) = 268.19 − 4.41cos 2πt − 1.86sin 2πt</span>
+          <span class="f">y(t) = 10.55 − 1.58cos 2πt + 2.37sin 2πt − 0.01sin 4πt</span>
+          <span class="demo-more">…and 4,013 more</span>
+        </div>
+        <div class="deck-dots" id="demo-dots" role="group" aria-label="Choose a proof"></div>
       </div>
-      <div class="eq demo-eqs" id="demo-eqs">
-        <span class="f" style="display:block;width:100%;text-align:center"><i>x</i>(t) = 140.86 − 0.37cos 2πt + 2.77sin 2πt</span>
-        <span class="f" style="display:block;width:100%;text-align:center"><i>y</i>(t) = 600.3 − 1.69cos 2πt − 0.4sin 2πt − 0.01sin 4πt</span>
-        <span class="f" style="display:block;width:100%;text-align:center"><i>x</i>(t) = 268.19 − 4.41cos 2πt − 1.86sin 2πt</span>
-        <span class="f" style="display:block;width:100%;text-align:center"><i>y</i>(t) = 10.55 − 1.58cos 2πt + 2.37sin 2πt − 0.01sin 4πt</span>
-        <span class="demo-more">…and 4,013 more</span>
-      </div>
-      <p class="hand" id="demo-quip">↑ the whole river is just algebra.</p>
     </section>
   </main>
 
