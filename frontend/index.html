@@ -64,17 +64,18 @@
 
     <section class="demo paper">
       <div class="demo-stage">
-        <img class="demo-river" src="assets/river-timelapse.webp" width="720" height="480"
+        <img class="demo-slide on" id="demo-slide-a" src="assets/river-timelapse.webp" width="720" height="480"
              alt="Timelapse of the river and boats being drawn from their equations">
+        <img class="demo-slide" id="demo-slide-b" width="720" height="480" alt="" aria-hidden="true">
       </div>
-      <p class="fig">Fig. 1 · the river, rebuilt from 4,017 equations</p>
-      <div class="eq demo-eqs">
+      <p class="fig" id="demo-caption">Fig. 1 · the river, rebuilt from 4,017 equations</p>
+      <div class="eq demo-eqs" id="demo-eqs">
         <span class="f"><i>x</i>(t) = 140.86 − 0.37cos 2πt + 2.77sin 2πt<span class="no">(1)</span></span>
-        <span class="f" style="animation-delay:.5s"><i>y</i>(t) = 600.3 − 1.69cos 2πt − 0.4sin 2πt − 0.01sin 4πt<span class="no">(2)</span></span>
-        <span class="f" style="animation-delay:1s"><i>x</i>(t) = 268.19 − 4.41cos 2πt − 1.86sin 2πt<span class="no">(3)</span></span>
-        <span class="f" style="animation-delay:1.5s"><i>y</i>(t) = 10.55 − 1.58cos 2πt + 2.37sin 2πt − 0.01sin 4πt<span class="no">(4)</span></span>
+        <span class="f"><i>y</i>(t) = 600.3 − 1.69cos 2πt − 0.4sin 2πt − 0.01sin 4πt<span class="no">(2)</span></span>
+        <span class="f"><i>x</i>(t) = 268.19 − 4.41cos 2πt − 1.86sin 2πt<span class="no">(3)</span></span>
+        <span class="f"><i>y</i>(t) = 10.55 − 1.58cos 2πt + 2.37sin 2πt − 0.01sin 4πt<span class="no">(4)</span></span>
       </div>
-      <p class="hand">↑ the whole river is just algebra.</p>
+      <p class="hand" id="demo-quip">↑ the whole river is just algebra.</p>
     </section>
   </main>
 

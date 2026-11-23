@@ -2231,6 +2231,58 @@ function closeMenus() {
 }
 
 /* ------------------------------------------------------------------ wiring */
+/* ------------------------------------------------------------------ hero demo */
+const demo = { slides: [], index: 0, layer: 0, timer: null, busy: false };
+const DEMO_INTERVAL = 8000;
+
+function renderDemoText(slide) {
+  $("demo-caption").textContent = `Fig. 1 · ${slide.caption}`;
+  $("demo-eqs").innerHTML = (slide.equations || [])
+    .map((eq, i) => `<span class="f">${esc(eq)}<span class="no">(${i + 1})</span></span>`)
+    .join("");
+  $("demo-quip").textContent = slide.quip || "";
+}
+
+async function initDemo() {
+  try {
+    const res = await fetch("assets/demo-slides.json");
+    if (!res.ok) return;
+    const slides = await res.json();
+    if (!Array.isArray(slides) || slides.length < 2) return;
+    demo.slides = slides;
+    const first = slides[0];
+    const a = $("demo-slide-a");
+    a.src = first.src;
+    a.alt = first.alt;
+    renderDemoText(first);
+    for (const slide of slides.slice(1)) { const im = new Image(); im.src = slide.src; }
+    demo.timer = setInterval(nextDemo, DEMO_INTERVAL);
+  } catch { /* the river still plays on its own */ }
+}
+
+async function nextDemo() {
+  if (demo.busy || !demo.slides.length) return;
+  demo.busy = true;
+  try {
+    const next = (demo.index + 1) % demo.slides.length;
+    const slide = demo.slides[next];
+    const active = demo.layer === 0 ? $("demo-slide-a") : $("demo-slide-b");
+    const incoming = demo.layer === 0 ? $("demo-slide-b") : $("demo-slide-a");
+    incoming.src = slide.src;
+    incoming.alt = slide.alt;
+    incoming.removeAttribute("aria-hidden");
+    try { await incoming.decode(); } catch { /* still swap */ }
+    incoming.classList.add("on");
+    active.classList.remove("on");
+    active.setAttribute("aria-hidden", "true");
+    demo.layer = 1 - demo.layer;
+    demo.index = next;
+    renderDemoText(slide);
+  } finally {
+    demo.busy = false;
+  }
+}
+
 function bind() {
   $("brand-home").addEventListener("click", (e) => {
     e.preventDefault();
@@ -2293,6 +2345,7 @@ function bind() {
   });
   $("undo-close").addEventListener("click", hideUndo);
   updateLibraryBadge();
+  initDemo();
   $("cancel").addEventListener("click", () => { if (state.controller) state.controller.abort(); });
 
   document.addEventListener("dragover", (e) => { e.preventDefault(); $("drop")?.classList.add("drag"); });

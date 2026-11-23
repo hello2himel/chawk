@@ -111,14 +111,15 @@ input[type=range]{width:100%;accent-color:#1F3FD1;min-height:32px}
 .scan{position:absolute;top:0;bottom:0;left:2%;width:3px;background:#1F3FD1;box-shadow:0 0 24px 8px rgba(31,63,209,.25);animation:sc 3s ease-in-out infinite alternate;will-change:left}
 @keyframes q{0%{opacity:0;transform:translateY(6px)}4%,22%{opacity:1;transform:none}26%,100%{opacity:0}}
 @keyframes sc{from{left:2%}to{left:98%}}
-@media(prefers-reduced-motion:reduce){.d{animation:none;stroke-dashoffset:0}.f,.q,.scan{animation:none}.q:first-child{opacity:1}.scan{left:50%}}
+@media(prefers-reduced-motion:reduce){.d{animation:none;stroke-dashoffset:0}.f,.q,.scan{animation:none}.q:first-child{opacity:1}.scan{left:50%}.demo-slide{transition:none}}
 
 /* ---------- start: live demo ---------- */
 .demo{justify-content:center}
 .demo .eq{width:100%;max-width:760px;text-align:left}
 .demo-eqs{font-size:20px;display:flex;flex-direction:column;gap:6px;min-height:120px}
-.demo-stage{width:100%;max-width:720px;margin:0 auto;border:1px solid #DDD9CC;border-radius:12px;overflow:hidden;background:#FAF9F4;box-shadow:0 8px 24px rgba(21,22,26,.06)}
-.demo-river{display:block;width:100%;height:auto}
+.demo-stage{position:relative;width:100%;max-width:720px;margin:0 auto;aspect-ratio:3/2;border:1px solid #DDD9CC;border-radius:12px;overflow:hidden;background:#FAF9F4;box-shadow:0 8px 24px rgba(21,22,26,.06)}
+.demo-slide{position:absolute;inset:0;display:block;width:100%;height:100%;object-fit:cover;opacity:0;transition:opacity .55s ease}
+.demo-slide.on{opacity:1}
 .demo svg{max-width:760px}
 
 /* ---------- working ---------- */
