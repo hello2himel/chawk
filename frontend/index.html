@@ -4,12 +4,28 @@
 <meta charset="utf-8">
 <meta name="viewport" content="width=device-width, initial-scale=1, viewport-fit=cover">
 <title>Chawk — every squiggle is a function</title>
+<meta name="color-scheme" content="light dark">
+<meta name="theme-color" content="#F5F3EC">
+<script>
+(() => { try {
+  const t = localStorage.getItem('chawk.theme.v1');
+  const d = t === 'dark' || (t !== 'light' && matchMedia('(prefers-color-scheme: dark)').matches);
+  if (t === 'light' || t === 'dark') document.documentElement.dataset.theme = t;
+  document.querySelector('meta[name="theme-color"]').content = d ? '#131311' : '#F5F3EC';
+} catch (e) {} })();
+</script>
+<style>
+  html { background: #F5F3EC; }
+  html[data-theme="dark"] { background: #131311; }
+  @media (prefers-color-scheme: dark) { html:not([data-theme="light"]) { background: #131311; } }
+  html[data-theme="light"] { background: #F5F3EC; }
+</style>
 <link rel="icon" type="image/svg+xml" href="favicon.svg">
 <link rel="icon" type="image/png" sizes="32x32" href="favicon-32.png">
 <link rel="shortcut icon" href="favicon.ico">
 <link rel="apple-touch-icon" href="apple-touch-icon.png">
 <link rel="stylesheet" href="vendor/remixicon.css">
-<link rel="stylesheet" href="styles.css?v=1.1.25">
+<link rel="stylesheet" href="styles.css?v=1.1.27">
 </head>
 <body>
 <div class="app" id="app">
@@ -50,6 +66,9 @@
     <div class="nav-rail">
       <button class="btn bp railnew" id="nav-new" type="button" aria-label="New doodle" title="New doodle"><i class="ri ri-quill-pen-line" aria-hidden="true"></i><span class="hide-m">New doodle</span></button>
       <a class="railicon" id="nav-github" href="https://github.com/hello2himel/chawk" target="_blank" rel="noopener" aria-label="Chawk source on GitHub" title="Source on GitHub"><i class="ri ri-code-s-slash-line" aria-hidden="true"></i></a>
+      <button class="railbtn themetoggle" id="theme-toggle" type="button" aria-pressed="false" aria-label="Dark theme" title="Switch to dark theme">
+        <i class="ri ri-moon-line" aria-hidden="true"></i>
+      </button>
       <button class="railbtn libbtn" id="library-btn" type="button" aria-label="History of previous works" title="History">
         <i class="ri ri-history-line" aria-hidden="true"></i>
         <span class="libcount" id="library-count" hidden>0</span>
@@ -59,6 +78,9 @@
 
   <!-- ============================= START ============================= -->
   <main class="hero" id="screen-start">
+    <button class="themetoggle home-theme" id="theme-home" type="button" aria-pressed="false" aria-label="Dark theme" title="Switch to dark theme">
+      <i class="ri ri-moon-line" aria-hidden="true"></i>
+    </button>
     <section class="copy">
       <div class="hero-greet">
         <svg width="72" height="72" viewBox="0 0 64 64" aria-hidden="true"><g transform="rotate(-24 32 32)"><rect x="18" y="4" width="28" height="56" rx="8" fill="#fff" stroke="#15161A" stroke-width="3"></rect><path d="M18 46h28v6a8 8 0 0 1-8 8H26a8 8 0 0 1-8-8z" fill="#ECE8DD" stroke="#15161A" stroke-width="3"></path><circle cx="26" cy="22" r="6" fill="#fff" stroke="#15161A" stroke-width="2.5"></circle><circle cx="38" cy="22" r="6" fill="#fff" stroke="#15161A" stroke-width="2.5"></circle><circle cx="27" cy="23" r="2" fill="#15161A"></circle><circle cx="37" cy="23" r="2" fill="#15161A"></circle><path d="M24 36c3-5 5-5 8 0s5 5 8 0" fill="none" stroke="#1F3FD1" stroke-width="3" stroke-linecap="round"></path></g></svg>
@@ -93,7 +115,7 @@
       <div class="demo-inner">
         <div class="deckwrap">
           <div class="deck" id="demo-deck" tabindex="0" aria-label="Proofs. Use the arrow keys to browse.">
-            <figure class="deck-card is-active" data-i="0">
+            <figure class="deck-card is-active" data-i="0" data-art>
               <img src="assets/cat-still.webp" width="720" height="480" alt="The pixel-shades cat, rebuilt from 1,672 equations">
               <figcaption class="deck-count">1,672 equations</figcaption>
             </figure>
@@ -187,7 +209,7 @@
   <main class="set" id="screen-check" hidden>
     <section class="view paper view-check">
       <div class="previewwrap" id="preview-wrap">
-        <div class="preview" id="preview">
+        <div class="preview" id="preview" data-art>
           <div class="preview-inner">
             <img id="preview-img" alt="Your doodle, with the ink Chawk will trace highlighted in blue">
             <canvas id="preview-mask" aria-hidden="true"></canvas>
@@ -257,7 +279,7 @@
       <section class="sc">
         <div class="stage paper" id="stage">
           <div class="artw">
-            <div class="artbox" id="artbox">
+            <div class="artbox" id="artbox" data-art>
               <div class="plot" id="plot" role="img" aria-label="Your doodle with its fitted equations">
                 <img class="layer ghost" id="layer-ghost" alt="">
                 <img class="layer math" id="layer-math" alt="">
@@ -357,7 +379,7 @@
   <div class="demo-modal-card" id="demo-modal-card" tabindex="-1" role="dialog" aria-modal="true" aria-labelledby="demo-modal-title">
     <button class="demo-modal-close" id="demo-modal-close" type="button" aria-label="Close">×</button>
 
-    <div class="demo-compare" id="demo-compare">
+    <div class="demo-compare" id="demo-compare" data-art>
       <div class="demo-scene"><img id="demo-original" alt=""></div>
       <div class="demo-scene demo-rebuilt"><img id="demo-rebuilt" alt=""></div>
       <span class="demo-tag l">Original</span>
@@ -460,13 +482,29 @@
 
 <div class="toast" id="toast" role="alert" aria-live="assertive" hidden><span id="toast-text"></span></div>
 
+<div class="sr-only" id="theme-live" role="status" aria-live="polite"></div>
+
 <input type="file" id="file" accept="image/png,image/jpeg,image/webp,image/bmp,image/tiff" hidden>
+<script>
+(() => {
+  let t = null;
+  try { t = localStorage.getItem('chawk.theme.v1'); } catch (e) {}
+  const dark = t === 'dark' || (t !== 'light' && matchMedia('(prefers-color-scheme: dark)').matches);
+  for (const b of document.querySelectorAll('.themetoggle')) {
+    b.setAttribute('aria-pressed', String(dark));
+    b.title = dark ? 'Switch to light theme' : 'Switch to dark theme';
+    const icon = b.querySelector('.ri');
+    if (icon) icon.className = 'ri ' + (dark ? 'ri-sun-line' : 'ri-moon-line');
+  }
+})();
+</script>
+
 
 <link rel="stylesheet" href="/vendor/katex/katex.min.css">
 <script src="/vendor/katex/katex.min.js" defer></script>
 <script src="/vendor/html2canvas.min.js" defer></script>
 <script src="gl.js" defer></script>
 <script src="math.js" defer></script>
-<script src="app.js?v=1.1.25" defer></script>
+<script src="app.js?v=1.1.27" defer></script>
 </body>
 </html>

@@ -107,6 +107,116 @@ const state = {
 
 const view = { mode: "equations", labels: false, diff: false, blend: 70, yUp: false };
 
+/* ------------------------------------------------------------------ theme */
+/* System preference by default; a manual override is stored only when the
+   target differs from the system. Theme state lives on documentElement. */
+const THEME_KEY = "chawk.theme.v1";
+const THEME_LIGHT = "#F5F3EC";
+const THEME_DARK = "#131311";
+const themeMQ = window.matchMedia("(prefers-color-scheme: dark)");
+let sessionTheme = null; // private-mode fallback: works for this session only
+
+function systemTheme() { return themeMQ.matches ? "dark" : "light"; }
+function storedTheme() {
+  try {
+    const v = localStorage.getItem(THEME_KEY);
+    return v === "light" || v === "dark" ? v : sessionTheme;
+  } catch { return sessionTheme; }
+}
+function effectiveTheme() { return storedTheme() || systemTheme(); }
+function themeIsDark() { return effectiveTheme() === "dark"; }
+
+function setThemeMeta() {
+  const m = document.querySelector('meta[name="theme-color"]');
+  if (m) m.content = effectiveTheme() === "dark" ? THEME_DARK : THEME_LIGHT;
+}
+
+function updateThemeToggles() {
+  const dark = effectiveTheme() === "dark";
+  const action = dark ? "Switch to light theme" : "Switch to dark theme";
+  for (const id of ["theme-toggle", "theme-home"]) {
+    const b = $(id);
+    if (!b) continue;
+    // The name is the setting ("Dark theme"); aria-pressed carries the state.
+    b.setAttribute("aria-label", "Dark theme");
+    b.setAttribute("aria-pressed", String(dark));
+    b.title = action;
+    const icon = b.querySelector(".ri");
+    if (icon) icon.className = "ri " + (dark ? "ri-sun-line" : "ri-moon-line");
+  }
+}
+
+function refreshThemeInk() {
+  for (const dot of document.querySelectorAll("#eq-rows .dot")) {
+    const c = dot.dataset.color;
+    if (c) dot.style.background = dotColor(c);
+  }
+  const sel = $("sel-dot");
+  if (sel && sel.dataset.color) sel.style.background = dotColor(sel.dataset.color);
+}
+
+function applyTheme(theme, persist) {
+  const root = document.documentElement;
+  root.classList.add("theme-cut");
+  if (persist) {
+    try {
+      if (theme === systemTheme()) {
+        localStorage.removeItem(THEME_KEY);
+        sessionTheme = null;
+      } else {
+        localStorage.setItem(THEME_KEY, theme);
+        sessionTheme = null;
+      }
+    } catch { sessionTheme = theme; }
+  }
+  const stored = storedTheme();
+  if (stored) root.dataset.theme = stored;
+  else delete root.dataset.theme;
+  setThemeMeta();
+  updateThemeToggles();
+  refreshThemeInk();
+  requestAnimationFrame(() => requestAnimationFrame(() => root.classList.remove("theme-cut")));
+}
+
+function announceTheme(theme) {
+  const live = $("theme-live");
+  if (!live) return;
+  live.textContent = theme === "dark"
+    ? "Dark theme on"
+    : (storedTheme() ? "Light theme on" : "Light theme on, following system");
+}
+
+function toggleTheme() {
+  const next = effectiveTheme() === "dark" ? "light" : "dark";
+  applyTheme(next, true);
+  // The pressed state is announced by the focused toggle itself; the live
+  // region is reserved for automatic OS changes.
+}
+
+function initTheme() {
+  for (const id of ["theme-toggle", "theme-home"]) {
+    const b = $(id);
+    if (b) b.addEventListener("click", toggleTheme);
+  }
+  const onSystem = () => {
+    if (!storedTheme()) {
+      applyTheme(systemTheme(), false);
+      announceTheme(systemTheme());
+    } else {
+      // Pinned: the OS change must not clear storage or change the theme.
+      setThemeMeta();
+      updateThemeToggles();
+    }
+  };
+  if (typeof themeMQ.addEventListener === "function") themeMQ.addEventListener("change", onSystem);
+  else if (typeof themeMQ.addListener === "function") themeMQ.addListener(onSystem);
+  window.addEventListener("storage", (e) => {
+    if (e.key === THEME_KEY || e.key === null) applyTheme(effectiveTheme(), false);
+  });
+  setThemeMeta();
+  updateThemeToggles();
+}
+
 /* ------------------------------------------------------------------ utils */
 function esc(s) {
   return String(s).replace(/[&<>"']/g, (c) =>
@@ -275,6 +385,7 @@ async function sheetCanvas(run) {
 
   const sheet = document.createElement("div");
   sheet.className = "social-sheet";
+  sheet.dataset.art = "";
 
   const art = document.createElement("div");
   art.className = "social-art";
@@ -471,7 +582,16 @@ function luminance(hex) {
   const [r, g, b] = [1, 2, 3].map((i) => parseInt(m[i], 16) / 255);
   return 0.2126 * r + 0.7152 * g + 0.0722 * b;
 }
+/* Chrome dots follow the room: a near-black ink is lifted to paper ink on the
+   dark selected row, while coloured inks keep their hue and gain lightness. */
 function dotColor(hex) {
+  if (!themeIsDark()) return !hex || luminance(hex) > 0.82 ? "var(--text)" : hex;
+  if (!hex) return "var(--text)";
+  if (luminance(hex) >= 0.55) return hex;
+  return `color-mix(in srgb, ${hex} 35%, var(--text))`;
+}
+/* Art dots are pinned: the selection overlay is drawn on light paper. */
+function artDotColor(hex) {
   return !hex || luminance(hex) > 0.82 ? "#15161A" : hex;
 }
 
@@ -1320,6 +1440,7 @@ function renderLibrary() {
 
     const thumb = document.createElement("div");
     thumb.className = "workthumb";
+    thumb.dataset.art = "";
     const img = document.createElement("img");
     img.src = w.thumb;
     img.alt = `${w.name}, rebuilt from ${formatCount(w.count)} equations`;
@@ -1926,6 +2047,7 @@ function renderRows(segs) {
     head.style.cssText = "display:flex;align-items:center;gap:8px;width:100%";
     const dot = document.createElement("span");
     dot.className = "dot";
+    dot.dataset.color = stroke.color || "";
     dot.style.background = dotColor(stroke.color);
     const name = document.createElement("b");
     name.textContent = MODEL_NAME[seg.model] || seg.model;
@@ -1999,6 +2121,7 @@ function hideCard() {
 }
 
 function fillCard(i, stroke, seg) {
+  $("sel-dot").dataset.color = stroke.color || "";
   $("sel-dot").style.background = dotColor(stroke.color);
   $("sel-model").textContent = MODEL_NAME[seg.model] || seg.model;
   $("sel-stroke").textContent = strokeLabel(stroke);
@@ -2127,7 +2250,7 @@ async function drawSelectionOverlay(item) {
 
   if (item.stroke.filled) {
     // A fill is an area: frame it cleanly instead of painting a noisy interior.
-    const col = dotColor(item.stroke.color);
+    const col = artDotColor(item.stroke.color);
     ctx.save();
     ctx.fillStyle = col + "14";
     ctx.fillRect(bx, by, bw, bh);
@@ -2163,7 +2286,7 @@ async function drawSelectionOverlay(item) {
   const cctx = colored.getContext("2d");
   cctx.drawImage(mask, 0, 0);
   cctx.globalCompositeOperation = "source-in";
-  cctx.fillStyle = dotColor(item.stroke.color);
+  cctx.fillStyle = artDotColor(item.stroke.color);
   cctx.fillRect(0, 0, bw, bh);
 
   ctx.save();
@@ -2527,7 +2650,7 @@ async function initDemo() {
       const real = raw === 0 ? N - 1 : raw === N + 1 ? 0 : raw - 1;
       const clone = raw === 0 || raw === N + 1;
       return `
-        <figure class="deck-card${raw === 1 ? " is-active" : ""}${clone ? " is-clone" : ""}" data-raw="${raw}" data-real="${real}"${clone ? ' aria-hidden="true"' : ""}>
+        <figure class="deck-card${raw === 1 ? " is-active" : ""}${clone ? " is-clone" : ""}" data-raw="${raw}" data-real="${real}" data-art${clone ? ' aria-hidden="true"' : ""}>
           <img src="${esc(s.src)}" width="720" height="480" alt="${esc(s.alt || "")}" draggable="false">
           <figcaption class="deck-count">${Number(s.count || 0).toLocaleString()} equations</figcaption>
         </figure>`;
@@ -3176,6 +3299,7 @@ async function health() {
   try { await fetch("/health"); } catch { /* offline; the UI still works */ }
 }
 
+initTheme();
 bind();
 loadAdvancedMeta();
 health();
