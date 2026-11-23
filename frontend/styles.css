@@ -256,7 +256,6 @@ input[type=range]{width:100%;accent-color:#1F3FD1;min-height:32px}
 .libwrap{max-width:1200px;margin:0 auto}
 .libhead{display:flex;align-items:flex-end;justify-content:space-between;gap:24px;flex-wrap:wrap;margin-bottom:26px}
 .libtitles{min-width:0}
-.libfig{margin:0 0 8px}
 .h-lib{font-size:clamp(40px,4vw,52px)}
 .libsub{margin-top:8px;max-width:46ch}
 .libtools{display:flex;gap:8px;align-items:center;flex-wrap:wrap}
@@ -444,7 +443,6 @@ input[type=range]{width:100%;accent-color:#1F3FD1;min-height:32px}
 .drop-title{font-size:20px;font-weight:700}
 .drop-sub{font-size:16px}
 .sample-row{display:flex;gap:8px;align-items:center;flex-wrap:wrap}
-.libfig{margin:0 0 8px}
 .h-lib{font-size:clamp(40px,5vw,52px)}
 .libsub{margin-top:6px}
 .hand-lg{font-size:28px}

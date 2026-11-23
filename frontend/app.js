@@ -1011,7 +1011,6 @@ function renderLibrary() {
   }
   if (empty) { state.libSelect = false; state.libSelected.clear(); }
 
-  $("lib-kicker").textContent = "YOUR WORK · THIS BROWSER";
   $("lib-title").innerHTML = 'Previous works, <span class="hl"><i>kept</i></span>.';
   $("lib-sub").textContent = "Open one to run it again, or tidy up.";
   $("lib-new").hidden = empty;
