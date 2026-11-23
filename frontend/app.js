@@ -2340,7 +2340,7 @@ function renderDemoText(slide) {
   const equations = slide.equations || [];
   const more = Math.max(0, (slide.count || 0) - equations.length);
   $("demo-eqs").innerHTML = equations
-    .map((eq) => `<span class="f">${esc(eq)}</span>`)
+    .map((eq) => `<span class="f" style="display:block;width:100%;text-align:center">${esc(eq)}</span>`)
     .join("") + (more ? `<span class="demo-more">…and ${more.toLocaleString()} more</span>` : "");
   $("demo-quip").textContent = slide.quip || "";
 }
