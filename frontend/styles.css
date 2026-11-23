@@ -61,22 +61,17 @@ button,input{font:inherit;color:inherit}button{cursor:pointer}h1,h2,p{margin:0}
 .nav-context{display:flex;align-items:center;flex:1;min-width:0}
 .nav-actions{display:flex;align-items:center;gap:6px;margin-left:auto}
 .resultbar{display:flex;align-items:center;justify-content:center;gap:10px;flex:1;min-width:0}
-.run-meta{font:500 10px/1.3 'JetBrains Mono',monospace;color:#5A5D68;white-space:nowrap;overflow:hidden;text-overflow:ellipsis;max-width:340px;margin-left:0}
-.runselect{height:32px;padding:0 9px;border:1px solid #DDD9CC;border-radius:9px;background:#fff;font-size:12px;font-weight:600;color:#15161A;display:inline-flex;align-items:center;gap:4px;white-space:nowrap;flex:none}
-.runselect .ri{font-size:13px;color:#5A5D68}
 .result-actions{display:flex;align-items:center;gap:2px;flex:none}
 .iconbtn{width:32px;height:32px;border:1px solid #DDD9CC;border-radius:9px;background:#ECE8DD;color:#5A5D68;display:grid;place-items:center;padding:0;transition:background-color .15s ease,color .15s ease}
 .iconbtn:hover{background:#E2DED2;color:#15161A}
 .iconbtn:focus-visible{outline:2px solid #1F3FD1;outline-offset:1px}
 .iconbtn .ri{font-size:16px}
-.railnew:focus-visible,.download:focus-visible,.runselect:focus-visible{outline:2px solid #1F3FD1;outline-offset:2px}
-.runselect[aria-expanded="true"]{background:#F5F3EC;border-color:#C9C4B4}
+.railnew:focus-visible,.download:focus-visible{outline:2px solid #1F3FD1;outline-offset:2px}
 .bar button:focus:not(:focus-visible),.bar a:focus:not(:focus-visible),.menu button:focus:not(:focus-visible){outline:none}
 .download{width:44px;height:32px;padding:0;border-radius:9px;display:inline-flex;align-items:center;justify-content:center;gap:0;box-shadow:0 1px 2px rgba(31,63,209,.18)}
 .download .ri-download-line{font-size:16px}
 .download .download-caret{font-size:11px;margin-left:-1px;opacity:.8}
 .download[aria-expanded="true"],.act-primary[aria-expanded="true"]{background:#1836B8;border-color:#1836B8;box-shadow:0 0 0 3px rgba(31,63,209,.18)}
-.runmenu .row:focus-visible{outline:2px solid #1F3FD1;outline-offset:-2px}
 /* static rail: source code icon, New, History (rightmost) */
 .nav-rail{display:flex;align-items:center;gap:4px;flex:none;margin-left:auto}
 .railicon{width:32px;height:32px;box-sizing:border-box;border-radius:9px;display:grid;place-items:center;color:#5A5D68;text-decoration:none;background:#ECE8DD;border:1px solid #DDD9CC;transition:background-color .15s ease,color .15s ease,border-color .15s ease}
@@ -264,8 +259,6 @@ input[type=range]{width:100%;accent-color:#1F3FD1;min-height:32px}
 .dl-item{flex-direction:row;align-items:center;gap:12px;min-height:56px}
 .dl-item>span{min-width:0}
 .menu .mono{font-size:11px}
-.runmenu .row{flex-direction:row;align-items:center;gap:10px}
-.runmenu .row.on,.runmenu .row[aria-checked="true"]{background:#F5F3EC;border-color:#E2DED2;box-shadow:none}
 
 /* ---------- busy / typesetting ---------- */
 .busy{position:fixed;inset:0;z-index:30;display:flex;align-items:center;justify-content:center;background:rgba(21,22,26,.26);backdrop-filter:blur(2px)}
@@ -313,7 +306,6 @@ input[type=range]{width:100%;accent-color:#1F3FD1;min-height:32px}
 .app.check .set,.app.check .view{min-height:0}
 .app.check .ctl{overflow-y:auto;min-height:0}
 .artbox{padding:8px 8px 26px 34px}
-.runmenu{width:280px;top:62px;right:16px}
 .toast{bottom:28px}
 }
 
@@ -437,8 +429,6 @@ input[type=range]{width:100%;accent-color:#1F3FD1;min-height:32px}
 .libdelete:disabled{opacity:.45;cursor:not-allowed}
 
 /* ---------- navbar: responsive ---------- */
-@media(max-width:1200px){.run-meta{max-width:220px}}
-@media(max-width:1000px){.run-meta{display:none}}
 @media(max-width:899px){
   .bar{height:54px;padding:0 12px;gap:8px}
   .app.home .bar{display:none}
@@ -451,8 +441,6 @@ input[type=range]{width:100%;accent-color:#1F3FD1;min-height:32px}
   .navlink .ri{font-size:14px}
   .nav-context{gap:6px}
   .resultbar{gap:6px}
-  .run-meta{display:none}
-  .runselect{height:30px;padding:0 8px;font-size:11px;max-width:140px;overflow:hidden;text-overflow:ellipsis}
   .iconbtn{width:30px;height:30px}
   .iconbtn .ri{font-size:15px}
   .download{width:36px;height:30px;border-radius:8px}
@@ -472,7 +460,6 @@ input[type=range]{width:100%;accent-color:#1F3FD1;min-height:32px}
   .app.home .bar{padding:0 10px}
   .brandname{font-size:15px}
   .navlink{padding:0 6px}
-  .runselect{max-width:100px}
   .libcount{font-size:8px;padding:3px 4px;min-width:14px}
 }
 

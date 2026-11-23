@@ -1751,7 +1751,7 @@ function fitPlot() {
   plot.style.aspectRatio = "auto";
 }
 window.addEventListener("resize", () => {
-  if (!$("run-menu").hidden || !$("sheet").hidden) closeMenus();
+  if (!$("sheet").hidden) closeMenus();
   if (state.screen === "result") {
     fitPlot();
     placeCard();
@@ -1771,8 +1771,6 @@ function renderResult() {
   state.hoverSeg = null;
 
   // header
-  $("run-meta").textContent = `${run.meta.name} · traced in ${(run.seconds || 0).toFixed(2)} s`;
-  $("run-menu-btn").innerHTML = `Run ${state.active + 1}${run.label ? ` · ${run.label}` : ""} <i class="ri-arrow-down-s-line" aria-hidden="true"></i>`;
 
   // stage
   const plot = $("plot");
@@ -2477,43 +2475,12 @@ function openSheet(trigger) {
   menuTrigger = btn;
   btn.focus({ preventScroll: true });
 }
-function openRunMenu() {
-  closeMenus();
-  const menu = $("run-menu");
-  menu.innerHTML = "";
-  state.runs.forEach((run, i) => {
-    const b = document.createElement("button");
-    b.type = "button";
-    b.className = "row" + (i === state.active ? " on" : "");
-    b.setAttribute("role", "menuitemradio");
-    b.setAttribute("aria-checked", i === state.active ? "true" : "false");
-    b.tabIndex = -1;
-    b.innerHTML = `<span class="dot" style="background:${dotColor(run.report.strokes?.[0]?.color)}"></span>
-      <span><b>Run ${i + 1} · ${esc(run.label)}</b><br><span class="m">${esc(run.meta.name)} · ${run.seconds.toFixed(2)} s</span></span>`;
-    b.onclick = () => { state.active = i; state.selected = -1; renderResult(); closeMenus(); };
-    menu.append(b);
-  });
-  menu.hidden = false;
-  positionMenu(menu, $("run-menu-btn"));
-  $("scrim").hidden = false;
-  $("run-menu-btn").setAttribute("aria-expanded", "true");
-  document.body.classList.add("menu-open");
-  menuTrigger = $("run-menu-btn");
-  const active = menu.querySelector('.row[aria-checked="true"]') || menu.querySelector(".row");
-  if (active) {
-    active.tabIndex = 0;
-    active.focus({ preventScroll: true });
-    active.scrollIntoView({ block: "nearest" });
-  }
-}
 function closeMenus() {
-  const wasOpen = !$("sheet").hidden || !$("run-menu").hidden;
+  const wasOpen = !$("sheet").hidden;
   $("sheet").hidden = true;
-  $("run-menu").hidden = true;
   $("scrim").hidden = true;
   $("download-btn").setAttribute("aria-expanded", "false");
   $("download-mobile").setAttribute("aria-expanded", "false");
-  $("run-menu-btn").setAttribute("aria-expanded", "false");
   document.body.classList.remove("menu-open");
   if (wasOpen && menuTrigger && menuTrigger.offsetParent !== null) {
     menuTrigger.focus({ preventScroll: true });
@@ -2788,31 +2755,10 @@ function bind() {
     if ($("sheet").hidden) openSheet($("download-mobile")); else closeMenus();
   });
   $("scrim").addEventListener("click", () => closeMenus());
-  $("run-menu-btn").addEventListener("click", () => {
-    if ($("run-menu").hidden) openRunMenu(); else closeMenus();
-  });
   document.addEventListener("pointerdown", (e) => {
-    if ($("sheet").hidden && $("run-menu").hidden) return;
-    if (e.target.closest("#sheet,#run-menu,#download-btn,#download-mobile,#run-menu-btn")) return;
+    if ($("sheet").hidden) return;
+    if (e.target.closest("#sheet,#download-btn,#download-mobile")) return;
     closeMenus();
-  });
-  $("run-menu").addEventListener("keydown", (e) => {
-    const rows = [...$("run-menu").querySelectorAll(".row")];
-    if (!rows.length) return;
-    const i = rows.indexOf(document.activeElement);
-    if (e.key === "ArrowDown" || e.key === "ArrowUp") {
-      e.preventDefault();
-      const next = e.key === "ArrowDown" ? (i + 1) % rows.length : (i - 1 + rows.length) % rows.length;
-      rows.forEach((r) => { r.tabIndex = -1; });
-      rows[next].tabIndex = 0;
-      rows[next].focus();
-    } else if (e.key === "Home" || e.key === "End") {
-      e.preventDefault();
-      const next = e.key === "Home" ? 0 : rows.length - 1;
-      rows.forEach((r) => { r.tabIndex = -1; });
-      rows[next].tabIndex = 0;
-      rows[next].focus();
-    }
   });
 
   document.querySelectorAll("[data-img]").forEach((b) => {
