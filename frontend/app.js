@@ -2643,13 +2643,28 @@ async function initDemo() {
       if (v) startAuto(); else stopAuto();
     };
     playBtn.addEventListener("click", () => setPlaying(!demo.playing));
-    deck.addEventListener("pointerenter", stopAuto);
-    deck.addEventListener("pointerleave", () => { if (demo.playing && !demo.reduced) startAuto(); });
-    deck.addEventListener("focusin", stopAuto);
-    deck.addEventListener("focusout", () => { if (demo.playing && !demo.reduced) startAuto(); });
     document.addEventListener("visibilitychange", () => {
       if (document.hidden) stopAuto();
       else if (demo.playing && !demo.reduced) startAuto();
+    });
+
+    const fullBtn = $("demo-full");
+    const demoEl = document.querySelector(".demo");
+    const updateFull = () => {
+      const on = !!document.fullscreenElement;
+      fullBtn.setAttribute("aria-label", on ? "Exit fullscreen" : "Fullscreen");
+      fullBtn.title = on ? "Exit fullscreen" : "Fullscreen";
+      fullBtn.innerHTML = `<i class="ri ${on ? "ri-fullscreen-exit-line" : "ri-fullscreen-line"}" aria-hidden="true"></i>`;
+    };
+    fullBtn.addEventListener("click", async () => {
+      try {
+        if (document.fullscreenElement) await document.exitFullscreen();
+        else await demoEl.requestFullscreen();
+      } catch { /* fullscreen unavailable */ }
+    });
+    document.addEventListener("fullscreenchange", () => {
+      updateFull();
+      requestAnimationFrame(() => { deck.scrollLeft = demo.raw * step(); });
     });
 
     updatePlay();
