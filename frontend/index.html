@@ -21,19 +21,25 @@
       <span class="brandname">Chawk</span>
     </a>
 
-    <button class="navlink libbtn" id="library-btn" type="button" aria-label="Previous works">
-      <i class="ri-arrow-left-line" aria-hidden="true"></i>
-      <span>Previous</span>
-      <span class="libcount" id="library-count" hidden>0</span>
-    </button>
-
     <div class="nav-context">
+      <div class="navgroup" id="nav-home-group" hidden>
+        <button class="navhint" id="nav-home-drop" type="button"><i class="ri-upload-2-line" aria-hidden="true"></i><span>Drop, paste, or choose a doodle</span></button>
+      </div>
+      <div class="navgroup" id="nav-library-group" hidden>
+        <label class="navsearch"><i class="ri-search-line" aria-hidden="true"></i><input id="lib-search" type="search" placeholder="Search previous works" autocomplete="off" aria-label="Search previous works"></label>
+      </div>
+      <div class="navgroup navcheck" id="nav-check-group" hidden>
+        <span class="navcontext-name" id="nav-check-name"></span>
+        <button class="navlink" id="check-change" type="button">
+          <i class="ri-image-line" aria-hidden="true"></i>
+          <span class="hide-m">Choose another</span><span class="show-m">Change</span>
+        </button>
+      </div>
       <div class="resultbar" id="result-bar" hidden>
         <span class="run-meta" id="run-meta"></span>
         <button class="runselect" id="run-menu-btn" type="button" aria-haspopup="menu" aria-expanded="false">Run 1 <i class="ri-arrow-down-s-line" aria-hidden="true"></i></button>
         <div class="result-actions">
           <button class="iconbtn" id="retrace" type="button" title="Try again" aria-label="Try again"><i class="ri-refresh-line" aria-hidden="true"></i></button>
-          <button class="iconbtn" id="new-run" type="button" title="New doodle" aria-label="New doodle"><i class="ri-quill-pen-line" aria-hidden="true"></i></button>
           <button class="btn bp download" id="download-btn" type="button" title="Download" aria-label="Download" aria-haspopup="menu" aria-expanded="false">
             <i class="ri-download-line" aria-hidden="true"></i><i class="ri-arrow-down-s-line download-caret" aria-hidden="true"></i>
           </button>
@@ -41,10 +47,13 @@
       </div>
     </div>
 
-    <div class="nav-actions">
-      <button class="navlink" id="check-change" type="button" hidden>
-        <i class="ri-image-line" aria-hidden="true"></i>
-        <span class="hide-m">Choose another</span><span class="show-m">Change</span>
+    <div class="nav-rail">
+      <a class="railicon" id="nav-github" href="https://github.com/hello2himel/chawk" target="_blank" rel="noopener" aria-label="Chawk on GitHub" title="Chawk on GitHub"><i class="ri-github-fill" aria-hidden="true"></i></a>
+      <button class="btn bp railnew" id="nav-new" type="button" aria-label="New doodle" title="New doodle"><i class="ri-quill-pen-line" aria-hidden="true"></i><span class="hide-m">New doodle</span></button>
+      <button class="railbtn libbtn" id="library-btn" type="button" aria-label="Archive of previous works" title="Archive">
+        <i class="ri-archive-line" aria-hidden="true"></i>
+        <span class="hide-m">Archive</span>
+        <span class="libcount" id="library-count" hidden>0</span>
       </button>
     </div>
   </header>
@@ -97,7 +106,6 @@
           <p class="m libsub" id="lib-sub">Open one to run it again, or tidy up.</p>
         </div>
         <div class="libtools">
-          <button class="btn bp" id="lib-new"><i class="ri-add-line" aria-hidden="true"></i> New doodle</button>
         </div>
       </header>
 
@@ -132,9 +140,10 @@
       <div class="libempty" id="lib-empty" hidden>
         <div class="libempty-card">
           <span class="libempty-icon"><i class="ri-image-line" aria-hidden="true"></i></span>
-          <p class="hand hand-lg">Nothing kept yet</p>
-          <p class="m">Doodles you run will show up here.</p>
+          <p class="hand hand-lg" id="lib-empty-title">Nothing kept yet</p>
+          <p class="m" id="lib-empty-sub">Doodles you run will show up here.</p>
           <button class="btn bp" id="lib-empty-new"><i class="ri-add-line" aria-hidden="true"></i> New doodle</button>
+          <button class="btn" id="lib-clear-search" hidden>Clear search</button>
         </div>
       </div>
 

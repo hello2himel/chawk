@@ -519,6 +519,10 @@ function applyScreen(name) {
   $("screen-result").hidden = name !== "result";
   $("screen-library").hidden = name !== "library";
   $("check-change").hidden = name !== "check";
+  $("nav-home-group").hidden = name !== "start";
+  $("nav-library-group").hidden = name !== "library";
+  $("nav-check-group").hidden = name !== "check";
+  $("nav-check-name").textContent = state.name || "";
   $("result-bar").hidden = name !== "result";
   $("library-btn").classList.toggle("on", name === "library");
   $("library-btn").setAttribute("aria-current", name === "library" ? "page" : "false");
@@ -1251,29 +1255,36 @@ function exitSelect() {
 }
 
 function renderLibrary() {
-  const works = sortedWorks(loadWorks());
+  const allWorks = loadWorks();
+  const query = String(state.libQuery || "").trim().toLowerCase();
+  const matching = query
+    ? allWorks.filter((w) => String(w.name).toLowerCase().includes(query))
+    : allWorks;
+  const works = sortedWorks(matching);
   const selecting = state.libSelect;
   const empty = works.length === 0;
+  const noMatches = allWorks.length > 0 && empty && !!query;
   for (const id of [...state.libSelected]) {
-    if (!works.some((w) => w.id === id)) state.libSelected.delete(id);
+    if (!allWorks.some((w) => w.id === id)) state.libSelected.delete(id);
   }
   if (empty) { state.libSelect = false; state.libSelected.clear(); }
 
   $("lib-title").innerHTML = 'Previous works, <span class="hl"><i>kept</i></span>.';
   $("lib-sub").textContent = "Open one to run it again, or tidy up.";
-  $("lib-new").hidden = empty;
   $("lib-toolbar").hidden = empty;
-  $("lib-count-line").textContent = `${works.length} work${works.length === 1 ? "" : "s"}`;
+  $("lib-count-line").textContent = query
+    ? `${works.length} of ${allWorks.length} work${allWorks.length === 1 ? "" : "s"}`
+    : `${works.length} work${works.length === 1 ? "" : "s"}`;
   $("lib-sort-label").textContent = SORT_LABELS[state.libSort] || "Newest";
   $("lib-view-grid").setAttribute("aria-pressed", state.libView === "grid" ? "true" : "false");
   $("lib-view-list").setAttribute("aria-pressed", state.libView === "list" ? "true" : "false");
-  $("lib-delete-all").hidden = empty;
+  $("lib-delete-all").hidden = allWorks.length === 0;
 
-  const full = works.length >= MAX_WORKS;
-  $("lib-limit").hidden = empty || !full;
+  const full = allWorks.length >= MAX_WORKS;
+  $("lib-limit").hidden = allWorks.length === 0 || !full;
   if (full) {
-    $("lib-limit-text").textContent = `${works.length} of ${MAX_WORKS} works used.`;
-    $("lib-limit-fill").style.width = `${Math.round((works.length / MAX_WORKS) * 100)}%`;
+    $("lib-limit-text").textContent = `${allWorks.length} of ${MAX_WORKS} works used.`;
+    $("lib-limit-fill").style.width = `${Math.round((allWorks.length / MAX_WORKS) * 100)}%`;
   }
 
   const grid = $("lib-grid");
@@ -1281,9 +1292,13 @@ function renderLibrary() {
   grid.hidden = empty;
   $("lib-listhead").hidden = empty || state.libView !== "list";
   $("lib-empty").hidden = !empty;
-  $("lib-note").textContent = empty
-    ? ""
-    : `${Math.round(JSON.stringify(works).length / 1024)} KB in this browser · up to ${MAX_WORKS} works`;
+  $("lib-empty-title").textContent = noMatches ? "Nothing matches" : "Nothing kept yet";
+  $("lib-empty-sub").textContent = noMatches ? "Try a different search." : "Doodles you run will show up here.";
+  $("lib-empty-new").hidden = noMatches;
+  $("lib-clear-search").hidden = !noMatches;
+  $("lib-note").textContent = allWorks.length
+    ? `${Math.round(JSON.stringify(allWorks).length / 1024)} KB in this browser · up to ${MAX_WORKS} works`
+    : "";
 
   $("lib-bulk").hidden = !selecting || empty;
   $("lib-bulk-count").textContent = `${state.libSelected.size} selected`;
@@ -2571,7 +2586,18 @@ function bind() {
     state.libSelected.clear();
     showScreen("library");
   });
-  $("lib-new").addEventListener("click", () => showScreen("start"));
+  $("nav-new").addEventListener("click", () => showScreen("start"));
+  $("nav-home-drop").addEventListener("click", () => $("file").click());
+  $("lib-search").addEventListener("input", (e) => {
+    state.libQuery = e.target.value;
+    if (state.screen === "library") renderLibrary();
+  });
+  $("lib-clear-search").addEventListener("click", () => {
+    state.libQuery = "";
+    $("lib-search").value = "";
+    renderLibrary();
+    $("lib-search").focus();
+  });
   $("lib-empty-new").addEventListener("click", () => showScreen("start"));
   $("lib-bulk-all").addEventListener("click", () => {
     for (const w of loadWorks()) state.libSelected.add(w.id);
@@ -2757,7 +2783,6 @@ function bind() {
 
   $("retrace").addEventListener("click", () => { renderCheck(); showScreen("check"); });
   $("retrace-mobile").addEventListener("click", () => { renderCheck(); showScreen("check"); });
-  $("new-run").addEventListener("click", () => showScreen("start"));
 
   document.addEventListener("keydown", (e) => {
     if (e.key === "Escape" && !$("advanced").hidden) { closeAdvanced(); return; }

@@ -50,8 +50,8 @@ button,input{font:inherit;color:inherit}button{cursor:pointer}h1,h2,p{margin:0}
 .brandmark{width:30px;height:30px;display:grid;place-items:center;flex:none}
 .brandmark svg{display:block}
 .brandname{font-size:17px;font-weight:700;letter-spacing:-.03em}
-.navlink{height:32px;padding:0 9px;border:0;border-radius:8px;background:transparent;color:#5A5D68;font-size:13px;font-weight:600;display:inline-flex;align-items:center;gap:6px;white-space:nowrap;transition:background-color .15s ease,color .15s ease}
-.navlink:hover{background:#F0EDE5;color:#15161A}
+.navlink{height:32px;padding:0 9px;border:1px solid #E6E1D6;border-radius:9px;background:#F2EFE7;color:#5A5D68;font-size:13px;font-weight:600;display:inline-flex;align-items:center;gap:6px;white-space:nowrap;transition:background-color .15s ease,color .15s ease}
+.navlink:hover{background:#E9E5DA;color:#15161A}
 .navlink.on{color:#15161A}
 .navlink:focus-visible{outline:2px solid #1F3FD1;outline-offset:1px}
 .navlink .ri{font-size:15px}
@@ -63,18 +63,43 @@ button,input{font:inherit;color:inherit}button{cursor:pointer}h1,h2,p{margin:0}
 .runselect{height:30px;padding:0 9px;border:1px solid #DDD9CC;border-radius:7px;background:#fff;font-size:12px;font-weight:600;color:#15161A;display:inline-flex;align-items:center;gap:4px;white-space:nowrap;flex:none}
 .runselect .ri{font-size:13px;color:#5A5D68}
 .result-actions{display:flex;align-items:center;gap:2px;flex:none}
-.iconbtn{width:32px;height:32px;border:0;border-radius:8px;background:transparent;color:#5A5D68;display:grid;place-items:center;padding:0;transition:background-color .15s ease,color .15s ease}
-.iconbtn:hover{background:#F0EDE5;color:#15161A}
+.iconbtn{width:32px;height:32px;border:1px solid #E6E1D6;border-radius:9px;background:#F2EFE7;color:#5A5D68;display:grid;place-items:center;padding:0;transition:background-color .15s ease,color .15s ease}
+.iconbtn:hover{background:#E9E5DA;color:#15161A}
 .iconbtn:focus-visible{outline:2px solid #1F3FD1;outline-offset:1px}
 .iconbtn .ri{font-size:16px}
-.download{width:40px;height:32px;padding:0;border-radius:8px;display:inline-flex;align-items:center;justify-content:center;gap:0;box-shadow:0 1px 2px rgba(31,63,209,.18)}
+.railnew:focus-visible,.download:focus-visible,.runselect:focus-visible,.navhint:focus-visible{outline:2px solid #1F3FD1;outline-offset:2px}
+.download{width:40px;height:32px;padding:0;border-radius:9px;display:inline-flex;align-items:center;justify-content:center;gap:0;box-shadow:0 1px 2px rgba(31,63,209,.18)}
 .download .ri-download-line{font-size:16px}
 .download .download-caret{font-size:11px;margin-left:-1px;opacity:.8}
+/* static rail: GitHub, New, Previous (rightmost) */
+.nav-rail{display:flex;align-items:center;gap:4px;flex:none;margin-left:auto}
+.railicon{width:32px;height:32px;border-radius:9px;display:grid;place-items:center;color:#5A5D68;text-decoration:none;background:#F2EFE7;border:1px solid #E6E1D6;transition:background-color .15s ease,color .15s ease,border-color .15s ease}
+.railicon:hover{background:#E9E5DA;color:#15161A}
+.railicon:focus-visible{outline:2px solid #1F3FD1;outline-offset:1px}
+.railicon .ri{font-size:17px}
+.railnew{height:32px;padding:0 12px;border-radius:9px;font-size:12px;gap:6px;box-shadow:0 1px 2px rgba(31,63,209,.18)}
+.railnew:hover,.download:hover{background:#1836B8;border-color:#1836B8}
+.railnew .ri{font-size:14px}
+.railbtn{height:32px;padding:0 9px;border:1px solid #E6E1D6;border-radius:9px;background:#F2EFE7;color:#5A5D68;font-size:13px;font-weight:600;display:inline-flex;align-items:center;gap:5px;white-space:nowrap;transition:background-color .15s ease,color .15s ease}
+.railbtn:hover{background:#E9E5DA;color:#15161A}
+.railbtn.on{background:#fff;border-color:#D8D2C4;color:#15161A}
+.railbtn:focus-visible{outline:2px solid #1F3FD1;outline-offset:1px}
+.railbtn .ri{font-size:15px}
+/* contextual center */
+.navgroup{display:flex;align-items:center;gap:10px;min-width:0;flex:1}
+.navhint{display:inline-flex;align-items:center;gap:8px;height:32px;padding:0 12px;border:1px dashed #CFCABA;border-radius:999px;background:#FAF9F4;color:#5A5D68;font-size:12px;font-weight:500;white-space:nowrap;transition:border-color .15s,color .15s}
+.navhint:hover{border-color:#1F3FD1;color:#15161A}
+.navhint .ri{font-size:15px}
+.navsearch{display:flex;align-items:center;gap:7px;height:32px;padding:0 10px;border:1px solid #DDD9CC;border-radius:999px;background:#fff;min-width:220px;max-width:380px;flex:1}
+.navsearch:focus-within{border-color:#1F3FD1;box-shadow:0 0 0 2px rgba(31,63,209,.1)}
+.navsearch .ri{font-size:14px;color:#5A5D68;flex:none}
+.navsearch input{border:0;outline:0;background:transparent;min-width:0;flex:1;font-size:12px;color:#15161A;padding:0;height:100%}
+.navsearch input::placeholder{color:#8A8D98}
+.navcheck{gap:10px}
+.navcontext-name{font-size:12px;font-weight:600;color:#15161A;white-space:nowrap;overflow:hidden;text-overflow:ellipsis;max-width:340px}
+
 /* homescreen: floating island */
 .app.home .bar{width:min(1080px,calc(100% - 32px));height:58px;margin:12px auto 6px;padding:0 16px;border:1px solid #DDD9CC;border-radius:16px;box-shadow:0 10px 28px rgba(21,22,26,.08);background:#FAF9F4;top:12px}
-.app.home .bar .libbtn{order:5;margin-left:auto}
-.app.home .bar .nav-context{order:2}
-.app.home .bar .nav-actions{order:3;margin-left:0}
 /* project screens keep a full-width bar */
 .app.project .bar{border-bottom:1px solid #DDD9CC}
 .btn{height:44px;padding:0 16px;border-radius:10px;border:1px solid #C9C4B4;background:#fff;font-weight:600;font-size:14px;display:inline-flex;align-items:center;justify-content:center;gap:8px}
@@ -416,7 +441,16 @@ input[type=range]{width:100%;accent-color:#1F3FD1;min-height:32px}
   .iconbtn .ri{font-size:15px}
   .download{width:36px;height:30px;border-radius:8px}
   .result-actions{display:none}
-  .nav-actions{gap:2px}
+  .navhint{display:none}
+  .nav-rail{gap:2px;margin-left:0}
+  .railicon#nav-github{display:none}
+  .railnew{width:32px;height:30px;padding:0;border-radius:8px}
+  .railnew .ri{font-size:15px}
+  .railbtn{height:30px;padding:0 5px}
+  .railbtn .ri{font-size:14px}
+  .navsearch{min-width:0;max-width:none;flex:1;height:30px;padding:0 9px}
+  .navcheck{gap:6px}
+  .navcontext-name{max-width:120px;font-size:11px}
 }
 @media(max-width:620px){
   .bar{padding:0 10px;gap:6px}
