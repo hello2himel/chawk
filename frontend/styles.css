@@ -45,7 +45,8 @@ body{margin:0;background:#F5F3EC;font-family:'Instrument Sans',system-ui,sans-se
 button,input{font:inherit;color:inherit}button{cursor:pointer}h1,h2,p{margin:0}
 .app{display:flex;flex-direction:column;min-height:100dvh;position:relative}
 .bar{display:flex;align-items:center;gap:8px;height:56px;padding:0 12px 0 16px;box-sizing:border-box;border-bottom:1px solid #DDD9CC;background:#FAF9F4;flex:none;position:sticky;top:0;z-index:4}
-.brand{display:flex;align-items:center;gap:8px;font-weight:700;font-size:18px;letter-spacing:-.02em;margin-right:auto}
+.brand{display:flex;align-items:center;gap:8px;font-weight:700;font-size:18px;letter-spacing:-.02em;margin-right:auto;color:inherit;text-decoration:none;cursor:pointer;border-radius:8px}
+.brand:focus-visible{outline:2px solid #1F3FD1;outline-offset:2px}
 .btn{height:44px;padding:0 16px;border-radius:10px;border:1px solid #C9C4B4;background:#fff;font-weight:600;font-size:14px;display:inline-flex;align-items:center;justify-content:center;gap:8px}
 .bp{background:#1F3FD1;border-color:#1F3FD1;color:#fff}
 .ib{width:44px;height:44px;border-radius:10px;border:1px solid #C9C4B4;background:#fff;display:grid;place-items:center;flex:none;padding:0}
@@ -251,51 +252,127 @@ input[type=range]{width:100%;accent-color:#1F3FD1;min-height:32px}
 /* ---------- library ---------- */
 .libbtn{gap:6px}
 .libcount{background:#1F3FD1;color:#fff;border-radius:999px;font:700 10px/1 'JetBrains Mono',monospace;padding:3px 6px}
-.library{flex:1;min-height:0;overflow-y:auto;background:#F5F3EC;padding:34px 40px 120px}
-.libwrap{max-width:1120px;margin:0 auto}
-.libhead{display:flex;align-items:flex-end;justify-content:space-between;gap:28px;margin-bottom:14px;flex-wrap:wrap}
-.libfig{margin:0 0 6px}
-.libsub{margin-top:6px;max-width:44ch}
+.library{flex:1;min-height:0;overflow-y:auto;background:#F5F3EC;padding:32px 40px 120px}
+.libwrap{max-width:1200px;margin:0 auto}
+.libhead{display:flex;align-items:flex-end;justify-content:space-between;gap:24px;flex-wrap:wrap;margin-bottom:26px}
+.libtitles{min-width:0}
+.libfig{margin:0 0 8px}
+.h-lib{font-size:clamp(40px,4vw,52px)}
+.libsub{margin-top:8px;max-width:46ch}
 .libtools{display:flex;gap:8px;align-items:center;flex-wrap:wrap}
-.libtoolbar{display:flex;align-items:center;justify-content:space-between;gap:12px;border-top:1px solid #DDD9CC;padding:10px 0 16px;margin-bottom:16px}
+.libtoolbar{display:flex;align-items:center;justify-content:space-between;gap:12px;border-top:1px solid #DDD9CC;padding:12px 0 16px;margin-top:14px;margin-bottom:18px;flex-wrap:wrap}
 .libcountline{font:500 12px/1.4 'JetBrains Mono',monospace;color:#5A5D68;text-transform:uppercase;letter-spacing:.04em}
+.libviewtools{display:flex;align-items:center;gap:10px;flex-wrap:wrap}
+.libsort{height:36px;padding:0 12px;border:1px solid #DDD9CC;border-radius:999px;background:#FAF9F4;display:inline-flex;align-items:center;gap:6px;font-size:13px;font-weight:600;color:#15161A}
+.libsort:hover{background:#F1EFE8}
+.libview{display:inline-flex;border:1px solid #DDD9CC;border-radius:10px;overflow:hidden;background:#FAF9F4}
+.libview button{width:36px;height:34px;border:0;background:transparent;display:grid;place-items:center;color:#5A5D68}
+.libview button[aria-pressed=true]{background:#15161A;color:#fff}
 .libdanger{border:0;background:none;color:#B3261E;font-size:13px;font-weight:600;padding:6px 4px;border-radius:6px;cursor:pointer}
 .libdanger:hover{background:#FBEBD0}
-.libgrid{display:grid;grid-template-columns:repeat(auto-fill,minmax(280px,1fr));gap:20px}
-.work{min-width:0;background:#FAF9F4;border:1px solid #DDD9CC;border-radius:14px;overflow:hidden;display:flex;flex-direction:column;position:relative;transition:border-color .15s,box-shadow .15s}
-.work:hover{border-color:#BDB7A7;box-shadow:0 8px 22px rgba(21,22,26,.07)}
-.work:focus-visible{outline:2px solid #1F3FD1;outline-offset:2px}
-.work.sel{outline:2px solid #1F3FD1;outline-offset:1px;border-color:#1F3FD1}
-.workthumb{aspect-ratio:3/2;background:#F8F7F3;border-bottom:1px solid #E9E5DA;overflow:hidden}
+.liblimit{background:#FBEBD0;border:1px solid #E7C3BF;border-radius:12px;padding:12px 14px;margin-bottom:16px}
+.liblimit-row{display:flex;align-items:center;justify-content:space-between;gap:12px;flex-wrap:wrap}
+.liblimit-row p{color:#8A3F05}
+.liblimit-row b{font-weight:700}
+.liblimit-track{height:4px;background:#E7C3BF;border-radius:999px;overflow:hidden;margin-top:10px}
+.liblimit-track span{display:block;height:100%;width:100%;background:#B3261E}
+.liblisthead{display:block;margin:0 0 10px;padding-left:182px}
+.libgrid{display:grid;grid-template-columns:repeat(auto-fit,minmax(280px,1fr));gap:24px 16px}
+.libgrid.list{display:flex;flex-direction:column;gap:16px}
+.libgrid .work{min-width:0;flex:none;background:transparent;border:0;border-radius:0;padding:0;display:flex;flex-direction:column;align-items:stretch;justify-content:flex-start;position:relative;overflow:visible;cursor:pointer}
+.libgrid .work:focus-visible{outline:2px solid #1F3FD1;outline-offset:3px;border-radius:12px}
+.workthumb{position:relative;width:100%;aspect-ratio:16/9;border-radius:12px;overflow:hidden;background:#E9E5DA}
 .workthumb img{width:100%;height:100%;object-fit:cover;display:block}
-.workbody{padding:12px 14px 13px;display:flex;flex-direction:column;gap:4px;min-width:0}
-.workname{font-weight:700;font-size:15px;line-height:1.35;white-space:nowrap;overflow:hidden;text-overflow:ellipsis}
-.workmeta{font-family:'JetBrains Mono',monospace;font-size:10px;color:#5A5D68;text-transform:uppercase;letter-spacing:.04em;white-space:nowrap;overflow:hidden;text-overflow:ellipsis}
-.workrow{display:flex;justify-content:space-between;align-items:center;margin-top:10px;gap:8px}
-.workopen{height:32px;padding:0 12px;font-size:13px;border-radius:8px;border:1px solid #DDD9CC;background:#fff;display:inline-flex;align-items:center;gap:4px}
-.workopen:hover{border-color:#1F3FD1;color:#1F3FD1}
-.workdel{border:0;background:none;color:#5A5D68;padding:7px;border-radius:8px;cursor:pointer;display:inline-flex}
-.workdel:hover{color:#B3261E;background:#FBEBD0}
-.workcheck{position:absolute;left:12px;top:12px;width:22px;height:22px;border-radius:7px;background:#fff;border:1.5px solid #CFCABA;display:flex;align-items:center;justify-content:center;color:#fff;font-size:13px;z-index:2;box-shadow:0 1px 3px rgba(21,22,26,.12)}
-.work.sel .workcheck{background:#1F3FD1;border-color:#1F3FD1}
-.libempty{max-width:460px;margin:72px auto;text-align:center;display:flex;flex-direction:column;align-items:center;gap:12px}
-.libbar{position:fixed;left:50%;bottom:22px;transform:translateX(-50%);background:#FAF9F4;border:1px solid #DDD9CC;border-radius:14px;padding:10px 12px;display:flex;align-items:center;gap:10px;box-shadow:0 14px 34px rgba(21,22,26,.18);z-index:15;max-width:94vw}
-.libbar .m{margin-right:4px}
-.libnote{max-width:1120px;margin:26px auto 0;text-align:center;font-size:12px}
+.workbadge{position:absolute;right:6px;bottom:6px;background:rgba(21,22,26,.82);color:#fff;font:600 10px/1.2 'JetBrains Mono',monospace;padding:3px 5px;border-radius:4px;pointer-events:none;letter-spacing:.02em}
+.yt-body{display:grid;grid-template-columns:minmax(0,1fr) 28px;gap:4px;align-items:start;padding-top:10px}
+.yt-info{min-width:0}
+.worktitle{font-family:'Instrument Sans',sans-serif;font-size:16px;font-weight:600;letter-spacing:-.01em;line-height:1.35;color:#15161A;display:-webkit-box;-webkit-line-clamp:2;-webkit-box-orient:vertical;overflow:hidden;word-break:break-word}
+.yt-more{width:28px;height:28px;border:0;background:none;border-radius:50%;color:#15161A;display:grid;place-items:center;opacity:0;transition:opacity .12s ease,background-color .12s ease;cursor:pointer;margin-top:-3px}
+.yt-more .ri{font-size:20px}
+.libgrid .work:hover .yt-more,
+.libgrid .work:focus-within .yt-more{opacity:1}
+.yt-more:hover{background:#E9E5DA}
+@media(hover:none){.yt-more{opacity:1}}
+.workcheck{position:absolute;left:10px;top:10px;width:22px;height:22px;border-radius:50%;background:#fff;border:1.5px solid #CFCABA;display:flex;align-items:center;justify-content:center;color:#fff;z-index:2;box-shadow:0 1px 3px rgba(21,22,26,.12)}
+.libgrid .work.sel .workcheck{background:#1F3FD1;border-color:#1F3FD1}
+.libgrid .work.sel .workthumb{box-shadow:0 0 0 3px #1F3FD1}
+.libgrid .work.sel .yt-more{display:none}
+.workrename{display:flex;flex-direction:column;gap:3px;width:100%}
+.workrename input{height:32px;border:1.5px solid #1F3FD1;border-radius:7px;background:#fff;padding:0 8px;font:500 15px 'Instrument Sans',sans-serif;color:#15161A;width:100%;box-sizing:border-box}
+.workrename-help{font-size:10px;color:#5A5D68;line-height:1.3}
+.libgrid.list .work{display:grid;grid-template-columns:170px minmax(0,1fr);gap:12px;align-items:start;justify-content:start}
+.libgrid.list .workthumb{width:170px;height:96px;aspect-ratio:auto;border-radius:10px}
+.libgrid.list .yt-body{padding-top:0;grid-template-columns:minmax(0,1fr) 28px;gap:8px}
+.libgrid.list .worktitle{font-size:16px;line-height:1.35;-webkit-line-clamp:2}
+.libgrid.list .workcheck{left:10px;top:10px}
+.libempty{max-width:460px;margin:48px auto 0}
+.libempty-card{border:1.5px dashed #CFCABA;border-radius:14px;padding:36px 24px;background:rgba(255,255,255,.4);display:flex;flex-direction:column;align-items:center;gap:10px;text-align:center}
+.libempty-icon{width:42px;height:42px;border-radius:50%;background:#E7ECFB;color:#1F3FD1;display:grid;place-items:center;font-size:20px}
+.libempty-card .hand{font-family:'STIX Two Text',Georgia,serif;font-weight:400;font-style:normal;font-size:28px;color:#15161A;line-height:1.15}
+.libempty-card .m{max-width:32ch}
+.libnote{max-width:1200px;margin:26px auto 0;text-align:center;font-size:12px}
+.libbulk{position:sticky;bottom:18px;z-index:20;width:max-content;max-width:calc(100vw - 32px);margin:20px auto 0;background:#15161A;color:#fff;border-radius:12px;padding:8px 10px;display:flex;align-items:center;gap:4px;box-shadow:0 14px 34px rgba(21,22,26,.22)}
+.libbulk-count{font:600 12px/1 'JetBrains Mono',monospace;padding:0 8px;white-space:nowrap}
+.libbulk-btn{border:0;background:none;color:#fff;font-size:13px;font-weight:600;padding:8px 10px;border-radius:8px;display:inline-flex;align-items:center;gap:6px;white-space:nowrap;cursor:pointer}
+.libbulk-btn:hover{background:rgba(255,255,255,.1)}
+.libbulk-btn:disabled{opacity:.45;cursor:default}
+.libbulk-btn:disabled:hover{background:none}
+.libbulk-danger{background:#B3261E;color:#fff}
+.libbulk-danger:hover{background:#9F1F18}
+.libbulk-close{border:0;background:none;color:#C9C4B4;font-size:18px;line-height:1;width:30px;height:30px;border-radius:8px;cursor:pointer}
+.libbulk-close:hover{background:rgba(255,255,255,.1);color:#fff}
 .danger{color:#B3261E;border-color:#E7C3BF;background:#fff}
 .danger:hover{background:#FBEBD0}
 .danger[disabled]{opacity:.45;cursor:not-allowed}
+
+/* library popovers */
+.libmenu{position:fixed;z-index:70;background:#fff;border:1px solid #DDD9CC;border-radius:12px;box-shadow:0 18px 44px rgba(21,22,26,.18);padding:6px;min-width:240px;max-width:calc(100vw - 16px)}
+.libmenu button{display:flex;align-items:center;gap:14px;width:100%;height:40px;padding:0 16px;border:0;border-radius:8px;background:none;font:600 14px 'Instrument Sans',sans-serif;color:#15161A;text-align:left;cursor:pointer}
+.libmenu button:hover{background:#F5F3EC}
+.libmenu button .ri{font-size:20px;color:#5A5D68;width:20px}
+.libmenu button.danger{color:#B3261E}
+.libmenu button.danger .ri{color:#B3261E}
+.libmenu kbd{margin-left:auto;font:500 11px 'JetBrains Mono',monospace;color:#5A5D68}
+.libmenu .libmenu-label{font:600 10px/1 'JetBrains Mono',monospace;color:#5A5D68;text-transform:uppercase;letter-spacing:.08em;padding:8px 10px 6px}
+.libmenu .libmenu-sep{height:1px;background:#E9E5DA;margin:4px 6px}
+.libmenu .libmenu-check{width:14px;color:#1F3FD1;font-size:14px}
+.libmenu .libmenu-check.blank{visibility:hidden}
+
+/* library confirm dialogs */
+.libdialogwrap{position:fixed;inset:0;z-index:80;display:grid;place-items:center;padding:18px}
+.libdialog-scrim{position:absolute;inset:0;background:rgba(21,22,26,.62)}
+.libdialog{position:relative;width:min(420px,94vw);background:#fff;border-radius:16px;padding:26px;box-shadow:0 28px 70px rgba(21,22,26,.28);text-align:left}
+.libdialog-icon{width:46px;height:46px;border-radius:50%;background:#FBE4E1;color:#B3261E;display:grid;place-items:center;font-size:20px;margin-bottom:14px}
+.libdialog h2{font-family:'STIX Two Text',Georgia,serif;font-weight:400;font-size:26px;line-height:1.15;letter-spacing:-.01em}
+.libdialog>p{margin-top:8px;line-height:1.5}
+.libdialog-list{margin-top:12px;display:flex;flex-direction:column;gap:8px;max-height:160px;overflow:auto}
+.libdialog-item{display:flex;align-items:center;gap:10px;font-size:13px;font-weight:600;min-width:0}
+.libdialog-item img{width:40px;height:27px;border-radius:5px;object-fit:cover;background:#F8F7F3;flex:none}
+.libdialog-item span{overflow:hidden;text-overflow:ellipsis;white-space:nowrap}
+.libdialog-confirm{display:block;margin-top:14px}
+.libdialog-confirm input{width:100%;height:40px;border:1.5px solid #1F3FD1;border-radius:8px;padding:0 10px;font:600 14px 'Instrument Sans',sans-serif;margin-top:6px;text-transform:uppercase;box-sizing:border-box;background:#fff;color:#15161A}
+.libdialog-confirm input::placeholder{text-transform:none;color:#8A8D98;font-weight:500}
+.libdialog-actions{display:flex;justify-content:flex-end;gap:8px;margin-top:20px}
+.libdelete{background:#B3261E;border-color:#B3261E;color:#fff}
+.libdelete:hover{background:#9F1F18}
+.libdelete:disabled{opacity:.45;cursor:not-allowed}
 @media(max-width:760px){
-  .library{padding:22px 16px 128px}
+  .library{padding:22px 16px 130px}
   .libhead{flex-direction:column;align-items:flex-start;gap:14px}
   .libtools{width:100%}
   .libtools .bp{flex:1}
-  .libgrid{grid-template-columns:1fr;gap:14px}
-  .libtoolbar{padding:8px 0 12px}
-  .workthumb{aspect-ratio:16/10}
-}
-@media(min-width:521px) and (max-width:760px){
-  .libgrid{grid-template-columns:repeat(2,minmax(0,1fr))}
+  .libtoolbar{padding:10px 0 14px}
+  .libgrid{grid-template-columns:1fr;gap:22px}
+  .liblisthead{padding-left:132px}
+  .libgrid.list .work{grid-template-columns:120px minmax(0,1fr);gap:10px}
+  .libgrid.list .workthumb{width:120px;height:68px}
+  .libgrid.list .worktitle{font-size:16px}
+  .libgrid.list .yt-body{gap:4px}
+  .libbulk{width:calc(100vw - 24px);justify-content:space-between;overflow-x:auto}
+  .libbulk-count{padding:0 4px}
+  .libbulk-btn{padding:8px 7px}
+  .libempty-card{padding:30px 18px}
+  .libempty-card .hand{font-size:26px}
 }
 
 /* ---------- side-by-side poster preview ---------- */

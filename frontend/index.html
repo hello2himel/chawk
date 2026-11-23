@@ -10,10 +10,10 @@
 <body>
 <div class="app" id="app">
   <header class="bar" id="bar">
-    <div class="brand">
+    <a class="brand" id="brand-home" href="/" aria-label="Chawk home">
       <svg width="32" height="32" viewBox="0 0 64 64" aria-hidden="true"><g transform="rotate(-24 32 32)"><rect x="18" y="4" width="28" height="56" rx="8" fill="#fff" stroke="#15161A" stroke-width="3"></rect><path d="M18 46h28v6a8 8 0 0 1-8 8H26a8 8 0 0 1-8-8z" fill="#ECE8DD" stroke="#15161A" stroke-width="3"></path><circle cx="26" cy="22" r="6" fill="#fff" stroke="#15161A" stroke-width="2.5"></circle><circle cx="38" cy="22" r="6" fill="#fff" stroke="#15161A" stroke-width="2.5"></circle><circle cx="27" cy="23" r="2" fill="#15161A"></circle><circle cx="37" cy="23" r="2" fill="#15161A"></circle><path d="M24 36c3-5 5-5 8 0s5 5 8 0" fill="none" stroke="#1F3FD1" stroke-width="3" stroke-linecap="round"></path></g></svg>
       Chawk
-    </div>
+    </a>
 
     <button class="chip libbtn" id="library-btn" type="button" aria-label="Previous works">
       <i class="ri-history-line" aria-hidden="true"></i>
@@ -82,36 +82,64 @@
   <main class="library" id="screen-library" hidden>
     <div class="libwrap">
       <header class="libhead">
-        <div>
-          <p class="fig libfig">YOUR WORK · THIS BROWSER</p>
-          <h1 class="h h-lib">Previous works, <span class="hl"><i>kept</i></span>.</h1>
-          <p class="m libsub">Open one to run it again, or tidy up.</p>
+        <div class="libtitles">
+          <p class="fig libfig" id="lib-kicker">YOUR WORK · THIS BROWSER</p>
+          <h1 class="h h-lib" id="lib-title">Previous works, <span class="hl"><i>kept</i></span>.</h1>
+          <p class="m libsub" id="lib-sub">Open one to run it again, or tidy up.</p>
         </div>
         <div class="libtools">
           <button class="chip" id="lib-select" aria-pressed="false">Select</button>
           <button class="btn bp" id="lib-new"><i class="ri-add-line" aria-hidden="true"></i> New doodle</button>
+          <button class="chip" id="lib-select-all" hidden>Select all</button>
+          <button class="btn bp" id="lib-done" hidden>Done</button>
         </div>
       </header>
 
-      <div class="libtoolbar">
+      <div class="libtoolbar" id="lib-toolbar">
         <p class="m libcountline" id="lib-count-line"></p>
-        <button class="libdanger" id="lib-delete-all">Delete all</button>
+        <div class="libviewtools">
+          <button class="libsort" id="lib-sort-btn" aria-haspopup="menu" aria-expanded="false">
+            <i class="ri-arrow-up-down-line" aria-hidden="true"></i>
+            <span id="lib-sort-label">Newest</span>
+            <i class="ri-arrow-down-s-line" aria-hidden="true"></i>
+          </button>
+          <div class="libview" role="group" aria-label="View">
+            <button id="lib-view-grid" type="button" aria-pressed="true" aria-label="Grid view"><i class="ri-grid-fill" aria-hidden="true"></i></button>
+            <button id="lib-view-list" type="button" aria-pressed="false" aria-label="List view"><i class="ri-list-check" aria-hidden="true"></i></button>
+          </div>
+          <button class="libdanger" id="lib-delete-all">Delete all</button>
+        </div>
       </div>
+
+      <div class="liblimit" id="lib-limit" hidden>
+        <div class="liblimit-row">
+          <p class="m"><b id="lib-limit-text"></b> Delete one to keep a new doodle.</p>
+          <button class="btn" id="lib-manage">Manage</button>
+        </div>
+        <div class="liblimit-track" aria-hidden="true"><span id="lib-limit-fill"></span></div>
+      </div>
+
+      <p class="fig liblisthead" id="lib-listhead" hidden>NAME</p>
 
       <div class="libgrid" id="lib-grid"></div>
 
       <div class="libempty" id="lib-empty" hidden>
-        <svg width="84" height="84" viewBox="0 0 64 64" aria-hidden="true"><g transform="rotate(-24 32 32)"><rect x="18" y="4" width="28" height="56" rx="8" fill="#fff" stroke="#15161A" stroke-width="3"></rect><path d="M18 46h28v6a8 8 0 0 1-8 8H26a8 8 0 0 1-8-8z" fill="#ECE8DD" stroke="#15161A" stroke-width="3"></path><circle cx="26" cy="22" r="6" fill="#fff" stroke="#15161A" stroke-width="2.5"></circle><circle cx="38" cy="22" r="6" fill="#fff" stroke="#15161A" stroke-width="2.5"></circle><circle cx="27" cy="23" r="2" fill="#15161A"></circle><circle cx="37" cy="23" r="2" fill="#15161A"></circle><path d="M24 36c3-5 5-5 8 0s5 5 8 0" fill="none" stroke="#1F3FD1" stroke-width="3" stroke-linecap="round"></path></g></svg>
-        <p class="hand hand-lg empty-hand">nothing saved yet — draw something.</p>
-        <button class="btn bp" id="lib-empty-new">New doodle</button>
+        <div class="libempty-card">
+          <span class="libempty-icon"><i class="ri-image-line" aria-hidden="true"></i></span>
+          <p class="hand hand-lg">Nothing kept yet</p>
+          <p class="m">Doodles you run will show up here.</p>
+          <button class="btn bp" id="lib-empty-new"><i class="ri-add-line" aria-hidden="true"></i> New doodle</button>
+        </div>
       </div>
 
       <p class="m libnote" id="lib-note"></p>
 
-      <div class="libbar" id="lib-bar" hidden>
-        <span class="m" id="lib-selcount">0 selected</span>
-        <button class="btn" id="lib-sel-cancel">Cancel</button>
-        <button class="btn danger" id="lib-sel-delete">Delete selected</button>
+      <div class="libbulk" id="lib-bulk" hidden>
+        <span class="libbulk-count" id="lib-bulk-count">0 selected</span>
+        <button class="libbulk-btn" id="lib-bulk-export"><i class="ri-download-line" aria-hidden="true"></i> Export</button>
+        <button class="libbulk-btn" id="lib-bulk-duplicate"><i class="ri-file-copy-2-line" aria-hidden="true"></i> Duplicate</button>
+        <button class="libbulk-btn libbulk-danger" id="lib-bulk-delete"><i class="ri-delete-bin-line" aria-hidden="true"></i> Delete <span id="lib-bulk-n">0</span></button>
+        <button class="libbulk-close" id="lib-bulk-close" type="button" aria-label="Cancel selection">×</button>
       </div>
     </div>
   </main>
@@ -219,8 +247,8 @@
         <div class="tools">
           <div class="seg" role="group" aria-label="Layers">
             <button id="t-original" type="button" aria-pressed="false">Original</button>
-            <button id="t-both" type="button" aria-pressed="true">Both</button>
-            <button id="t-equations" type="button" aria-pressed="false">Equations</button>
+            <button id="t-both" type="button" aria-pressed="false">Both</button>
+            <button id="t-equations" type="button" aria-pressed="true">Equations</button>
           </div>
           <button class="chip" id="t-labels" aria-pressed="false">Labels</button>
           <button class="chip" id="t-diff" aria-pressed="false">Show the wobble</button>
@@ -283,6 +311,27 @@
 <div class="menu runmenu" id="run-menu" role="menu" aria-label="Runs" hidden></div>
 
 
+<div class="libmenu" id="lib-sort-menu" role="menu" hidden></div>
+<div class="libmenu" id="lib-card-menu" role="menu" hidden></div>
+
+<div class="libdialogwrap" id="lib-dialog" hidden>
+  <div class="libdialog-scrim" id="lib-dialog-scrim"></div>
+  <div class="libdialog" role="dialog" aria-modal="true" aria-labelledby="lib-dialog-title">
+    <span class="libdialog-icon"><i class="ri-delete-bin-line" aria-hidden="true"></i></span>
+    <h2 id="lib-dialog-title"></h2>
+    <p class="m" id="lib-dialog-body"></p>
+    <div class="libdialog-list" id="lib-dialog-list" hidden></div>
+    <label class="libdialog-confirm" id="lib-dialog-confirm" hidden>
+      <span class="fig">TYPE DELETE TO CONFIRM</span>
+      <input id="lib-dialog-input" type="text" autocomplete="off" placeholder="DELETE" aria-label="Type DELETE to confirm">
+    </label>
+    <div class="libdialog-actions">
+      <button class="btn" id="lib-dialog-cancel" type="button">Cancel</button>
+      <button class="btn libdelete" id="lib-dialog-ok" type="button">Delete</button>
+    </div>
+  </div>
+</div>
+
 <div class="advwrap" id="advanced" hidden>
   <div class="advscrim" id="adv-scrim"></div>
   <div class="advcard" role="dialog" aria-modal="true" aria-labelledby="adv-title">
@@ -329,7 +378,7 @@
   </div>
 </div>
 
-<div class="undo" id="undo" hidden><span id="undo-text"></span><button class="undo-btn" id="undo-btn">Undo</button></div>
+<div class="undo" id="undo" hidden><span id="undo-text"></span><button class="undo-btn" id="undo-btn">Undo</button><button class="undo-close" id="undo-close" type="button" aria-label="Dismiss">×</button></div>
 
 <div class="toast" id="toast" role="alert" aria-live="assertive" hidden><span id="toast-text"></span></div>
 

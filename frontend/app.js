@@ -101,11 +101,11 @@ const state = {
   runs: [], active: -1, selected: -1,
   busy: false, screen: "start", controller: null, workTimer: null, hovering: false,
   busyTimer: null, hoverSeg: null,
-  libSelect: false, libSelected: new Set(), pendingUndo: null, undoTimer: null,
-  confirmAll: false, confirmTimer: null,
+  libSelect: false, libSelected: new Set(), libView: "grid", libSort: "newest",
+  renaming: null, libMenuWork: null, libDialog: null, pendingUndo: null, undoTimer: null,
 };
 
-const view = { mode: "both", labels: false, diff: false, blend: 70, yUp: false };
+const view = { mode: "equations", labels: false, diff: false, blend: 70, yUp: false };
 
 /* ------------------------------------------------------------------ utils */
 function esc(s) {
@@ -582,6 +582,14 @@ window.addEventListener("popstate", () => {
 /* ------------------------------------------------------------------ library *//* ------------------------------------------------------------------ library */
 const WORKS_KEY = "chawk.works.v1";
 const MAX_WORKS = 12;
+const SORT_LABELS = { newest: "Newest", oldest: "Oldest", name: "Name A–Z", equations: "Most equations" };
+const TITLE_MAX = 58;
+
+function cardTitle(name) {
+  const raw = String(name || "untitled").trim();
+  return raw.length > TITLE_MAX ? `${raw.slice(0, TITLE_MAX - 1).trimEnd()}…` : raw;
+}
+
 
 function loadWorks() {
   try {
@@ -629,8 +637,12 @@ async function saveWork(run) {
     const thumb = await imageUrlToWebP(run.images.redraw, 460, 0.8);
     if (!source || !thumb) return;
     const count = run.report?.summary?.segment_count || 0;
+    const equations = flattenSegments(run.report).map((it) => ({
+      model: it.seg.model,
+      equation: it.seg.equation,
+    }));
     const record = {
-      id: `${Date.now()}-${Math.random().toString(36).slice(2, 7)}`,
+      id: newWorkId(),
       name: run.meta.name || state.name || "untitled",
       at: Date.now(),
       w: run.meta.width || state.width,
@@ -639,20 +651,19 @@ async function saveWork(run) {
       settings: JSON.parse(JSON.stringify(settings)),
       source,
       thumb,
+      equations,
     };
     let works = loadWorks().filter((w) => !(w.name === record.name && w.count === count));
     works.unshift(record);
     works = works.slice(0, MAX_WORKS);
     const stored = persistWorks(works);
     updateLibraryBadge();
-  fetch("/health")
-    .then((r) => (r.ok ? r.json() : null))
-    .then((d) => { if (d && d.version) $("start-meta").textContent = `v${d.version} · connected`; })
-    .catch(() => {});
-    if (stored.length < works.length) {
-      toast("Library is full", "The oldest work was removed.");
-    }
+    if (stored.length < works.length) toast("Library is full", "The oldest work was removed.");
   } catch { /* storage may be unavailable; tracing still works */ }
+}
+
+function newWorkId() {
+  return `${Date.now()}-${Math.random().toString(36).slice(2, 7)}`;
 }
 
 function workDate(at) {
@@ -661,9 +672,28 @@ function workDate(at) {
   } catch { return ""; }
 }
 
+function workBaseName(name) {
+  return String(name || "chawk").replace(/\.[^.]+$/, "") || "chawk";
+}
+
+function sortedWorks(works) {
+  const list = works.slice();
+  if (state.libSort === "oldest") list.sort((a, b) => (a.at || 0) - (b.at || 0));
+  else if (state.libSort === "name") list.sort((a, b) => String(a.name).localeCompare(String(b.name), undefined, { sensitivity: "base" }));
+  else if (state.libSort === "equations") list.sort((a, b) => (b.count || 0) - (a.count || 0));
+  else list.sort((a, b) => (b.at || 0) - (a.at || 0));
+  return list;
+}
+
+function selectedWorks() {
+  const set = state.libSelected;
+  return loadWorks().filter((w) => set.has(w.id));
+}
+
 function showUndo(works) {
   state.pendingUndo = works;
-  $("undo-text").textContent = `${works.length} work${works.length === 1 ? "" : "s"} deleted`;
+  const text = works.length === 1 ? `Deleted “${works[0].name}”` : `${works.length} works deleted`;
+  $("undo-text").textContent = text;
   $("undo").hidden = false;
   clearTimeout(state.undoTimer);
   state.undoTimer = setTimeout(hideUndo, 6000);
@@ -684,6 +714,7 @@ function toggleWork(id) {
 async function openWork(id) {
   const work = loadWorks().find((w) => w.id === id);
   if (!work) return;
+  closeLibMenus();
   try {
     const blob = await (await fetch(work.source)).blob();
     const file = new File([blob], work.name || "saved.webp", { type: blob.type || "image/webp" });
@@ -701,57 +732,317 @@ async function openWork(id) {
   }
 }
 
-function deleteWork(id) {
-  const works = loadWorks();
-  const removed = works.filter((w) => w.id === id);
-  if (!removed.length) return;
-  persistWorks(works.filter((w) => w.id !== id));
-  state.libSelected.delete(id);
+function startRename(id) {
+  closeLibMenus();
+  state.renaming = id;
   renderLibrary();
-  updateLibraryBadge();
-  showUndo(removed);
+  requestAnimationFrame(() => {
+    const input = document.querySelector(".workrename input");
+    if (input) { input.focus(); input.select(); }
+  });
 }
 
-function deleteSelected() {
-  if (!state.libSelected.size) return;
+function cancelRename() {
+  state.renaming = null;
+  renderLibrary();
+}
+
+function saveRename(id, value) {
+  if (state.renaming !== id) return;
+  const name = String(value || "").trim();
+  state.renaming = null;
+  if (!name) { renderLibrary(); return; }
   const works = loadWorks();
-  const removed = works.filter((w) => state.libSelected.has(w.id));
-  persistWorks(works.filter((w) => !state.libSelected.has(w.id)));
-  state.libSelected.clear();
+  const work = works.find((w) => w.id === id);
+  if (!work) { renderLibrary(); return; }
+  work.name = name;
+  persistWorks(works);
+  renderLibrary();
+  toast("Renamed", name);
+}
+
+function copyName(name, works) {
+  const m = String(name || "untitled").match(/^(.*?)(\.[a-z0-9]+)?$/i);
+  const base = m[1] || "untitled";
+  const ext = m[2] || "";
+  const names = new Set(works.map((w) => String(w.name).toLowerCase()));
+  let n = 0;
+  let candidate = `${base} (copy)${ext}`;
+  while (names.has(candidate.toLowerCase())) {
+    n += 1;
+    candidate = `${base} (copy ${n + 1})${ext}`;
+  }
+  return candidate;
+}
+
+function duplicateWork(id) {
+  closeLibMenus();
+  const works = loadWorks();
+  const work = works.find((w) => w.id === id);
+  if (!work) return;
+  const copy = {
+    ...work,
+    id: newWorkId(),
+    name: copyName(work.name, works),
+    at: Date.now(),
+    settings: JSON.parse(JSON.stringify(work.settings || {})),
+    equations: (work.equations || []).map((e) => ({ ...e })),
+  };
+  persistWorks([copy, ...works]);
+  renderLibrary();
+  updateLibraryBadge();
+  toast("Duplicated", copy.name);
+}
+
+function duplicateWorks(list) {
+  if (!list.length) return;
+  const works = loadWorks();
+  const copies = list.map((work) => ({
+    ...work,
+    id: newWorkId(),
+    name: copyName(work.name, works.concat(list)),
+    at: Date.now(),
+    settings: JSON.parse(JSON.stringify(work.settings || {})),
+    equations: (work.equations || []).map((e) => ({ ...e })),
+  }));
+  persistWorks([...copies, ...works]);
   state.libSelect = false;
+  state.libSelected.clear();
+  renderLibrary();
+  updateLibraryBadge();
+  toast(`Duplicated ${copies.length}`, copies.length === 1 ? copies[0].name : "The selected works");
+}
+
+async function exportWorkPNG(work) {
+  const img = await loadImageEl(work.thumb || work.source);
+  if (!img) throw new Error("Missing image");
+  const cv = document.createElement("canvas");
+  cv.width = img.naturalWidth || 1;
+  cv.height = img.naturalHeight || 1;
+  const g = cv.getContext("2d");
+  g.fillStyle = "#FAF9F4";
+  g.fillRect(0, 0, cv.width, cv.height);
+  g.drawImage(img, 0, 0, cv.width, cv.height);
+  const blob = await new Promise((resolve) => cv.toBlob(resolve, "image/png"));
+  if (!blob) throw new Error("Could not encode PNG");
+  downloadURL(URL.createObjectURL(blob), `${workBaseName(work.name)}.png`);
+}
+
+async function exportWorksPNG(list) {
+  if (!list.length) return;
+  for (const work of list) {
+    try { await exportWorkPNG(work); } catch { /* skip a broken thumb */ }
+    await new Promise((r) => setTimeout(r, 220));
+  }
+  toast(`Exported ${list.length} image${list.length === 1 ? "" : "s"}`, "Check your downloads.");
+}
+
+function exportWorkJSON(work) {
+  const data = {
+    name: work.name,
+    count: work.count,
+    at: work.at,
+    settings: work.settings || {},
+    equations: work.equations || [],
+  };
+  const blob = new Blob([JSON.stringify(data, null, 2)], { type: "application/json" });
+  downloadURL(URL.createObjectURL(blob), `${workBaseName(work.name)}-equations.json`);
+}
+
+function closeLibMenus() {
+  $("lib-sort-menu").hidden = true;
+  $("lib-card-menu").hidden = true;
+  $("lib-sort-btn").setAttribute("aria-expanded", "false");
+  for (const b of document.querySelectorAll(".workmore[aria-expanded='true']")) b.setAttribute("aria-expanded", "false");
+  state.libMenuWork = null;
+}
+
+function openCardMenu(work, button) {
+  closeLibMenus();
+  state.libMenuWork = work.id;
+  const menu = $("lib-card-menu");
+  menu.innerHTML = "";
+  const add = (label, icon, action, danger) => {
+    const b = document.createElement("button");
+    b.type = "button";
+    b.setAttribute("role", "menuitem");
+    if (danger) b.className = "danger";
+    b.innerHTML = `<i class="${icon}" aria-hidden="true"></i><span>${esc(label)}</span>`;
+    b.onclick = (e) => { e.stopPropagation(); closeLibMenus(); action(); };
+    menu.append(b);
+  };
+  add("Open", "ri-arrow-right-line", () => openWork(work.id));
+  add("Rename", "ri-pencil-line", () => startRename(work.id));
+  add("Duplicate", "ri-file-copy-2-line", () => duplicateWork(work.id));
+  add("Export as PNG", "ri-image-line", () => exportWorkPNG(work).catch(() => toast("Could not export", "The saved image may be damaged.")));
+  add("Equations (json)", "ri-download-line", () => exportWorkJSON(work));
+  const sep = document.createElement("div");
+  sep.className = "libmenu-sep";
+  menu.append(sep);
+  add("Delete…", "ri-delete-bin-line", () => openDeleteDialog([work], "single"), true);
+  menu.hidden = false;
+  const rect = button.getBoundingClientRect();
+  const mw = menu.offsetWidth;
+  const mh = menu.offsetHeight;
+  const left = Math.min(window.innerWidth - mw - 8, Math.max(8, rect.right - mw));
+  let top = rect.bottom + 6;
+  if (top + mh > window.innerHeight - 8) top = Math.max(8, rect.top - mh - 6);
+  menu.style.left = `${left}px`;
+  menu.style.top = `${top}px`;
+  button.setAttribute("aria-expanded", "true");
+}
+
+function openSortMenu() {
+  closeLibMenus();
+  const menu = $("lib-sort-menu");
+  menu.innerHTML = '<p class="libmenu-label">SORT BY</p>';
+  for (const [key, label] of Object.entries(SORT_LABELS)) {
+    const b = document.createElement("button");
+    b.type = "button";
+    b.setAttribute("role", "menuitemradio");
+    b.setAttribute("aria-checked", state.libSort === key ? "true" : "false");
+    b.innerHTML = `<span class="libmenu-check${state.libSort === key ? "" : " blank"}"><i class="ri-check-line" aria-hidden="true"></i></span><span>${label}</span>`;
+    b.onclick = () => {
+      state.libSort = key;
+      closeLibMenus();
+      renderLibrary();
+    };
+    menu.append(b);
+  }
+  menu.hidden = false;
+  const btn = $("lib-sort-btn");
+  const rect = btn.getBoundingClientRect();
+  const mw = menu.offsetWidth;
+  const left = Math.min(window.innerWidth - mw - 8, Math.max(8, rect.left));
+  menu.style.left = `${left}px`;
+  menu.style.top = `${rect.bottom + 6}px`;
+  btn.setAttribute("aria-expanded", "true");
+}
+
+function openDeleteDialog(works, kind) {
+  closeLibMenus();
+  if (!works.length) return;
+  state.libDialog = { kind, works };
+  const n = works.length;
+  $("lib-dialog-title").textContent = kind === "single"
+    ? `Delete “${works[0].name}”?`
+    : kind === "bulk" ? `Delete ${n} works?` : `Delete all ${n} works?`;
+  $("lib-dialog-body").textContent = kind === "single"
+    ? `This removes it from this browser. Its ${formatCount(works[0].count)} equations can’t be recovered.`
+    : kind === "bulk" ? "These will be removed from this browser for good."
+      : "Everything kept in this browser will be erased.";
+  const list = $("lib-dialog-list");
+  list.innerHTML = "";
+  list.hidden = kind !== "bulk";
+  if (kind === "bulk") {
+    for (const w of works) {
+      const item = document.createElement("div");
+      item.className = "libdialog-item";
+      item.innerHTML = `<img src="${w.thumb}" alt=""><span>${esc(w.name)}</span>`;
+      list.append(item);
+    }
+  }
+  const confirm = kind === "all";
+  $("lib-dialog-confirm").hidden = !confirm;
+  const input = $("lib-dialog-input");
+  input.value = "";
+  $("lib-dialog-ok").textContent = kind === "single" ? "Delete" : kind === "bulk" ? `Delete ${n} works` : "Delete all";
+  $("lib-dialog-ok").disabled = confirm;
+  $("lib-dialog").hidden = false;
+  if (confirm) requestAnimationFrame(() => input.focus());
+  else requestAnimationFrame(() => $("lib-dialog-ok").focus());
+}
+
+function closeLibDialog() {
+  state.libDialog = null;
+  $("lib-dialog").hidden = true;
+}
+
+function confirmLibDelete() {
+  const dialog = state.libDialog;
+  if (!dialog) return;
+  const ids = new Set(dialog.works.map((w) => w.id));
+  const works = loadWorks();
+  const removed = dialog.kind === "all" ? works : works.filter((w) => ids.has(w.id));
+  const kept = dialog.kind === "all" ? [] : works.filter((w) => !ids.has(w.id));
+  persistWorks(kept);
+  if (dialog.kind !== "single") { state.libSelect = false; state.libSelected.clear(); }
+  closeLibDialog();
   renderLibrary();
   updateLibraryBadge();
   if (removed.length) showUndo(removed);
 }
 
-function renderLibrary() {
-  const works = loadWorks();
-  const grid = $("lib-grid");
-  grid.innerHTML = "";
-  grid.hidden = works.length === 0;
-  $("lib-empty").hidden = works.length > 0;
-  $("lib-select").hidden = works.length === 0;
-  $("lib-delete-all").hidden = works.length === 0 || state.libSelect;
-  $("lib-select").textContent = state.libSelect ? "Done" : "Select";
-  $("lib-select").setAttribute("aria-pressed", state.libSelect ? "true" : "false");
-  $("lib-bar").hidden = !(state.libSelect && works.length > 0);
-  $("lib-selcount").textContent = `${state.libSelected.size} selected`;
-  $("lib-sel-delete").disabled = state.libSelected.size === 0;
-  $("lib-count-line").textContent = works.length
-    ? `${works.length} work${works.length === 1 ? "" : "s"}`
-    : "No works yet";
-  $("lib-note").textContent = works.length
-    ? `${Math.round(JSON.stringify(works).length / 1024)} KB in this browser · up to ${MAX_WORKS} works`
-    : "";
+function enterSelect() {
+  state.libSelect = true;
+  state.libSelected.clear();
+  renderLibrary();
+}
 
+function exitSelect() {
+  state.libSelect = false;
+  state.libSelected.clear();
+  renderLibrary();
+}
+
+function renderLibrary() {
+  const works = sortedWorks(loadWorks());
+  const selecting = state.libSelect;
+  const empty = works.length === 0;
+  for (const id of [...state.libSelected]) {
+    if (!works.some((w) => w.id === id)) state.libSelected.delete(id);
+  }
+  if (empty) { state.libSelect = false; state.libSelected.clear(); }
+
+  $("lib-kicker").textContent = selecting ? "SELECT MODE" : "YOUR WORK · THIS BROWSER";
+  if (selecting) $("lib-title").textContent = `${state.libSelected.size} selected`;
+  else $("lib-title").innerHTML = 'Previous works, <span class="hl"><i>kept</i></span>.';
+  $("lib-sub").textContent = selecting
+    ? "Pick works to export, duplicate or delete."
+    : "Open one to run it again, or tidy up.";
+  $("lib-select").hidden = empty || selecting;
+  $("lib-new").hidden = selecting;
+  $("lib-select-all").hidden = !selecting || empty;
+  $("lib-done").hidden = !selecting;
+
+  $("lib-toolbar").hidden = selecting || empty;
+  $("lib-count-line").textContent = `${works.length} work${works.length === 1 ? "" : "s"}`;
+  $("lib-sort-label").textContent = SORT_LABELS[state.libSort] || "Newest";
+  $("lib-view-grid").setAttribute("aria-pressed", state.libView === "grid" ? "true" : "false");
+  $("lib-view-list").setAttribute("aria-pressed", state.libView === "list" ? "true" : "false");
+  $("lib-delete-all").hidden = empty;
+
+  const full = works.length >= MAX_WORKS;
+  $("lib-limit").hidden = empty || selecting || !full;
+  if (full) {
+    $("lib-limit-text").textContent = `${works.length} of ${MAX_WORKS} works used.`;
+    $("lib-limit-fill").style.width = `${Math.round((works.length / MAX_WORKS) * 100)}%`;
+  }
+
+  const grid = $("lib-grid");
+  grid.className = "libgrid" + (state.libView === "list" ? " list" : "");
+  grid.hidden = empty;
+  $("lib-listhead").hidden = empty || selecting || state.libView !== "list";
+  $("lib-empty").hidden = !empty;
+  $("lib-note").textContent = empty || selecting
+    ? ""
+    : `${Math.round(JSON.stringify(works).length / 1024)} KB in this browser · up to ${MAX_WORKS} works`;
+
+  $("lib-bulk").hidden = !selecting || empty;
+  $("lib-bulk-count").textContent = `${state.libSelected.size} selected`;
+  $("lib-bulk-n").textContent = String(state.libSelected.size);
+  $("lib-bulk-export").disabled = state.libSelected.size === 0;
+  $("lib-bulk-duplicate").disabled = state.libSelected.size === 0;
+  $("lib-bulk-delete").disabled = state.libSelected.size === 0;
+
+  grid.innerHTML = "";
   for (const w of works) {
-    const card = document.createElement("article");
     const picked = state.libSelected.has(w.id);
+    const card = document.createElement("article");
     card.className = "work" + (picked ? " sel" : "");
     card.tabIndex = 0;
-
     card.setAttribute("aria-label", `${w.name}, ${formatCount(w.count)} equations`);
-    if (state.libSelect) {
+    if (selecting) {
       card.setAttribute("role", "checkbox");
       card.setAttribute("aria-checked", picked ? "true" : "false");
     }
@@ -763,57 +1054,75 @@ function renderLibrary() {
     img.alt = `${w.name}, rebuilt from ${formatCount(w.count)} equations`;
     img.loading = "lazy";
     img.decoding = "async";
-    thumb.append(img);
+    const badge = document.createElement("span");
+    badge.className = "workbadge";
+    badge.textContent = `${formatCount(w.count)} eq`;
+    thumb.append(img, badge);
 
     const body = document.createElement("div");
-    body.className = "workbody";
-    const name = document.createElement("div");
-    name.className = "workname";
-    name.textContent = w.name;
-    name.title = w.name;
-    const meta = document.createElement("div");
-    meta.className = "workmeta";
-    meta.textContent = `${formatCount(w.count)} equation${w.count === 1 ? "" : "s"} · ${workDate(w.at)}`;
-    meta.title = meta.textContent;
-    const row = document.createElement("div");
-    row.className = "workrow";
-    const open = document.createElement("button");
-    open.type = "button";
-    open.className = "workopen";
-    open.innerHTML = 'Open <i class="ri-arrow-right-line" aria-hidden="true"></i>';
-    open.hidden = state.libSelect;
-    open.onclick = (e) => { e.stopPropagation(); openWork(w.id); };
-    const del = document.createElement("button");
-    del.type = "button";
-    del.className = "workdel";
-    del.setAttribute("aria-label", `Delete ${w.name}`);
-    del.title = "Delete";
-    del.innerHTML = '<i class="ri-delete-bin-line" aria-hidden="true"></i>';
-    del.hidden = state.libSelect;
-    del.onclick = (e) => { e.stopPropagation(); deleteWork(w.id); };
-    row.append(open, del);
-    body.append(name, meta, row);
+    body.className = "yt-body";
+    const info = document.createElement("div");
+    info.className = "yt-info";
 
-    if (state.libSelect) {
-      const chk = document.createElement("span");
-      chk.className = "workcheck";
-      chk.innerHTML = picked ? '<i class="ri-check-line" aria-hidden="true"></i>' : "";
-      card.append(chk);
+    if (state.renaming === w.id) {
+      const wrap = document.createElement("div");
+      wrap.className = "workrename";
+      const input = document.createElement("input");
+      input.type = "text";
+      input.value = w.name;
+      input.setAttribute("aria-label", `Rename ${w.name}`);
+      input.onclick = (e) => e.stopPropagation();
+      input.onkeydown = (e) => {
+        if (e.key === "Enter") { e.preventDefault(); saveRename(w.id, input.value); }
+        else if (e.key === "Escape") { e.preventDefault(); cancelRename(); }
+      };
+      input.onblur = () => saveRename(w.id, input.value);
+      const help = document.createElement("span");
+      help.className = "workrename-help";
+      help.textContent = "Enter to save · Esc to cancel";
+      wrap.append(input, help);
+      info.append(wrap);
+    } else {
+      const title = document.createElement("div");
+      title.className = "worktitle";
+      title.textContent = cardTitle(w.name);
+      title.title = w.name;
+      info.append(title);
     }
 
+    const more = document.createElement("button");
+    more.type = "button";
+    more.className = "yt-more";
+    more.setAttribute("aria-label", `More actions for ${w.name}`);
+    more.setAttribute("aria-haspopup", "menu");
+    more.setAttribute("aria-expanded", "false");
+    more.innerHTML = '<i class="ri-more-2-fill" aria-hidden="true"></i>';
+    more.hidden = selecting;
+    more.onclick = (e) => { e.stopPropagation(); openCardMenu(w, more); };
+    body.append(info, more);
     card.append(thumb, body);
-    card.onclick = () => { if (state.libSelect) toggleWork(w.id); else openWork(w.id); };
+    if (selecting) {
+      const chk = document.createElement("span");
+      chk.className = "workcheck";
+      chk.setAttribute("aria-hidden", "true");
+      chk.innerHTML = picked ? '<i class="ri-check-line" aria-hidden="true"></i>' : "";
+      card.append(chk);
+      card.onclick = () => toggleWork(w.id);
+    } else if (state.renaming !== w.id) {
+      card.onclick = () => openWork(w.id);
+    }
     card.onkeydown = (e) => {
+      if (state.renaming === w.id) return;
       if (e.key === "Enter" || e.key === " ") {
         e.preventDefault();
-        if (state.libSelect) toggleWork(w.id); else openWork(w.id);
+        if (selecting) toggleWork(w.id); else openWork(w.id);
       }
     };
     grid.append(card);
   }
 }
 
-/* ------------------------------------------------------------------ intake */
+/* ------------------------------------------------------------------ intake *//* ------------------------------------------------------------------ intake */
 async function chooseFile(file) {
   if (!file) return;
   const okType = /^image\//.test(file.type) || /\.(png|jpe?g|webp|bmp|tiff?)$/i.test(file.name);
@@ -848,7 +1157,7 @@ async function chooseFile(file) {
 
 function resetView() {
   view.original = true; view.equations = true; view.labels = false;
-  view.mode = "both"; view.diff = false; view.blend = 70; view.yUp = false;
+  view.mode = "equations"; view.diff = false; view.blend = 70; view.yUp = false;
   $("blend").value = "70";
 }
 
@@ -1900,6 +2209,11 @@ function closeMenus() {
 
 /* ------------------------------------------------------------------ wiring */
 function bind() {
+  $("brand-home").addEventListener("click", (e) => {
+    e.preventDefault();
+    if (state.screen === "start") window.scrollTo({ top: 0, behavior: "smooth" });
+    else showScreen("start");
+  });
   $("drop").addEventListener("click", () => $("file").click());
   $("file").addEventListener("change", () => {
     chooseFile($("file").files[0]);
@@ -1910,42 +2224,44 @@ function bind() {
   $("library-btn").addEventListener("click", () => {
     state.libSelect = false;
     state.libSelected.clear();
-    renderLibrary();
     showScreen("library");
   });
   $("lib-new").addEventListener("click", () => showScreen("start"));
   $("lib-empty-new").addEventListener("click", () => showScreen("start"));
-  $("lib-select").addEventListener("click", () => {
-    state.libSelect = !state.libSelect;
-    state.libSelected.clear();
+  $("lib-select").addEventListener("click", enterSelect);
+  $("lib-done").addEventListener("click", exitSelect);
+  $("lib-select-all").addEventListener("click", () => {
+    for (const w of loadWorks()) state.libSelected.add(w.id);
     renderLibrary();
   });
-  $("lib-delete-all").addEventListener("click", () => {
-    if (!state.confirmAll) {
-      state.confirmAll = true;
-      $("lib-delete-all").textContent = "Really delete all?";
-      clearTimeout(state.confirmTimer);
-      state.confirmTimer = setTimeout(() => {
-        state.confirmAll = false;
-        $("lib-delete-all").textContent = "Delete all";
-      }, 3200);
-      return;
-    }
-    state.confirmAll = false;
-    clearTimeout(state.confirmTimer);
-    $("lib-delete-all").textContent = "Delete all";
-    const works = loadWorks();
-    persistWorks([]);
-    renderLibrary();
-    updateLibraryBadge();
-    if (works.length) showUndo(works);
+  $("lib-bulk-close").addEventListener("click", exitSelect);
+  $("lib-delete-all").addEventListener("click", () => openDeleteDialog(loadWorks(), "all"));
+  $("lib-manage").addEventListener("click", enterSelect);
+  $("lib-bulk-delete").addEventListener("click", () => openDeleteDialog(selectedWorks(), "bulk"));
+  $("lib-bulk-export").addEventListener("click", () => exportWorksPNG(selectedWorks()));
+  $("lib-bulk-duplicate").addEventListener("click", () => duplicateWorks(selectedWorks()));
+  $("lib-sort-btn").addEventListener("click", (e) => {
+    e.stopPropagation();
+    if ($("lib-sort-menu").hidden) openSortMenu(); else closeLibMenus();
   });
-  $("lib-sel-cancel").addEventListener("click", () => {
-    state.libSelect = false;
-    state.libSelected.clear();
-    renderLibrary();
+  $("lib-view-grid").addEventListener("click", () => { state.libView = "grid"; renderLibrary(); });
+  $("lib-view-list").addEventListener("click", () => { state.libView = "list"; renderLibrary(); });
+  $("lib-dialog-cancel").addEventListener("click", closeLibDialog);
+  $("lib-dialog-scrim").addEventListener("click", closeLibDialog);
+  $("lib-dialog-ok").addEventListener("click", confirmLibDelete);
+  $("lib-dialog-input").addEventListener("input", (e) => {
+    $("lib-dialog-ok").disabled = e.target.value.trim().toUpperCase() !== "DELETE";
   });
-  $("lib-sel-delete").addEventListener("click", deleteSelected);
+  $("lib-dialog-input").addEventListener("keydown", (e) => {
+    if (e.key === "Enter" && !$("lib-dialog-ok").disabled) { e.preventDefault(); confirmLibDelete(); }
+  });
+  document.addEventListener("click", (e) => {
+    if (!e.target.closest("#lib-card-menu") && !e.target.closest("#lib-sort-menu")
+      && !e.target.closest(".workmore") && !e.target.closest("#lib-sort-btn")) closeLibMenus();
+  });
+  window.addEventListener("scroll", () => {
+    if (!$("lib-card-menu").hidden || !$("lib-sort-menu").hidden) closeLibMenus();
+  }, true);
   $("undo-btn").addEventListener("click", () => {
     if (!state.pendingUndo) return;
     const restored = state.pendingUndo.concat(loadWorks()).slice(0, MAX_WORKS);
@@ -1954,6 +2270,7 @@ function bind() {
     renderLibrary();
     updateLibraryBadge();
   });
+  $("undo-close").addEventListener("click", hideUndo);
   updateLibraryBadge();
   $("cancel").addEventListener("click", () => { if (state.controller) state.controller.abort(); });
 
@@ -2098,6 +2415,17 @@ function bind() {
 
   document.addEventListener("keydown", (e) => {
     if (e.key === "Escape" && !$("advanced").hidden) { closeAdvanced(); return; }
+    if (e.key === "Escape" && !$("lib-dialog").hidden) { closeLibDialog(); return; }
+    if (e.key === "Escape" && (!$("lib-card-menu").hidden || !$("lib-sort-menu").hidden)) { closeLibMenus(); return; }
+    if (e.key === "Escape" && state.renaming) { cancelRename(); return; }
+    if (state.libMenuWork && !isTyping(e.target)) {
+      const work = loadWorks().find((w) => w.id === state.libMenuWork);
+      if (work) {
+        if (e.key === "r" || e.key === "R") { e.preventDefault(); startRename(work.id); return; }
+        if (e.key === "d" || e.key === "D") { e.preventDefault(); duplicateWork(work.id); return; }
+        if (e.key === "Delete") { e.preventDefault(); openDeleteDialog([work], "single"); return; }
+      }
+    }
     if (e.key === "Escape") { closeMenus(); clearSelection(); }
     if (e.code === "Space" && state.screen === "result" && !isTyping(e.target)) {
       e.preventDefault();
