@@ -199,7 +199,7 @@ h1,h2,h3,p{margin:0}
 
 /* ---------- process ---------- */
 .process{border-top:1px solid var(--line);background:var(--raised-1)}
-.process-grid{display:grid;grid-template-columns:1.12fr .94fr .94fr;gap:clamp(22px,3.2vw,44px);align-items:start}
+.process-grid{display:grid;grid-template-columns:repeat(3,minmax(0,1fr));gap:clamp(22px,3.2vw,44px);align-items:start}
 .step{display:flex;flex-direction:column;gap:14px;min-width:0}
 .step-top{display:flex;align-items:baseline;gap:10px;border-top:1px solid var(--line);padding-top:10px}
 .step-no{font-family:'JetBrains Mono',monospace;font-size:10px;letter-spacing:.06em;color:var(--accent);font-weight:700}
