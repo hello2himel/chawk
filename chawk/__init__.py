@@ -3,7 +3,7 @@
 from .config import Config, PRESETS, build_config
 from .pipeline import NoStrokesDetected, Result, process_image
 
-__version__ = "1.1.19"
+__version__ = "1.1.20"
 __all__ = [
     "Config",
     "PRESETS",

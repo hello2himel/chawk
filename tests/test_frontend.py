@@ -30,7 +30,7 @@ class TestFrontend(unittest.TestCase):
     def test_html_hooks(self):
         html = open(os.path.join(FRONT, "index.html"), encoding="utf-8").read()
         for hook in ("screen-start", "screen-check", "screen-result", "data-sample",
-                     "data-kind", "data-type", "role=\"alert\"", "aria-live",
+                     "data-kind", "adv-open", "advanced", "role=\"alert\"", "aria-live",
                      "vendor/remixicon.css"):
             self.assertIn(hook, html, hook)
         css = open(os.path.join(FRONT, "styles.css"), encoding="utf-8").read()
