@@ -53,15 +53,15 @@
   },
   {
     "src": "assets/cat-still.webp",
-    "alt": "The pixel-shades cat, rebuilt from its equations",
-    "caption": "the cat, rebuilt from 743 equations",
+    "alt": "The pixel-shades cat, rebuilt from 1,672 equations",
+    "caption": "the cat, rebuilt from 1,672 equations",
     "quip": "↑ the cat is just algebra. even the shades too!",
     "equations": [
-      "x(t) = 1371.44 − 64.66cos 2πt − 47.33sin 2πt + 12.6cos 4πt − 0.86sin 4πt",
-      "x(t) = 1415.62 + 5.53cos 2πt − 2.95sin 2πt + 0.74cos 4πt + 1.92sin 4πt",
-      "x(t) = 1381.66 + 4.58cos 2πt − 9.62sin 2πt + 1.48cos 4πt + 0.93sin 4πt",
-      "x(t) = 86.57 + 28.94cos 2πt − 13.78sin 2πt + 7.24cos 4πt + 0.89sin 4πt"
+      "x(t) = 1107.77 − 10.11cos 2πt − 13.83sin 2πt + 0.79cos 4πt − 8.73sin 4πt",
+      "x(t) = 731.41 − 0.5cos 2πt − 10.89sin 2πt + 0.44cos 4πt − 1.69sin 4πt",
+      "x(t) = 793.35 − 20.89cos 2πt − 7.79sin 2πt + 2.1cos 4πt − 1.52sin 4πt",
+      "x(t) = 810.64 + 0.64cos 2πt + 3.18sin 2πt + 0.09cos 4πt − 0.13sin 4πt"
     ],
-    "count": 743
+    "count": 1672
   }
 ]

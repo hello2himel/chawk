@@ -6,7 +6,7 @@
 const $ = (id) => document.getElementById(id);
 const MAX_BYTES = 15 * 1024 * 1024;
 
-const KIND_PRESET = { clean: "precise", sketchy: "balanced", busy: "complex" };
+const KIND_PRESET = { clean: "precise", sketchy: "balanced", busy: "busy" };
 const KIND_VALUES = {
   clean: { sensitivity: 50, fit: 50 },
   sketchy: { sensitivity: 50, fit: 50 },

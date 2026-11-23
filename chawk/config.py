@@ -272,6 +272,26 @@ PRESETS: dict[str, dict[str, Any]] = {
         "max_segments_per_stroke": 12,
         "min_segment_length": 16.0,
     },
+    "busy": {
+        # Highest-quality mode: maximum working resolution, tight fits,
+        # more segments/strokes and a richer colour palette.
+        "max_dimension": 2400,
+        "min_stroke_length": 6.0,
+        "rmse_tolerance": 1.0,
+        "max_error_tolerance": 3.0,
+        "resample_spacing": 1.2,
+        "rdp_epsilon": 1.5,
+        "max_segments_per_stroke": 64,
+        "max_strokes": 3000,
+        "max_labels": 40,
+        "label_fontsize": 5.5,
+        "overlay_linewidth": 1.2,
+        "color_count": 24,
+        "color_min_area": 24.0,
+        "color_spline_smoothing": 0.2,
+        "fill_min_area": 80.0,
+        "fill_min_radius": 4.0,
+    },
     "complex": {
         # Dense/detailed artwork: keep more strokes, label fewer of them.
         "max_dimension": 1800,
