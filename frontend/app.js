@@ -1,4 +1,4 @@
-/* Chawk — front-end. Implements the "Chawk — UI UX design" boards:
+/* Chawk front-end. Implements the "Chawk UI UX design" boards:
    start → check → result, with run history, layered stage, diff overlay,
    equation list, downloads and coordinate toggle. Vanilla JS, no build step. */
 "use strict";
@@ -536,7 +536,7 @@ function startBusyCycle(phrases) {
 }
 
 function showBusy(title, sub, phrases) {
-  $("busy-title").textContent = title || "one sec — setting the type…";
+  $("busy-title").textContent = title || "one sec, setting the type…";
   $("busy-sub").textContent = sub || "";
   $("busy").hidden = false;
   if (phrases && phrases.length) startBusyCycle(phrases);
@@ -551,7 +551,7 @@ async function downloadSideBySide(run) {
   const items = flattenSegments(run.report);
   const total = formatCount(items.length);
   const phrases = [
-    "one sec — setting the type…",
+    "one sec, setting the type…",
     `counting ${total} equations…`,
     "composing the poster…",
     "packing the PNG…",
@@ -606,10 +606,10 @@ function routeName() {
   return PATH_SCREEN[pathName()] || "start";
 }
 function pageTitle(name) {
-  if (name === "start") return "Chawk — every squiggle is a function";
-  if (name === "library") return "Previous works — Chawk";
-  if (name === "check") return state.name ? `Ready to do some maths — ${state.name} — Chawk` : "Ready to do some maths — Chawk";
-  if (name === "result") return state.name ? `${state.name} — Chawk` : "Your equations — Chawk";
+  if (name === "start") return "Chawk: every squiggle is a function";
+  if (name === "library") return "Previous works | Chawk";
+  if (name === "check") return state.name ? `Ready to do some maths | ${state.name} | Chawk` : "Ready to do some maths | Chawk";
+  if (name === "result") return state.name ? `${state.name} | Chawk` : "Your equations | Chawk";
   return "Chawk";
 }
 
@@ -1771,7 +1771,7 @@ async function trace() {
       closeWorking();
       showScreen("check");
     } else {
-      const hint = e.status === 422 ? " Dark lines on plain paper work best — try a sample."
+      const hint = e.status === 422 ? " Dark lines on plain paper work best. Try a sample."
         : e.status === 504 ? " Try the “Busy” setting, or a smaller image."
         : e.status === 400 ? " Try resetting the curve types."
         : "";
@@ -3124,7 +3124,7 @@ function bind() {
   });
   $("plot").addEventListener("pointerleave", () => {
     state.hovering = false;
-    $("coords").textContent = "x — · y — px";
+    $("coords").textContent = "x, y in px";
   });
 }
 

@@ -1,5 +1,5 @@
 /* ------------------------------------------------------------------
-   Chawk showcase — static carousel, compare modal, theme, copy.
+   Chawk showcase: static carousel, compare modal, theme, copy.
    No API. All proofs come from assets/demo-slides.json.
    ------------------------------------------------------------------ */
 const $ = (id) => document.getElementById(id);
@@ -328,21 +328,25 @@ async function initCarousel() {
 /* ------------------------------------------------------------------ copy */
 function initCopy() {
   const command = "docker run --rm -p 8010:8000 ghcr.io/hello2himel/chawk:latest";
-  const btn = $("copy-command");
-  const label = $("copy-label");
-  const state = $("copy-state");
-  if (!btn) return;
-  btn.addEventListener("click", async () => {
-    try {
-      await navigator.clipboard.writeText(command);
-      label.textContent = "Copied";
-      state.textContent = "command copied";
-      setTimeout(() => { label.textContent = "Copy"; state.textContent = ""; }, 1800);
-    } catch {
-      label.textContent = "Select & copy";
-      setTimeout(() => { label.textContent = "Copy"; }, 1800);
-    }
-  });
+  const bind = (btn, label, state) => {
+    if (!btn || !label) return;
+    btn.addEventListener("click", async () => {
+      try {
+        await navigator.clipboard.writeText(command);
+        label.textContent = "Copied";
+        if (state) state.textContent = "command copied";
+        setTimeout(() => {
+          label.textContent = "Copy";
+          if (state) state.textContent = "";
+        }, 1800);
+      } catch {
+        label.textContent = "Select & copy";
+        setTimeout(() => { label.textContent = "Copy"; }, 1800);
+      }
+    });
+  };
+  bind($("copy-command"), $("copy-label"), $("copy-state"));
+  bind($("hero-copy"), $("hero-copy-label"), null);
 }
 
 /* ------------------------------------------------------------------ boot */

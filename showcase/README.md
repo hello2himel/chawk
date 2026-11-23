@@ -1,4 +1,4 @@
-# Chawk — static showcase
+# Chawk static showcase
 
 This directory is a self-contained, Netlify-ready showcase. It has no backend and no API calls: the proofs and equations are precomputed, and the full tracer is run locally via Docker.
 

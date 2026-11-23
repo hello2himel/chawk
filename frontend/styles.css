@@ -1,8 +1,8 @@
-/* Chawk — implementation of the "Chawk — UI UX design" boards.
+/* Chawk implementation of the "Chawk UI UX design" boards.
    Base tokens, layout and components are taken 1:1 from the design file;
    icons are Remix Icon (the one deliberate exception).
 
-   DARK MODE — "The Night Desk".
+   DARK MODE: "The Night Desk".
    The room is warm ink; the paper stays lit. Chrome tokens are themeable.
    --art-* tokens are pinned constants and are never overridden by a theme.
    ------------------------------------------------------------------------ */
@@ -46,7 +46,7 @@
 }
 
 /* ==========================================================================
-   TOKENS — one declaration per token, resolved with light-dark().
+   TOKENS: one declaration per token, resolved with light-dark().
    Theme state lives on documentElement; [data-art] is the leak barrier.
    ========================================================================== */
 :root {
@@ -325,7 +325,7 @@ button,input{font:inherit;color:inherit}button{cursor:pointer}h1,h2,p{margin:0}
 .railbtn.on .ri{color:var(--accent)}
 .railbtn:focus-visible{outline:none;box-shadow:0 0 0 2px var(--focus-gap),0 0 0 4px var(--focus)}
 .railbtn .ri{font-size:15px}
-/* theme switch — compact, icon-only in chrome */
+/* theme switch: compact, icon-only in chrome */
 .themetoggle{position:relative}
 .railbtn.themetoggle{width:32px;padding:0;justify-content:center;gap:0}
 .railbtn.themetoggle::after{content:"";position:absolute;inset:-7px 0;border-radius:12px}

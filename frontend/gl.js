@@ -1,4 +1,4 @@
-/* Chawk — GPU path for the per-pixel canvas work.
+/* Chawk GPU path for the per-pixel canvas work.
  *
  * The ink preview and the "wobble" mask are threshold operations over ~1–2 MP
  * images. They run as WebGL fragment shaders when a context is available

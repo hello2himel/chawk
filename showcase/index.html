@@ -68,9 +68,19 @@
         </div>
         <h1 class="h h1" id="hero-title">Every squiggle is a <span class="hl"><i>function</i></span>.</h1>
         <p class="lead">An image goes in. Chawk traces the ink, splits it into strokes, and fits lines, arcs, waves, and splines. The drawing comes back as a plot.</p>
+        <div class="hero-command" role="group" aria-label="Run Chawk locally">
+          <div class="hero-command-bar">
+            <span>Run locally</span>
+            <button class="hero-command-copy" id="hero-copy" type="button">
+              <i class="ri ri-file-copy-line" aria-hidden="true"></i><span id="hero-copy-label">Copy</span>
+            </button>
+          </div>
+          <code><span class="prompt">$</span> docker run --rm -p 8010:8000 <span class="dim">\</span>
+    ghcr.io/hello2himel/chawk:latest</code>
+        </div>
         <div class="hero-actions">
           <a class="btn bp" href="#proofs">See the proofs <i class="ri ri-arrow-down-line" aria-hidden="true"></i></a>
-          <a class="btn" href="#run">Run it locally <i class="ri ri-arrow-right-line" aria-hidden="true"></i></a>
+          <a class="btn" href="https://github.com/hello2himel/chawk#readme" target="_blank" rel="noopener">Read docs <i class="ri ri-arrow-right-up-line" aria-hidden="true"></i></a>
         </div>
       </div>
 

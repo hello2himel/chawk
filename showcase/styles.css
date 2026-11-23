@@ -1,5 +1,5 @@
 /* ------------------------------------------------------------------
-   Chawk — showcase
+   Chawk showcase
    The same proof-studio language as the app: warm paper, ink, cobalt,
    serif proof type, Caveat margin notes, and a graph-paper grid.
    Static, light/dark, no backend.
@@ -128,6 +128,18 @@ h1,h2,h3,p{margin:0}
 .hero .h1{margin-top:4px}
 .hero .lead{max-width:27em}
 .hero-actions{display:flex;align-items:center;gap:14px;flex-wrap:wrap;margin-top:2px}
+.hero-command{border:1px solid var(--line);border-radius:10px;background:var(--raised-2);overflow:hidden;max-width:34em}
+.hero-command-bar{display:flex;align-items:center;justify-content:space-between;gap:12px;padding:7px 10px;border-bottom:1px solid var(--line);font-family:'JetBrains Mono',monospace;font-size:10px;letter-spacing:.03em;color:var(--text-muted)}
+.hero-command-copy{display:inline-flex;align-items:center;gap:5px;padding:4px 7px;border:1px solid var(--line);border-radius:6px;background:var(--raised-1);color:var(--text-muted);font:inherit;font-size:10px;cursor:pointer;transition:background-color .12s,color .12s,border-color .12s}
+.hero-command-copy:hover{background:var(--hover);color:var(--text);border-color:var(--line-strong)}
+.hero-command-copy .ri{font-size:12px}
+.hero-command code{display:block;white-space:pre;overflow-x:auto;padding:10px 12px;font-family:'JetBrains Mono',monospace;font-size:11px;line-height:1.55;color:var(--text)}
+.hero-command code .prompt{color:var(--accent)}
+.hero-command code .dim{color:var(--text-muted)}
+@media(min-width:981px){
+  .hero{min-height:calc(100vh - 65px);min-height:calc(100svh - 65px);display:flex;align-items:center;box-sizing:border-box}
+  .hero-inner{width:100%}
+}
 
 /* hero demo panel */
 .demo-panel{border:1px solid var(--line);border-radius:16px;padding:clamp(14px,1.8vw,22px);background-color:var(--paper-bg);background-image:linear-gradient(var(--paper-grid-major) 1px,transparent 1px),linear-gradient(90deg,var(--paper-grid-major) 1px,transparent 1px),linear-gradient(var(--paper-grid-minor) 1px,transparent 1px),linear-gradient(90deg,var(--paper-grid-minor) 1px,transparent 1px);background-size:100px 100px,100px 100px,20px 20px,20px 20px;box-shadow:var(--shadow-md);position:relative;min-width:0}
