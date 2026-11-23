@@ -1011,17 +1011,11 @@ function renderLibrary() {
   }
   if (empty) { state.libSelect = false; state.libSelected.clear(); }
 
-  $("lib-kicker").textContent = selecting ? "SELECT MODE" : "YOUR WORK · THIS BROWSER";
-  if (selecting) $("lib-title").textContent = `${state.libSelected.size} selected`;
-  else $("lib-title").innerHTML = 'Previous works, <span class="hl"><i>kept</i></span>.';
-  $("lib-sub").textContent = selecting
-    ? "Pick works to export, duplicate or delete."
-    : "Open one to run it again, or tidy up.";
-  $("lib-new").hidden = selecting;
-  $("lib-select-all").hidden = !selecting || empty;
-  $("lib-done").hidden = !selecting;
-
-  $("lib-toolbar").hidden = selecting || empty;
+  $("lib-kicker").textContent = "YOUR WORK · THIS BROWSER";
+  $("lib-title").innerHTML = 'Previous works, <span class="hl"><i>kept</i></span>.';
+  $("lib-sub").textContent = "Open one to run it again, or tidy up.";
+  $("lib-new").hidden = empty;
+  $("lib-toolbar").hidden = empty;
   $("lib-count-line").textContent = `${works.length} work${works.length === 1 ? "" : "s"}`;
   $("lib-sort-label").textContent = SORT_LABELS[state.libSort] || "Newest";
   $("lib-view-grid").setAttribute("aria-pressed", state.libView === "grid" ? "true" : "false");
@@ -1029,7 +1023,7 @@ function renderLibrary() {
   $("lib-delete-all").hidden = empty;
 
   const full = works.length >= MAX_WORKS;
-  $("lib-limit").hidden = empty || selecting || !full;
+  $("lib-limit").hidden = empty || !full;
   if (full) {
     $("lib-limit-text").textContent = `${works.length} of ${MAX_WORKS} works used.`;
     $("lib-limit-fill").style.width = `${Math.round((works.length / MAX_WORKS) * 100)}%`;
@@ -1038,9 +1032,9 @@ function renderLibrary() {
   const grid = $("lib-grid");
   grid.className = "libgrid" + (state.libView === "list" ? " list" : "") + (selecting ? " selecting" : "");
   grid.hidden = empty;
-  $("lib-listhead").hidden = empty || selecting || state.libView !== "list";
+  $("lib-listhead").hidden = empty || state.libView !== "list";
   $("lib-empty").hidden = !empty;
-  $("lib-note").textContent = empty || selecting
+  $("lib-note").textContent = empty
     ? ""
     : `${Math.round(JSON.stringify(works).length / 1024)} KB in this browser · up to ${MAX_WORKS} works`;
 
@@ -2258,8 +2252,7 @@ function bind() {
   });
   $("lib-new").addEventListener("click", () => showScreen("start"));
   $("lib-empty-new").addEventListener("click", () => showScreen("start"));
-  $("lib-done").addEventListener("click", exitSelect);
-  $("lib-select-all").addEventListener("click", () => {
+  $("lib-bulk-all").addEventListener("click", () => {
     for (const w of loadWorks()) state.libSelected.add(w.id);
     renderLibrary();
   });
