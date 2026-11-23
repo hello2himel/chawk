@@ -115,7 +115,7 @@ input[type=range]{width:100%;accent-color:#1F3FD1;min-height:32px}
 
 /* ---------- start: live demo ---------- */
 .demo{justify-content:center}
-.demo .eq{width:100%;max-width:760px;text-align:center}
+.demo .eq{width:100%;max-width:760px;text-align:center;margin-inline:auto}
 .demo-eqs{font-size:20px;display:flex;flex-direction:column;align-items:center;gap:6px;min-height:120px}
 .demo-stage{position:relative;width:100%;max-width:720px;margin:0 auto;aspect-ratio:3/2;border:1px solid #DDD9CC;border-radius:12px;overflow:hidden;background:#FAF9F4;box-shadow:0 8px 24px rgba(21,22,26,.06)}
 .demo-eqs .f{display:block;width:100%;text-align:center;justify-content:center}

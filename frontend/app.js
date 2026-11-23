@@ -626,7 +626,7 @@ function restoreConfirm() {
 }
 
 async function restoreCheck(id) {
-  await openWork(id, { trace: false, restore: true });
+  await openWork(id, { trace: false, restore: true, check: true });
 }
 
 function bootRoute() {
@@ -639,6 +639,11 @@ function bootRoute() {
     return;
   }
   if (name === "result" && !activeRun()) {
+    const snapshot = projectId ? loadProjectSnapshot(projectId) : null;
+    if (snapshot) {
+      restoreProjectSnapshot(snapshot).then((ok) => { if (!ok) openRestorePrompt(projectId, "result"); });
+      return;
+    }
     openRestorePrompt(projectId, "result");
     return;
   }
@@ -658,6 +663,11 @@ window.addEventListener("popstate", () => {
     return;
   }
   if (name === "result" && !activeRun()) {
+    const snapshot = projectId ? loadProjectSnapshot(projectId) : null;
+    if (snapshot) {
+      restoreProjectSnapshot(snapshot).then((ok) => { if (!ok) openRestorePrompt(projectId, "result"); });
+      return;
+    }
     openRestorePrompt(projectId, "result");
     return;
   }
@@ -667,6 +677,8 @@ window.addEventListener("popstate", () => {
 /* ------------------------------------------------------------------ library *//* ------------------------------------------------------------------ library */
 const WORKS_KEY = "chawk.works.v1";
 const MAX_WORKS = 12;
+const PROJECT_KEY = "chawk.project.v1.";
+const PROJECT_VIEW_KEY = "chawk.project.view.v1.";
 const SORT_LABELS = { newest: "Newest", oldest: "Oldest", name: "Name A–Z", equations: "Most equations" };
 const TITLE_MAX = 58;
 const MODE_LABELS = { clean: "Clean lines", sketchy: "Sketchy", busy: "Busy" };
@@ -724,6 +736,139 @@ async function imageUrlToWebP(url, max, quality) {
   g.fillRect(0, 0, w, h);
   g.drawImage(img, 0, 0, w, h);
   return cv.toDataURL("image/webp", quality);
+}
+
+function projectSnapshotKey(id) {
+  return PROJECT_KEY + id;
+}
+
+function loadProjectSnapshot(id) {
+  if (!id) return null;
+  try {
+    const raw = localStorage.getItem(projectSnapshotKey(id));
+    const snap = raw ? JSON.parse(raw) : null;
+    return snap && Array.isArray(snap.runs) && snap.runs.length ? snap : null;
+  } catch { return null; }
+}
+
+function loadProjectView(id) {
+  if (!id) return null;
+  try {
+    const raw = localStorage.getItem(PROJECT_VIEW_KEY + id);
+    return raw ? JSON.parse(raw) : null;
+  } catch { return null; }
+}
+
+function saveProjectView() {
+  if (!state.projectId) return;
+  try { localStorage.setItem(PROJECT_VIEW_KEY + state.projectId, JSON.stringify(view)); } catch { /* quota */ }
+}
+
+function forgetProject(id) {
+  if (!id) return;
+  try {
+    localStorage.removeItem(PROJECT_KEY + id);
+    localStorage.removeItem(PROJECT_VIEW_KEY + id);
+  } catch { /* ignore */ }
+}
+
+function pruneProjectSnapshots(keepId) {
+  try {
+    const items = [];
+    for (let i = 0; i < localStorage.length; i++) {
+      const key = localStorage.key(i);
+      if (!key || !key.startsWith(PROJECT_KEY)) continue;
+      const id = key.slice(PROJECT_KEY.length);
+      let at = 0;
+      try { at = JSON.parse(localStorage.getItem(key)).savedAt || 0; } catch { /* corrupt */ }
+      items.push({ key, id, at });
+    }
+    items.sort((a, b) => b.at - a.at);
+    const keep = new Set([keepId, ...items.slice(0, 5).map((it) => it.id)]);
+    for (const it of items) if (!keep.has(it.id)) localStorage.removeItem(it.key);
+  } catch { /* ignore */ }
+}
+
+async function persistProjectSnapshot(workId) {
+  if (!workId || !state.runs.length) return;
+  try {
+    const work = loadWorks().find((w) => w.id === workId);
+    const source = work?.source
+      || (state.url && state.url.startsWith("data:") ? state.url : await imageUrlToWebP(state.url, 1400, 0.86));
+    const runs = [];
+    for (const run of state.runs) {
+      const images = {};
+      for (const [key, url] of Object.entries(run.images || {})) {
+        if (!url) continue;
+        images[key] = url.startsWith("data:") ? url : await imageUrlToWebP(url, 1600, 0.88);
+      }
+      runs.push({
+        report: run.report, images, seconds: run.seconds, meta: run.meta,
+        settings: run.settings, config: run.config, label: run.label,
+      });
+    }
+    const base = {
+      version: 1, workId, name: state.name, width: state.width, height: state.height,
+      bytes: state.bytes, source, runs, active: state.active, view: { ...view }, savedAt: Date.now(),
+    };
+    try {
+      localStorage.setItem(projectSnapshotKey(workId), JSON.stringify(base));
+    } catch {
+      const active = runs[state.active] || runs[runs.length - 1];
+      const slim = {
+        ...base,
+        runs: active ? [{
+          ...active,
+          images: { redraw: active.images.redraw, redrawLabels: active.images.redrawLabels || active.images.labeled },
+        }] : [],
+        active: 0,
+      };
+      localStorage.setItem(projectSnapshotKey(workId), JSON.stringify(slim));
+    }
+    pruneProjectSnapshots(workId);
+  } catch {
+    toast("Couldn't save the last run locally", "Browser storage is unavailable or full.");
+  }
+}
+
+async function restoreProjectSnapshot(snap) {
+  if (!snap || !Array.isArray(snap.runs) || !snap.runs.length) return false;
+  try {
+    const res = await fetch(snap.source);
+    if (!res.ok) return false;
+    const blob = await res.blob();
+    state.file = new File([blob], snap.name || "saved.webp", { type: blob.type || "image/webp" });
+    state.name = snap.name || state.name;
+    state.width = snap.width || state.width;
+    state.height = snap.height || state.height;
+    state.bytes = snap.bytes || blob.size;
+    state.url = snap.source;
+    Object.assign(settings, snap.settings || {});
+    Object.assign(view, snap.view || {});
+    const savedView = loadProjectView(snap.workId);
+    if (savedView) Object.assign(view, savedView);
+    $("blend").value = String(view.blend ?? 70);
+    state.runs = snap.runs.map((r) => ({
+      report: r.report,
+      images: { ...(r.images || {}) },
+      seconds: r.seconds || 0,
+      meta: r.meta || { name: state.name, width: state.width, height: state.height, bytes: state.bytes },
+      settings: r.settings || snap.settings || { ...settings },
+      config: r.config || {},
+      label: r.label || "",
+      saved: true,
+      workId: snap.workId,
+    }));
+    state.active = Math.min(Math.max(0, snap.active || 0), state.runs.length - 1);
+    state.selected = -1;
+    state.hoverSeg = null;
+    state.projectId = snap.workId;
+    rememberProject(snap.workId);
+    renderResult();
+    showScreen("result", { history: false });
+    history.replaceState({ screen: "result" }, "", `/result?work=${encodeURIComponent(snap.workId)}`);
+    return true;
+  } catch { return false; }
 }
 
 async function saveWork(run) {
@@ -818,6 +963,10 @@ async function openWork(id, opts = {}) {
   const work = loadWorks().find((w) => w.id === id);
   if (!work) return false;
   closeLibMenus();
+  if (!opts.check) {
+    const snapshot = loadProjectSnapshot(id);
+    if (snapshot && await restoreProjectSnapshot(snapshot)) return true;
+  }
   rememberProject(id);
   try {
     const blob = await (await fetch(work.source)).blob();
@@ -830,6 +979,7 @@ async function openWork(id, opts = {}) {
       settings.advanced = { ...(work.settings.advanced || {}) };
     }
     await chooseFile(file);
+    state.projectId = id;
     if (opts.trace === false) {
       history.replaceState({ screen: "check" }, "", `/check?work=${encodeURIComponent(id)}`);
     } else {
@@ -1076,6 +1226,7 @@ function confirmLibDelete() {
   const works = loadWorks();
   const removed = dialog.kind === "all" ? works : works.filter((w) => ids.has(w.id));
   const kept = dialog.kind === "all" ? [] : works.filter((w) => !ids.has(w.id));
+  for (const w of removed) forgetProject(w.id);
   persistWorks(kept);
   if (dialog.kind !== "single") { state.libSelect = false; state.libSelected.clear(); }
   closeLibDialog();
@@ -1634,13 +1785,15 @@ function renderResult() {
 
   if (!run.saved) {
     run.saved = true;
-    saveWork(run).then((id) => {
+    saveWork(run).then(async (id) => {
       if (!id) return;
       run.workId = id;
+      state.projectId = id;
       rememberProject(id);
       if (state.screen === "result") {
         history.replaceState({ screen: "result" }, "", `/result?work=${encodeURIComponent(id)}`);
       }
+      await persistProjectSnapshot(id);
     }).catch(() => {});
   }
 }
@@ -1724,6 +1877,7 @@ function paintStage() {
     ? "Your drawing redrawn from its equations, with equation labels"
     : "Your drawing with its fitted equations");
   paintChips();
+  saveProjectView();
 }
 
 function paintChips() {
@@ -1737,6 +1891,7 @@ function paintChips() {
     const el = $(id);
     if (el) el.setAttribute("aria-pressed", on ? "true" : "false");
   }
+  saveProjectView();
 }
 
 function renderAxes() {
