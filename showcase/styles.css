@@ -129,8 +129,6 @@ h1,h2,h3,p{margin:0}
 .hero .h1{margin-top:4px}
 .hero .lead{max-width:27em}
 .hero-actions{display:flex;align-items:center;gap:14px;flex-wrap:wrap;margin-top:2px}
-.hero-note{font-family:'JetBrains Mono',monospace;font-size:10.5px;line-height:1.5;letter-spacing:.045em;text-transform:uppercase;color:var(--text-muted);border-top:1px solid var(--line);padding-top:12px;margin-top:8px;max-width:32em}
-.hero-note b{color:var(--text);font-weight:700}
 
 /* hero demo panel */
 .demo-panel{border:1px solid var(--line);border-radius:16px;padding:clamp(14px,1.8vw,22px);background-color:var(--paper-bg);background-image:linear-gradient(var(--paper-grid-major) 1px,transparent 1px),linear-gradient(90deg,var(--paper-grid-major) 1px,transparent 1px),linear-gradient(var(--paper-grid-minor) 1px,transparent 1px),linear-gradient(90deg,var(--paper-grid-minor) 1px,transparent 1px);background-size:100px 100px,100px 100px,20px 20px,20px 20px;box-shadow:var(--shadow-md);position:relative;min-width:0}
