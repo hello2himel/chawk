@@ -10,7 +10,10 @@
       "x(t) = 268.19 − 4.41cos 2πt − 1.86sin 2πt",
       "y(t) = 10.55 − 1.58cos 2πt + 2.37sin 2πt − 0.01sin 4πt"
     ],
-    "count": 4017
+    "count": 4017,
+    "name": "River and boats",
+    "original": "assets/river-still.webp",
+    "rebuilt": "assets/river-rebuilt.webp"
   },
   {
     "src": "assets/nebula-still.webp",
@@ -23,7 +26,10 @@
       "x(t) = 307.23 − 116.75cos 2πt − 38.66sin 2πt + 44.62cos 4πt + 7.35sin 4πt",
       "x(t) = 903.01 + 236.48cos 2πt − 115.28sin 2πt + 9.5cos 4πt + 3.55sin 4πt"
     ],
-    "count": 1442
+    "count": 1442,
+    "name": "Orion nebula",
+    "original": "assets/nebula-still.webp",
+    "rebuilt": "assets/nebula-rebuilt.webp"
   },
   {
     "src": "assets/tree-still.webp",
@@ -36,7 +42,10 @@
       "x(t) = 1181.24 + 250.42cos 2πt + 32.53sin 2πt − 7.67cos 4πt − 25.64sin 4πt",
       "x(t) = 896.11 − 82.52cos 2πt − 98.32sin 2πt + 28.77cos 4πt + 13.65sin 4πt"
     ],
-    "count": 4817
+    "count": 4817,
+    "name": "Tree and river",
+    "original": "assets/tree-still.webp",
+    "rebuilt": "assets/tree-rebuilt.webp"
   },
   {
     "src": "assets/pink-leaves-still.webp",
@@ -49,7 +58,10 @@
       "x(t) = 950.76 + 76.03cos 2πt − 110.34sin 2πt − 14.2cos 4πt + 15.09sin 4πt",
       "x(t) = 814.61 − 162.33cos 2πt − 121.08sin 2πt + 44.1cos 4πt + 49.41sin 4πt"
     ],
-    "count": 13655
+    "count": 13655,
+    "name": "Pink leaves",
+    "original": "assets/pink-leaves-still.webp",
+    "rebuilt": "assets/pink-leaves-rebuilt.webp"
   },
   {
     "src": "assets/cat-still.webp",
@@ -62,6 +74,9 @@
       "x(t) = 793.35 − 20.89cos 2πt − 7.79sin 2πt + 2.1cos 4πt − 1.52sin 4πt",
       "x(t) = 810.64 + 0.64cos 2πt + 3.18sin 2πt + 0.09cos 4πt − 0.13sin 4πt"
     ],
-    "count": 1672
+    "count": 1672,
+    "name": "Pixel-shades cat",
+    "original": "assets/cat-original.webp",
+    "rebuilt": "assets/cat-still.webp"
   }
 ]

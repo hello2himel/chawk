@@ -354,26 +354,27 @@
 
 <div class="demo-modal" id="demo-modal" hidden>
   <div class="demo-modal-scrim" id="demo-modal-scrim"></div>
-  <div class="demo-modal-card paper" role="dialog" aria-modal="true" aria-labelledby="demo-modal-title">
-    <span class="demo-modal-tape" aria-hidden="true"></span>
+  <div class="demo-modal-card" role="dialog" aria-modal="true" aria-labelledby="demo-modal-title">
     <button class="demo-modal-close" id="demo-modal-close" type="button" aria-label="Close">×</button>
-    <div class="demo-modal-art"><img id="demo-modal-img" width="960" height="640" alt=""></div>
-    <div class="demo-modal-copy">
-      <div class="demo-modal-top">
-        <span class="demo-modal-fig" id="demo-modal-fig">FIG. 01</span>
-        <span class="demo-modal-count" id="demo-modal-count"></span>
-      </div>
-      <h2 class="demo-modal-title" id="demo-modal-title"></h2>
-      <p class="hand demo-modal-quip" id="demo-modal-quip"></p>
-      <div class="demo-modal-rule"></div>
+
+    <div class="demo-compare" id="demo-compare">
+      <div class="demo-scene"><img id="demo-original" alt=""></div>
+      <div class="demo-scene demo-rebuilt"><img id="demo-rebuilt" alt=""></div>
+      <span class="demo-tag l">Original</span>
+      <span class="demo-tag r">Rebuilt</span>
+      <div class="demo-handle"></div>
+      <input type="range" min="0" max="100" value="50" aria-label="Compare original and rebuilt">
+    </div>
+
+    <div class="demo-modal-body">
+      <h2 id="demo-modal-title"></h2>
+      <p class="demo-modal-meta" id="demo-modal-count"></p>
       <div class="eq demo-modal-eqs" id="demo-modal-eqs"></div>
-      <div class="demo-modal-actions">
-        <button class="btn bp demo-modal-project" id="demo-modal-project" type="button">Open as project <i class="ri ri-arrow-right-line" aria-hidden="true"></i></button>
-        <span class="demo-modal-hint">Trace this proof to see every equation</span>
-      </div>
+      <button class="demo-modal-open" id="demo-modal-project" type="button">Open as project</button>
     </div>
   </div>
 </div>
+
 
 <div class="libmenu" id="lib-sort-menu" role="menu" hidden></div>
 <div class="libmenu" id="lib-card-menu" role="menu" hidden></div>

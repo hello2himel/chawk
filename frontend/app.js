@@ -2650,28 +2650,46 @@ async function initDemo() {
     });
 
     const modal = $("demo-modal");
+    const compare = $("demo-compare");
+    const compareInput = compare.querySelector("input");
+    let modalTimer = 0;
     const openModal = () => {
       const s = demo.slides[demo.index];
       if (!s) return;
-      $("demo-modal-img").src = s.src;
-      $("demo-modal-img").alt = s.alt || "";
-      $("demo-modal-title").textContent = s.alt || "Proof";
-      $("demo-modal-fig").textContent = `FIG. ${String(demo.index + 1).padStart(2, "0")}`;
-      $("demo-modal-count").textContent = `${Number(s.count || 0).toLocaleString()} equations`;
-      $("demo-modal-quip").textContent = s.quip || "";
+      $("demo-original").src = s.original || s.src;
+      $("demo-original").alt = s.alt || "";
+      $("demo-rebuilt").src = s.rebuilt || s.src;
+      $("demo-rebuilt").alt = `${s.name || "This proof"}, rebuilt from equations`;
+      $("demo-modal-title").textContent = s.name || s.alt || "Proof";
+      $("demo-modal-count").textContent = `Rebuilt from ${Number(s.count || 0).toLocaleString()} equations.`;
       const equations = s.equations || [];
       const more = Math.max(0, (s.count || 0) - equations.length);
       $("demo-modal-eqs").innerHTML = equations.map((eq) => `<span class="f">${esc(eq)}</span>`).join("")
         + (more ? `<span class="demo-more">…and ${more.toLocaleString()} more</span>` : "");
+      compare.style.setProperty("--pos", "50%");
+      compareInput.value = "50";
+      clearTimeout(modalTimer);
       modal.hidden = false;
+      modal.classList.remove("is-closing");
+      requestAnimationFrame(() => modal.classList.add("is-open"));
       document.body.classList.add("modal-open");
       $("demo-modal-close").focus();
     };
     const closeModal = () => {
-      modal.hidden = true;
+      if (modal.hidden) return;
+      modal.classList.remove("is-open");
+      modal.classList.add("is-closing");
       document.body.classList.remove("modal-open");
+      clearTimeout(modalTimer);
+      modalTimer = setTimeout(() => {
+        modal.hidden = true;
+        modal.classList.remove("is-closing");
+      }, 220);
       $("demo-max")?.focus();
     };
+    compareInput.addEventListener("input", (e) => {
+      compare.style.setProperty("--pos", `${e.target.value}%`);
+    });
     $("demo-max").addEventListener("click", (e) => { e.stopPropagation(); openModal(); });
     $("demo-modal-close").addEventListener("click", closeModal);
     $("demo-modal-scrim").addEventListener("click", closeModal);
@@ -2684,7 +2702,7 @@ async function initDemo() {
       if (!s) return;
       closeModal();
       try {
-        const res = await fetch(s.src);
+        const res = await fetch(s.original || s.src);
         const blob = await res.blob();
         const ext = (blob.type.split("/")[1] || "webp").replace("jpeg", "jpg");
         await chooseFile(new File([blob], `proof-${String(demo.index + 1).padStart(2, "0")}.${ext}`, {
