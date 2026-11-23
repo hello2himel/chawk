@@ -100,9 +100,9 @@
           </div>
           <button class="deck-arrow prev" id="demo-prev" type="button" aria-label="Previous proof"><svg viewBox="0 0 16 16" fill="none" stroke="currentColor" stroke-width="1.7" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><path d="M10 3 5 8l5 5"/></svg></button>
           <button class="deck-arrow next" id="demo-next" type="button" aria-label="Next proof"><svg viewBox="0 0 16 16" fill="none" stroke="currentColor" stroke-width="1.7" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><path d="m6 3 5 5-5 5"/></svg></button>
-          <div class="deck-overlay">
+          <div class="deck-overlay" id="demo-overlay">
             <button class="deck-play" id="demo-play" type="button" aria-label="Pause auto-cycling" title="Pause auto-cycling"><i class="ri ri-pause-fill" aria-hidden="true"></i></button>
-            <button class="deck-full" id="demo-full" type="button" aria-label="Fullscreen" title="Fullscreen"><i class="ri ri-fullscreen-line" aria-hidden="true"></i></button>
+            <button class="deck-max" id="demo-max" type="button" aria-label="Open larger view" title="Open larger view"><i class="ri ri-expand-diagonal-line" aria-hidden="true"></i></button>
           </div>
         </div>
         <p class="hand demo-quip" id="demo-quip">↑ the whole river is just algebra.</p>
@@ -351,6 +351,20 @@
 </div>
 
 
+
+<div class="demo-modal" id="demo-modal" hidden>
+  <div class="demo-modal-scrim" id="demo-modal-scrim"></div>
+  <div class="demo-modal-card" role="dialog" aria-modal="true" aria-labelledby="demo-modal-title">
+    <button class="demo-modal-close" id="demo-modal-close" type="button" aria-label="Close">×</button>
+    <div class="demo-modal-art"><img id="demo-modal-img" width="960" height="640" alt=""></div>
+    <div class="demo-modal-copy">
+      <span class="demo-modal-count" id="demo-modal-count"></span>
+      <h2 class="demo-modal-title" id="demo-modal-title"></h2>
+      <p class="hand" id="demo-modal-quip"></p>
+      <div class="eq demo-modal-eqs" id="demo-modal-eqs"></div>
+    </div>
+  </div>
+</div>
 
 <div class="libmenu" id="lib-sort-menu" role="menu" hidden></div>
 <div class="libmenu" id="lib-card-menu" role="menu" hidden></div>

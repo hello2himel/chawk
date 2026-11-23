@@ -2553,6 +2553,7 @@ async function initDemo() {
         d.classList.toggle("is-active", j === real);
         d.setAttribute("aria-pressed", String(j === real));
       });
+      cards[raw]?.append($("demo-overlay"));
       if (changed) renderDemoText(slides[real]);
     };
 
@@ -2648,23 +2649,33 @@ async function initDemo() {
       else if (demo.playing && !demo.reduced) startAuto();
     });
 
-    const fullBtn = $("demo-full");
-    const demoEl = document.querySelector(".demo");
-    const updateFull = () => {
-      const on = !!document.fullscreenElement;
-      fullBtn.setAttribute("aria-label", on ? "Exit fullscreen" : "Fullscreen");
-      fullBtn.title = on ? "Exit fullscreen" : "Fullscreen";
-      fullBtn.innerHTML = `<i class="ri ${on ? "ri-fullscreen-exit-line" : "ri-fullscreen-line"}" aria-hidden="true"></i>`;
+    const modal = $("demo-modal");
+    const openModal = () => {
+      const s = demo.slides[demo.index];
+      if (!s) return;
+      $("demo-modal-img").src = s.src;
+      $("demo-modal-img").alt = s.alt || "";
+      $("demo-modal-title").textContent = s.alt || "Proof";
+      $("demo-modal-count").textContent = `${Number(s.count || 0).toLocaleString()} equations`;
+      $("demo-modal-quip").textContent = s.quip || "";
+      const equations = s.equations || [];
+      const more = Math.max(0, (s.count || 0) - equations.length);
+      $("demo-modal-eqs").innerHTML = equations.map((eq) => `<span class="f">${esc(eq)}</span>`).join("")
+        + (more ? `<span class="demo-more">…and ${more.toLocaleString()} more</span>` : "");
+      modal.hidden = false;
+      document.body.classList.add("modal-open");
+      $("demo-modal-close").focus();
     };
-    fullBtn.addEventListener("click", async () => {
-      try {
-        if (document.fullscreenElement) await document.exitFullscreen();
-        else await demoEl.requestFullscreen();
-      } catch { /* fullscreen unavailable */ }
-    });
-    document.addEventListener("fullscreenchange", () => {
-      updateFull();
-      requestAnimationFrame(() => { deck.scrollLeft = demo.raw * step(); });
+    const closeModal = () => {
+      modal.hidden = true;
+      document.body.classList.remove("modal-open");
+      $("demo-max")?.focus();
+    };
+    $("demo-max").addEventListener("click", (e) => { e.stopPropagation(); openModal(); });
+    $("demo-modal-close").addEventListener("click", closeModal);
+    $("demo-modal-scrim").addEventListener("click", closeModal);
+    document.addEventListener("keydown", (e) => {
+      if (e.key === "Escape" && !modal.hidden) closeModal();
     });
 
     updatePlay();
