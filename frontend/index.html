@@ -21,7 +21,7 @@
       <span class="libcount" id="library-count" hidden>0</span>
     </button>
 
-    <span class="m hide-m" id="start-meta">v1.1.18 · connected</span>
+    <span class="m hide-m" id="start-meta">v1.1.19 · connected</span>
 
     <button class="btn" id="check-change" hidden>
       <span class="hide-m">Choose another</span><span class="show-m">Change</span>
@@ -158,20 +158,11 @@
         </label>
       </fieldset>
 
-      <div>
-        <p class="field-label type-label">Allowed curve types</p>
-        <div class="type-row">
-          <button class="chip" data-type="circle" aria-pressed="true">Circles</button>
-          <button class="chip" data-type="ellipse" aria-pressed="true">Ellipses</button>
-          <button class="chip" data-type="sinusoid" aria-pressed="true">Waves</button>
-          <button class="chip" data-type="spline" aria-pressed="true">Freeform</button>
-        </div>
-      </div>
-
-      <label class="filltoggle">
-        <span><b>Fill solid shapes</b><br><span class="m">Colour areas and blobs are filled in. Off keeps outlines only.</span></span>
-        <input type="checkbox" id="fill-toggle" checked>
-      </label>
+      <button class="btn adv-open" id="adv-open" type="button" aria-haspopup="dialog" aria-expanded="false">
+        <i class="ri-settings-3-line" aria-hidden="true"></i>
+        <span>Advanced settings</span>
+        <span class="adv-count" id="adv-count" hidden>0</span>
+      </button>
 
       <p class="err" id="check-error" role="alert" hidden></p>
       <button class="btn bp go" id="trace">Do the maths →</button>
@@ -297,6 +288,29 @@
 </div>
 
 <div class="menu runmenu" id="run-menu" role="menu" aria-label="Runs" hidden></div>
+
+
+<div class="advwrap" id="advanced" hidden>
+  <div class="advscrim" id="adv-scrim"></div>
+  <div class="advcard" role="dialog" aria-modal="true" aria-labelledby="adv-title">
+    <div class="advhead">
+      <div>
+        <b id="adv-title">Advanced settings</b>
+        <span class="m">Every knob in the pipeline. The drawing mode sets the defaults.</span>
+      </div>
+      <button class="ib" id="adv-close" type="button" aria-label="Close advanced settings"><i class="ri-close-line" aria-hidden="true"></i></button>
+    </div>
+    <div class="advbody" id="adv-body"></div>
+    <p class="err" id="adv-error" role="alert" hidden></p>
+    <div class="advfoot">
+      <button class="btn" id="adv-reset" type="button">Reset to mode defaults</button>
+      <div class="advfoot-right">
+        <button class="btn" id="adv-cancel" type="button">Cancel</button>
+        <button class="btn bp" id="adv-apply" type="button">Apply</button>
+      </div>
+    </div>
+  </div>
+</div>
 
 <div class="busy" id="busy" role="status" aria-live="off" hidden>
   <div class="busycard">

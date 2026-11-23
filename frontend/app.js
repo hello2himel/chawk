@@ -18,13 +18,83 @@ const MODEL_NAME = {
   elliptical_arc: "Arc", sinusoid: "Wave", spline: "Freeform", point: "Point",
   closed_spline: "Closed curve",
 };
+
+/* Every Config field the server accepts, grouped for the advanced drawer. */
+const ADV_GROUPS = [
+  { title: "Preprocessing", fields: [
+    { key: "max_dimension", label: "Maximum working size", min: 128, max: 4000, step: 1, hint: "Longest side; larger uploads are downscaled." },
+    { key: "blur_kernel", label: "Blur kernel", min: 0, max: 15, step: 1, hint: "Median blur before thresholding. 0 disables." },
+    { key: "threshold_mode", label: "Threshold mode", options: ["auto", "otsu", "adaptive"], hint: "auto = Otsu, with an adaptive fallback." },
+    { key: "adaptive_block", label: "Adaptive block", min: 3, max: 201, step: 2, hint: "Neighbourhood size for adaptive thresholding." },
+    { key: "adaptive_C", label: "Adaptive C", min: 1, max: 50, step: 1, hint: "How much fainter than the paper counts as ink." },
+    { key: "invert", label: "Ink polarity", options: ["auto", "dark_strokes", "light_strokes"] },
+    { key: "min_component_area", label: "Minimum speck area", min: 0, max: 500, step: 1, hint: "Smaller components are discarded." },
+    { key: "close_gaps", label: "Close gaps", min: 0, max: 20, step: 1, hint: "Bridge tiny anti-aliasing gaps." },
+  ] },
+  { title: "Filled shapes", fields: [
+    { key: "enable_fill", label: "Fill solid shapes" },
+    { key: "fill_min_area", label: "Minimum fill area", min: 0, max: 5000, step: 1 },
+    { key: "fill_min_radius", label: "Minimum fill thickness", min: 0, max: 100, step: 0.5 },
+    { key: "fill_max_blobbiness", label: "Maximum fill blobbiness", min: 0.1, max: 10, step: 0.1 },
+    { key: "fill_max_ring_blobbiness", label: "Maximum ring blobbiness", min: 1, max: 100, step: 1 },
+  ] },
+  { title: "Colour", fields: [
+    { key: "color_count", label: "Colour count", min: 0, max: 64, step: 1, hint: "0 disables the colour path." },
+    { key: "color_min_area", label: "Minimum colour area", min: 0, max: 5000, step: 1 },
+    { key: "fill_edge_width", label: "Fill seam width", min: 0.1, max: 10, step: 0.1 },
+    { key: "color_spline_smoothing", label: "Boundary smoothing", min: 0, max: 2, step: 0.01 },
+  ] },
+  { title: "Tracing", fields: [
+    { key: "min_stroke_length", label: "Minimum stroke length", min: 0.1, max: 200, step: 0.5 },
+    { key: "prune_spur_length", label: "Prune spurs shorter than", min: 0, max: 200, step: 0.5 },
+    { key: "junction_link_angle", label: "Junction link angle", min: 1, max: 90, step: 1, hint: "Degrees allowed when crossing a junction." },
+    { key: "merge_endpoint_distance", label: "Merge endpoints within", min: 0, max: 100, step: 0.5 },
+    { key: "merge_endpoint_angle", label: "Merge angle", min: 0, max: 90, step: 1 },
+    { key: "resample_spacing", label: "Resample spacing", min: 0.5, max: 20, step: 0.1 },
+    { key: "smoothing_window", label: "Smoothing window", min: 0, max: 51, step: 1, hint: "Odd window; 0 or below 3 disables." },
+  ] },
+  { title: "Segmentation", fields: [
+    { key: "rmse_tolerance", label: "Fit tolerance (RMSE)", min: 0.1, max: 20, step: 0.1, hint: "Split until every fit is at or below this." },
+    { key: "max_error_tolerance", label: "Worst-case tolerance", min: 0.1, max: 50, step: 0.1 },
+    { key: "min_segment_points", label: "Minimum segment points", min: 3, max: 100, step: 1 },
+    { key: "min_segment_length", label: "Minimum segment length", min: 0.1, max: 200, step: 0.5 },
+    { key: "max_segments_per_stroke", label: "Max segments per stroke", min: 1, max: 500, step: 1 },
+    { key: "rdp_epsilon", label: "Corner detection epsilon", min: 0.1, max: 50, step: 0.1 },
+    { key: "corner_angle", label: "Corner angle", min: 1, max: 179, step: 1 },
+    { key: "corner_window", label: "Corner window", min: 1, max: 100, step: 0.5 },
+    { key: "corner_concentration", label: "Corner concentration", min: 0.01, max: 0.99, step: 0.01 },
+  ] },
+  { title: "Fitting", fields: [
+    { key: "max_poly_degree", label: "Maximum polynomial degree", min: 1, max: 6, step: 1 },
+    { key: "enable_circle", label: "Circles" },
+    { key: "enable_ellipse", label: "Ellipses" },
+    { key: "enable_sinusoid", label: "Waves" },
+    { key: "enable_spline", label: "Freeform" },
+    { key: "spline_max_knots", label: "Maximum spline knots", min: 1, max: 100, step: 1 },
+    { key: "bic_margin", label: "Model margin (BIC)", min: 0, max: 50, step: 0.1 },
+    { key: "error_floor_px", label: "Error floor", min: 0.01, max: 10, step: 0.01 },
+  ] },
+  { title: "Rendering", fields: [
+    { key: "label_equations", label: "Label equations" },
+    { key: "max_labels", label: "Maximum labels", min: 0, max: 200, step: 1 },
+    { key: "label_fontsize", label: "Label font size", min: 1, max: 40, step: 0.5 },
+    { key: "overlay_linewidth", label: "Overlay line width", min: 0.1, max: 20, step: 0.1 },
+    { key: "dpi", label: "Render DPI", min: 50, max: 600, step: 10 },
+    { key: "color_by", label: "Colour by", options: ["original", "stroke", "segment"] },
+  ] },
+  { title: "Limits", fields: [
+    { key: "max_strokes", label: "Maximum strokes", min: 1, max: 5000, step: 1 },
+    { key: "float_precision", label: "Decimal precision", min: 0, max: 6, step: 1 },
+  ] },
+];
+
 const SUPER = { 2: "²", 3: "³", 4: "⁴", 5: "⁵", 6: "⁶" };
 
 const settings = {
   sensitivity: 50, kind: "sketchy", fit: 50,
-  fill: true,
-  types: { circle: true, ellipse: true, sinusoid: true, spline: true },
+  advanced: {},
 };
+const advancedMeta = { defaults: null, presets: {}, loading: null };
 
 const state = {
   file: null, url: null, name: "", bytes: 0, width: 0, height: 0,
@@ -533,8 +603,11 @@ async function openWork(id) {
     const blob = await (await fetch(work.source)).blob();
     const file = new File([blob], work.name || "saved.webp", { type: blob.type || "image/webp" });
     if (work.settings) {
-      Object.assign(settings, work.settings);
-      settings.types = { ...settings.types };
+      settings.kind = work.settings.kind || "sketchy";
+      const kv = KIND_VALUES[settings.kind];
+      settings.sensitivity = kv ? kv.sensitivity : 50;
+      settings.fit = kv ? kv.fit : 50;
+      settings.advanced = { ...(work.settings.advanced || {}) };
     }
     await chooseFile(file);
     trace();
@@ -709,15 +782,12 @@ function renderCheck() {
   const onLoad = () => { fitPreview(); drawPreviewMask(); };
   if (img.complete) onLoad();
   else img.onload = onLoad;
-  $("fill-toggle").checked = settings.fill;
   for (const row of document.querySelectorAll("[data-kind]")) {
     const on = row.dataset.kind === settings.kind;
     row.classList.toggle("on", on);
     row.querySelector("input").checked = on;
   }
-  for (const btn of document.querySelectorAll("[data-type]")) {
-    btn.setAttribute("aria-pressed", settings.types[btn.dataset.type] ? "true" : "false");
-  }
+  updateAdvancedBadge();
 }
 
 /* Blue "what will be traced" wash over the upload, computed locally so the
@@ -795,7 +865,11 @@ function drawPreviewMask() {
     const cache = previewCache || buildPreviewCache();
     if (!cache) return;
     const { w, h, lightPaper, paperLum } = cache;
-    const cut = 95 - 0.8 * settings.sensitivity;
+    const advC = Number(settings.advanced.adaptive_C);
+    const sens = Number.isFinite(advC)
+      ? Math.max(0, Math.min(100, (14 - advC) / 0.13))
+      : settings.sensitivity;
+    const cut = 95 - 0.8 * sens;
 
     const canvas = $("preview-mask");
     canvas.width = w; canvas.height = h;
@@ -836,17 +910,20 @@ function drawPreviewMask() {
   });
 }
 
-function buildConfig() {
-  return {
-    threshold_mode: "adaptive",
-    adaptive_C: Math.max(1, Math.round(14 - 0.13 * settings.sensitivity)),
-    rmse_tolerance: round(3.5 - 3.0 * (settings.fit / 100), 2),
-    enable_circle: settings.types.circle,
-    enable_ellipse: settings.types.ellipse,
-    enable_sinusoid: settings.types.sinusoid,
-    enable_spline: settings.types.spline,
-    enable_fill: settings.fill,
+function advancedBase() {
+  const preset = KIND_PRESET[settings.kind] || "balanced";
+  const base = {
+    ...(advancedMeta.defaults || {}),
+    ...((advancedMeta.presets || {})[preset] || {}),
   };
+  delete base.extras;
+  base.adaptive_C = Math.max(1, Math.round(14 - 0.13 * settings.sensitivity));
+  base.rmse_tolerance = round(3.5 - 3.0 * (settings.fit / 100), 2);
+  return base;
+}
+
+function buildConfig() {
+  return { ...advancedBase(), ...settings.advanced };
 }
 
 async function trace() {
@@ -934,7 +1011,7 @@ function addRun(payload, seconds) {
   const run = {
     report: r, images, seconds: seconds ?? payload.timings_sec?.server_total ?? 0,
     meta: { name: state.name, width: state.width, height: state.height, bytes: state.bytes },
-    settings: { ...settings, types: { ...settings.types } },
+    settings: { ...settings, advanced: { ...settings.advanced } },
     config: buildConfig(),
     label: "",
     diff: null,
@@ -1805,7 +1882,13 @@ function bind() {
     });
   });
 
-  $("fill-toggle").addEventListener("change", (e) => { settings.fill = e.target.checked; });
+  $("adv-open").addEventListener("click", openAdvanced);
+  $("adv-close").addEventListener("click", closeAdvanced);
+  $("adv-cancel").addEventListener("click", closeAdvanced);
+  $("adv-scrim").addEventListener("click", closeAdvanced);
+  $("adv-apply").addEventListener("click", applyAdvanced);
+  $("adv-reset").addEventListener("click", resetAdvanced);
+
   document.querySelectorAll("[data-kind]").forEach((row) => {
     row.addEventListener("click", () => {
       settings.kind = row.dataset.kind;
@@ -1814,13 +1897,6 @@ function bind() {
       for (const r of document.querySelectorAll("[data-kind]")) r.classList.toggle("on", r === row);
       for (const r of document.querySelectorAll("[data-kind] input")) r.checked = r.closest("[data-kind]") === row;
       drawPreviewMask();
-    });
-  });
-  document.querySelectorAll("[data-type]").forEach((b) => {
-    b.addEventListener("click", () => {
-      const k = b.dataset.type;
-      settings.types[k] = !settings.types[k];
-      b.setAttribute("aria-pressed", settings.types[k] ? "true" : "false");
     });
   });
 
@@ -1922,6 +1998,7 @@ function bind() {
   $("new-run").addEventListener("click", () => showScreen("start"));
 
   document.addEventListener("keydown", (e) => {
+    if (e.key === "Escape" && !$("advanced").hidden) { closeAdvanced(); return; }
     if (e.key === "Escape") { closeMenus(); clearSelection(); }
     if (e.code === "Space" && state.screen === "result" && !isTyping(e.target)) {
       e.preventDefault();
@@ -1948,6 +2025,157 @@ function bind() {
     state.hovering = false;
     $("coords").textContent = "x — · y — px";
   });
+}
+
+
+/* ------------------------------------------------------------------ advanced */
+function loadAdvancedMeta() {
+  if (advancedMeta.defaults) return Promise.resolve();
+  if (advancedMeta.loading) return advancedMeta.loading;
+  advancedMeta.loading = fetch("/api/presets")
+    .then((r) => (r.ok ? r.json() : null))
+    .then((j) => {
+      if (j && j.defaults) {
+        advancedMeta.defaults = j.defaults;
+        advancedMeta.presets = j.preset_values || {};
+      }
+    })
+    .catch(() => {})
+    .finally(() => { advancedMeta.loading = null; });
+  return advancedMeta.loading;
+}
+
+function updateAdvancedBadge() {
+  const n = Object.keys(settings.advanced || {}).length;
+  const badge = $("adv-count");
+  if (!badge) return;
+  badge.textContent = String(n);
+  badge.hidden = n === 0;
+}
+
+async function openAdvanced() {
+  const dlg = $("advanced");
+  dlg.hidden = false;
+  $("adv-open").setAttribute("aria-expanded", "true");
+  document.body.style.overflow = "hidden";
+  $("adv-error").hidden = true;
+  $("adv-body").innerHTML = '<p class="m">Loading the full config…</p>';
+  await loadAdvancedMeta();
+  if (!advancedMeta.defaults) {
+    $("adv-body").innerHTML = "";
+    $("adv-error").hidden = false;
+    $("adv-error").textContent = "Could not load advanced settings. Is the server running?";
+    return;
+  }
+  renderAdvanced();
+  const first = $("adv-body").querySelector("input,select");
+  if (first) first.focus();
+}
+
+function closeAdvanced() {
+  $("advanced").hidden = true;
+  $("adv-open").setAttribute("aria-expanded", "false");
+  document.body.style.overflow = "";
+}
+
+function renderAdvanced() {
+  const base = advancedBase();
+  const vals = { ...base, ...settings.advanced };
+  const body = $("adv-body");
+  body.innerHTML = "";
+  $("adv-error").hidden = true;
+  for (const group of ADV_GROUPS) {
+    const section = document.createElement("section");
+    section.className = "advgroup";
+    const h = document.createElement("h3");
+    h.textContent = group.title;
+    section.append(h);
+    for (const f of group.fields) {
+      const v = vals[f.key];
+      const hint = f.hint ? `<small>${esc(f.hint)}</small>` : "";
+      if (f.options) {
+        const row = document.createElement("label");
+        row.className = "advrow";
+        row.innerHTML = `<span>${esc(f.label)}${hint}</span>`;
+        const sel = document.createElement("select");
+        sel.dataset.key = f.key;
+        for (const opt of f.options) {
+          const o = document.createElement("option");
+          o.value = opt; o.textContent = opt;
+          sel.append(o);
+        }
+        sel.value = String(v);
+        row.append(sel);
+        section.append(row);
+      } else if (typeof v === "boolean" || typeof base[f.key] === "boolean") {
+        const lab = document.createElement("label");
+        lab.className = "advcheck";
+        const cb = document.createElement("input");
+        cb.type = "checkbox";
+        cb.dataset.key = f.key;
+        cb.checked = !!v;
+        const span = document.createElement("span");
+        span.innerHTML = `${esc(f.label)}${hint}`;
+        lab.append(cb, span);
+        section.append(lab);
+      } else {
+        const row = document.createElement("label");
+        row.className = "advrow";
+        row.innerHTML = `<span>${esc(f.label)}${hint}</span>`;
+        const input = document.createElement("input");
+        input.type = "number";
+        input.dataset.key = f.key;
+        if (f.min != null) input.min = String(f.min);
+        if (f.max != null) input.max = String(f.max);
+        if (f.step != null) input.step = String(f.step);
+        input.value = v == null ? "" : String(v);
+        row.append(input);
+        section.append(row);
+      }
+    }
+    body.append(section);
+  }
+}
+
+function applyAdvanced() {
+  const base = advancedBase();
+  const next = {};
+  let error = "";
+  for (const input of $("adv-body").querySelectorAll("[data-key]")) {
+    const key = input.dataset.key;
+    let v;
+    if (input.type === "checkbox") {
+      v = input.checked;
+    } else if (input.tagName === "SELECT") {
+      v = input.value;
+    } else {
+      v = Number(input.value);
+      if (!Number.isFinite(v)) { error = `“${key}” needs a number.`; break; }
+      const min = input.min === "" ? null : Number(input.min);
+      const max = input.max === "" ? null : Number(input.max);
+      if ((min != null && v < min) || (max != null && v > max)) {
+        error = `“${key}” must be between ${min} and ${max}.`;
+        break;
+      }
+    }
+    if (String(v) !== String(base[key])) next[key] = v;
+  }
+  if (error) {
+    $("adv-error").hidden = false;
+    $("adv-error").textContent = error;
+    return;
+  }
+  settings.advanced = next;
+  updateAdvancedBadge();
+  drawPreviewMask();
+  closeAdvanced();
+}
+
+function resetAdvanced() {
+  settings.advanced = {};
+  updateAdvancedBadge();
+  renderAdvanced();
+  drawPreviewMask();
 }
 
 function isTyping(el) {
@@ -1978,4 +2206,5 @@ async function health() {
 
 bind();
 health();
+loadAdvancedMeta();
 showScreen("start");

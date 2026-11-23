@@ -59,6 +59,7 @@ def health() -> dict:
 def presets() -> dict:
     return {
         "presets": sorted(PRESETS),
+        "preset_values": PRESETS,
         "defaults": Config().to_dict(),
         "limits": {"max_upload_bytes": MAX_UPLOAD_BYTES},
     }
