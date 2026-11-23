@@ -2632,6 +2632,7 @@ function bind() {
     showScreen("library");
   });
   $("nav-new").addEventListener("click", () => showScreen("start"));
+  $("home-archive").addEventListener("click", () => showScreen("library"));
   $("lib-search").addEventListener("input", (e) => {
     state.libQuery = e.target.value;
     if (state.screen === "library") renderLibrary();

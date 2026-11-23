@@ -103,6 +103,13 @@ button,input{font:inherit;color:inherit}button{cursor:pointer}h1,h2,p{margin:0}
 .navcheck{gap:10px}
 .navcontext-name{font-size:12px;font-weight:600;color:#15161A;white-space:nowrap;overflow:hidden;text-overflow:ellipsis;max-width:340px}
 
+/* home footer options */
+.home-links{display:flex;align-items:center;gap:8px;margin-top:4px;flex-wrap:wrap}
+.home-link{height:30px;padding:0 10px;border:1px solid #DDD9CC;border-radius:999px;background:#ECE8DD;color:#5A5D68;font-size:12px;font-weight:600;display:inline-flex;align-items:center;gap:6px;text-decoration:none;transition:background-color .15s ease,color .15s ease,border-color .15s ease}
+.home-link:hover{background:#E2DED2;color:#15161A}
+.home-link:focus-visible{outline:2px solid #1F3FD1;outline-offset:2px}
+.home-link .ri{font-size:14px}
+
 /* homescreen: floating island */
 .app.home .bar{width:min(1080px,calc(100% - 32px));height:58px;margin:12px auto 6px;padding:0 16px;border:1px solid #DDD9CC;border-radius:16px;box-shadow:0 10px 28px rgba(21,22,26,.08);background:#FAF9F4;top:12px}
 /* project screens keep a full-width bar */
@@ -288,7 +295,7 @@ input[type=range]{width:100%;accent-color:#1F3FD1;min-height:32px}
 .bar{height:56px;padding:0 20px}
 .hero{display:grid;grid-template-columns:5fr 6fr;flex:1}
 .app{min-height:100dvh}
-.app.home .bar{position:fixed;left:50%;transform:translateX(-50%);width:min(1080px,calc(100% - 32px));margin:0;top:12px}
+.app.home .bar{display:none}
 .app.home .hero{height:100dvh;min-height:0}
 .copy{padding:min(8vw,96px) min(6vw,72px);justify-content:center}
 .demo{border-top:0;border-left:1px solid #DDD9CC;padding:32px;justify-content:center}
@@ -434,7 +441,7 @@ input[type=range]{width:100%;accent-color:#1F3FD1;min-height:32px}
 @media(max-width:1000px){.run-meta{display:none}}
 @media(max-width:899px){
   .bar{height:54px;padding:0 12px;gap:8px}
-  .app.home .bar{position:sticky;left:auto;transform:none;width:calc(100% - 24px);height:54px;margin:10px auto 4px;padding:0 12px;border-radius:14px;top:10px}
+  .app.home .bar{display:none}
   .app.home .hero{height:auto}
   .brand{gap:7px}
   .brandmark{width:28px;height:28px}
