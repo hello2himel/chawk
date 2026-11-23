@@ -284,19 +284,26 @@ input[type=range]{width:100%;accent-color:#1F3FD1;min-height:32px}
 .libgrid .work:hover::before,
 .libgrid .work:focus-within::before{background:#fff;box-shadow:0 1px 3px rgba(21,22,26,.06)}
 .libgrid .work:focus-visible{outline:2px solid #1F3FD1;outline-offset:3px;border-radius:12px}
-.workthumb{position:relative;z-index:1;width:100%;aspect-ratio:16/9;border-radius:12px;overflow:hidden;background:#E9E5DA}
+.workthumb{position:relative;z-index:1;width:100%;aspect-ratio:3/2;border-radius:12px;overflow:hidden;background:#E9E5DA}
 .workthumb img{width:100%;height:100%;object-fit:cover;display:block}
 .workbadge{position:absolute;right:6px;bottom:6px;background:rgba(21,22,26,.82);color:#fff;font:600 10px/1.2 'JetBrains Mono',monospace;padding:3px 5px;border-radius:4px;pointer-events:none;letter-spacing:.02em}
 .yt-body{display:grid;grid-template-columns:minmax(0,1fr) 28px;gap:4px;align-items:start;padding-top:10px;position:relative;z-index:1}
 .yt-info{min-width:0}
 .worktitle{font-family:'Instrument Sans',sans-serif;font-size:16px;font-weight:600;letter-spacing:-.01em;line-height:1.35;color:#15161A;display:-webkit-box;-webkit-line-clamp:2;-webkit-box-orient:vertical;overflow:hidden;word-break:break-word}
+.workinfo{font-family:'JetBrains Mono',monospace;font-size:10px;line-height:1.4;color:#5A5D68;text-transform:uppercase;letter-spacing:.04em;white-space:nowrap;overflow:hidden;text-overflow:ellipsis;margin-top:3px}
 .yt-more{width:28px;height:28px;border:0;background:none;border-radius:50%;color:#15161A;display:grid;place-items:center;opacity:0;transition:opacity .12s ease,background-color .12s ease;cursor:pointer;margin-top:-3px}
 .yt-more .ri{font-size:20px}
 .libgrid .work:hover .yt-more,
 .libgrid .work:focus-within .yt-more{opacity:1}
 .yt-more:hover{background:#E9E5DA}
 @media(hover:none){.yt-more{opacity:1}}
-.workcheck{position:absolute;left:10px;top:10px;width:22px;height:22px;border-radius:50%;background:#fff;border:1.5px solid #CFCABA;display:flex;align-items:center;justify-content:center;color:#fff;z-index:2;box-shadow:0 1px 3px rgba(21,22,26,.12)}
+.workcheck{position:absolute;left:10px;top:10px;width:22px;height:22px;border-radius:50%;background:#fff;border:1.5px solid #CFCABA;display:flex;align-items:center;justify-content:center;color:#fff;z-index:2;box-shadow:0 1px 3px rgba(21,22,26,.12);padding:0;cursor:pointer;opacity:0;pointer-events:none;transition:opacity .12s ease,border-color .12s ease}
+.workcheck .ri{font-size:13px}
+.workcheck:hover{border-color:#1F3FD1}
+.libgrid .work:hover .workcheck,
+.libgrid .work:focus-within .workcheck,
+.libgrid.selecting .workcheck{opacity:1;pointer-events:auto}
+@media(hover:none){.workcheck{opacity:1;pointer-events:auto}}
 .libgrid .work.sel .workcheck{background:#1F3FD1;border-color:#1F3FD1}
 .libgrid .work.sel .workthumb{box-shadow:0 0 0 3px #1F3FD1}
 .libgrid .work.sel .yt-more{display:none}
@@ -304,7 +311,7 @@ input[type=range]{width:100%;accent-color:#1F3FD1;min-height:32px}
 .workrename input{height:32px;border:1.5px solid #1F3FD1;border-radius:7px;background:#fff;padding:0 8px;font:500 15px 'Instrument Sans',sans-serif;color:#15161A;width:100%;box-sizing:border-box}
 .workrename-help{font-size:10px;color:#5A5D68;line-height:1.3}
 .libgrid.list .work{display:grid;grid-template-columns:170px minmax(0,1fr);gap:12px;align-items:start;justify-content:start}
-.libgrid.list .workthumb{width:170px;height:96px;aspect-ratio:auto;border-radius:10px}
+.libgrid.list .workthumb{width:170px;height:113px;aspect-ratio:auto;border-radius:10px}
 .libgrid.list .yt-body{padding-top:0;grid-template-columns:minmax(0,1fr) 28px;gap:8px}
 .libgrid.list .worktitle{font-size:16px;line-height:1.35;-webkit-line-clamp:2}
 .libgrid.list .workcheck{left:10px;top:10px}
@@ -368,7 +375,7 @@ input[type=range]{width:100%;accent-color:#1F3FD1;min-height:32px}
   .libgrid{grid-template-columns:1fr;gap:22px}
   .liblisthead{padding-left:132px}
   .libgrid.list .work{grid-template-columns:120px minmax(0,1fr);gap:10px}
-  .libgrid.list .workthumb{width:120px;height:68px}
+  .libgrid.list .workthumb{width:120px;height:80px}
   .libgrid.list .worktitle{font-size:16px}
   .libgrid.list .yt-body{gap:4px}
   .libbulk{width:calc(100vw - 24px);justify-content:space-between;overflow-x:auto}

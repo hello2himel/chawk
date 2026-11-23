@@ -584,10 +584,20 @@ const WORKS_KEY = "chawk.works.v1";
 const MAX_WORKS = 12;
 const SORT_LABELS = { newest: "Newest", oldest: "Oldest", name: "Name A–Z", equations: "Most equations" };
 const TITLE_MAX = 58;
+const MODE_LABELS = { clean: "Clean lines", sketchy: "Sketchy", busy: "Busy" };
 
 function cardTitle(name) {
   const raw = String(name || "untitled").trim();
   return raw.length > TITLE_MAX ? `${raw.slice(0, TITLE_MAX - 1).trimEnd()}…` : raw;
+}
+
+function workInfo(work) {
+  const bits = [];
+  if (work.at) bits.push(workDate(work.at));
+  const kind = work.settings && work.settings.kind;
+  if (kind) bits.push(MODE_LABELS[kind] || kind);
+  if (!bits.length && work.count) bits.push(`${formatCount(work.count)} equations`);
+  return bits.join(" · ");
 }
 
 
@@ -708,6 +718,13 @@ function hideUndo() {
 function toggleWork(id) {
   if (state.libSelected.has(id)) state.libSelected.delete(id);
   else state.libSelected.add(id);
+  if (state.libSelected.size === 0) state.libSelect = false;
+  renderLibrary();
+}
+
+function selectCard(id) {
+  state.libSelect = true;
+  state.libSelected.add(id);
   renderLibrary();
 }
 
@@ -1000,7 +1017,6 @@ function renderLibrary() {
   $("lib-sub").textContent = selecting
     ? "Pick works to export, duplicate or delete."
     : "Open one to run it again, or tidy up.";
-  $("lib-select").hidden = empty || selecting;
   $("lib-new").hidden = selecting;
   $("lib-select-all").hidden = !selecting || empty;
   $("lib-done").hidden = !selecting;
@@ -1020,7 +1036,7 @@ function renderLibrary() {
   }
 
   const grid = $("lib-grid");
-  grid.className = "libgrid" + (state.libView === "list" ? " list" : "");
+  grid.className = "libgrid" + (state.libView === "list" ? " list" : "") + (selecting ? " selecting" : "");
   grid.hidden = empty;
   $("lib-listhead").hidden = empty || selecting || state.libView !== "list";
   $("lib-empty").hidden = !empty;
@@ -1087,7 +1103,11 @@ function renderLibrary() {
       title.className = "worktitle";
       title.textContent = cardTitle(w.name);
       title.title = w.name;
-      info.append(title);
+      const sub = document.createElement("div");
+      sub.className = "workinfo";
+      sub.textContent = workInfo(w);
+      sub.hidden = !sub.textContent;
+      info.append(title, sub);
     }
 
     const more = document.createElement("button");
@@ -1105,17 +1125,23 @@ function renderLibrary() {
     };
     body.append(info, more);
     card.append(thumb, body);
-    if (selecting) {
-      const chk = document.createElement("span");
-      chk.className = "workcheck";
-      chk.setAttribute("aria-hidden", "true");
-      chk.innerHTML = picked ? '<i class="ri-check-line" aria-hidden="true"></i>' : "";
-      card.append(chk);
-      card.onclick = () => toggleWork(w.id);
-    } else if (state.renaming !== w.id) {
-      card.onclick = () => openWork(w.id);
-    }
+
+    const chk = document.createElement("button");
+    chk.type = "button";
+    chk.className = "workcheck";
+    chk.setAttribute("aria-label", `${picked ? "Deselect" : "Select"} ${w.name}`);
+    chk.setAttribute("aria-pressed", picked ? "true" : "false");
+    chk.innerHTML = picked ? '<i class="ri-check-line" aria-hidden="true"></i>' : "";
+    chk.onclick = (e) => {
+      e.stopPropagation();
+      if (selecting) toggleWork(w.id); else selectCard(w.id);
+    };
+    card.append(chk);
+
+    if (selecting) card.onclick = () => toggleWork(w.id);
+    else if (state.renaming !== w.id) card.onclick = () => openWork(w.id);
     card.onkeydown = (e) => {
+      if (e.target !== card) return;
       if (state.renaming === w.id) return;
       if (e.key === "Enter" || e.key === " ") {
         e.preventDefault();
@@ -2232,7 +2258,6 @@ function bind() {
   });
   $("lib-new").addEventListener("click", () => showScreen("start"));
   $("lib-empty-new").addEventListener("click", () => showScreen("start"));
-  $("lib-select").addEventListener("click", enterSelect);
   $("lib-done").addEventListener("click", exitSelect);
   $("lib-select-all").addEventListener("click", () => {
     for (const w of loadWorks()) state.libSelected.add(w.id);
