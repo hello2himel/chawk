@@ -476,7 +476,42 @@ function dotColor(hex) {
 }
 
 /* ------------------------------------------------------------------ screens */
-function showScreen(name) {
+const ROUTE_PATH = { start: "/", library: "/library", check: "/check", result: "/result" };
+const PATH_SCREEN = { "/": "start", "/library": "library", "/check": "check", "/result": "result" };
+
+function pathName() {
+  return location.pathname.replace(/\/+$/, "") || "/";
+}
+function routeName() {
+  return PATH_SCREEN[pathName()] || "start";
+}
+function pageTitle(name) {
+  if (name === "start") return "Chawk — every squiggle is a function";
+  if (name === "library") return "Previous works — Chawk";
+  if (name === "check") return state.name ? `Ready to do some maths — ${state.name} — Chawk` : "Ready to do some maths — Chawk";
+  if (name === "result") return state.name ? `${state.name} — Chawk` : "Your equations — Chawk";
+  return "Chawk";
+}
+
+function focusScreen(name) {
+  const screen = $("screen-" + name);
+  if (!screen) return;
+  const h = screen.querySelector("h1, h2");
+  if (!h) return;
+  h.setAttribute("tabindex", "-1");
+  requestAnimationFrame(() => h.focus({ preventScroll: true }));
+}
+
+function animateScreenIn(name) {
+  const screen = $("screen-" + name);
+  if (!screen) return;
+  screen.classList.remove("screen-in");
+  void screen.offsetWidth;
+  screen.classList.add("screen-in");
+  setTimeout(() => screen.classList.remove("screen-in"), 260);
+}
+
+function applyScreen(name) {
   state.screen = name;
   $("screen-start").hidden = name !== "start";
   $("screen-check").hidden = name !== "check";
@@ -490,11 +525,61 @@ function showScreen(name) {
   $("app").classList.toggle("result", name === "result");
   $("app").classList.toggle("check", name === "check");
   closeMenus();
+  document.title = pageTitle(name);
+  if (name === "library") renderLibrary();
   if (name === "check") requestAnimationFrame(fitPreview);
-  if (name !== "result") window.scrollTo(0, 0);
+  if (name === "result") requestAnimationFrame(fitPlot);
+  window.scrollTo(0, 0);
 }
 
-/* ------------------------------------------------------------------ library */
+function showScreen(name, opts = {}) {
+  if (name === "check" && !state.file) name = "start";
+  if (name === "result" && !activeRun()) name = "start";
+  const route = ROUTE_PATH[name];
+  const doPush = opts.history !== false && !!route && pathName() !== route;
+  if (state.screen === name && !doPush && opts.force !== true) return;
+  const reduced = window.matchMedia("(prefers-reduced-motion: reduce)").matches;
+  const canAnimate = opts.animate !== false && !reduced && typeof document.startViewTransition === "function"
+    && state.screen !== name;
+
+  const change = () => {
+    applyScreen(name);
+    if (doPush) {
+      history[opts.replace ? "replaceState" : "pushState"]({ screen: name }, "", route);
+    }
+    if (opts.focus !== false) focusScreen(name);
+  };
+
+  if (canAnimate) {
+    try {
+      document.startViewTransition(change);
+      return;
+    } catch { /* fall through to the CSS transition */ }
+  }
+  change();
+  if (opts.animate !== false && !reduced) animateScreenIn(name);
+}
+
+function bootRoute() {
+  const path = pathName();
+  let name = PATH_SCREEN[path] || "start";
+  if (name === "check" && !state.file) { name = "start"; history.replaceState({ screen: "start" }, "", "/"); }
+  if (name === "result" && !activeRun()) { name = "start"; history.replaceState({ screen: "start" }, "", "/"); }
+  if (!PATH_SCREEN[path] && name === "start") history.replaceState({ screen: "start" }, "", "/");
+  if (name === "library") { state.libSelect = false; state.libSelected.clear(); }
+  showScreen(name, { history: false, focus: false, animate: false, force: true });
+}
+
+window.addEventListener("popstate", () => {
+  const path = pathName();
+  let name = PATH_SCREEN[path];
+  if (!name) { name = "start"; history.replaceState({ screen: "start" }, "", "/"); }
+  if (name === "check" && !state.file) { name = "start"; history.replaceState({ screen: "start" }, "", "/"); }
+  if (name === "result" && !activeRun()) { name = "start"; history.replaceState({ screen: "start" }, "", "/"); }
+  showScreen(name, { history: false });
+});
+
+/* ------------------------------------------------------------------ library *//* ------------------------------------------------------------------ library */
 const WORKS_KEY = "chawk.works.v1";
 const MAX_WORKS = 12;
 
@@ -963,8 +1048,8 @@ async function trace() {
     }
     addRun(body, Math.round(performance.now() - t0) / 1000);
     closeWorking();
-    showScreen("result");
     renderResult();
+    showScreen("result");
   } catch (e) {
     if (e.name === "AbortError") {
       cancelled = true;
@@ -1175,7 +1260,7 @@ function renderRunChips() {
   add.type = "button";
   add.setAttribute("aria-label", "New run");
   add.innerHTML = '<i class="ri-add-line" aria-hidden="true"></i>';
-  add.onclick = () => { showScreen("check"); renderCheck(); };
+  add.onclick = () => { renderCheck(); showScreen("check"); };
   runs.append(add);
 }
 
@@ -1799,7 +1884,7 @@ function openRunMenu() {
   add.type = "button";
   add.className = "row";
   add.innerHTML = '<i class="ri-add-line" aria-hidden="true"></i><b>New run</b>';
-  add.onclick = () => { closeMenus(); showScreen("check"); renderCheck(); };
+  add.onclick = () => { closeMenus(); renderCheck(); showScreen("check"); };
   menu.append(add);
   menu.hidden = false;
   $("scrim").hidden = false;
@@ -2007,8 +2092,8 @@ function bind() {
     });
   });
 
-  $("retrace").addEventListener("click", () => { showScreen("check"); renderCheck(); });
-  $("retrace-mobile").addEventListener("click", () => { showScreen("check"); renderCheck(); });
+  $("retrace").addEventListener("click", () => { renderCheck(); showScreen("check"); });
+  $("retrace-mobile").addEventListener("click", () => { renderCheck(); showScreen("check"); });
   $("new-run").addEventListener("click", () => showScreen("start"));
 
   document.addEventListener("keydown", (e) => {
@@ -2221,4 +2306,4 @@ async function health() {
 bind();
 health();
 loadAdvancedMeta();
-showScreen("start");
+bootRoute();

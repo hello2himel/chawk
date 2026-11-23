@@ -104,6 +104,8 @@ class TestEndpoints(unittest.TestCase):
         p = server.presets()
         self.assertIn("balanced", p["presets"])
         self.assertEqual(p["presets"], sorted(p["presets"]))
+        self.assertIn("preset_values", p)
+        self.assertIn("balanced", p["preset_values"])
         self.assertIn("rmse_tolerance", p["defaults"])
 
     def test_unknown_preset_400(self):

@@ -21,7 +21,7 @@ import time
 
 from fastapi import FastAPI, File, Form, HTTPException, UploadFile
 from fastapi.middleware.cors import CORSMiddleware
-from fastapi.responses import JSONResponse
+from fastapi.responses import FileResponse, JSONResponse
 from fastapi.staticfiles import StaticFiles
 
 from chawk import (
@@ -191,6 +191,14 @@ async def api_process(
         raise HTTPException(status_code=400, detail=str(exc))
     except OSError as exc:
         raise HTTPException(status_code=500, detail=str(exc))
+
+
+@app.get("/library", include_in_schema=False)
+@app.get("/check", include_in_schema=False)
+@app.get("/result", include_in_schema=False)
+def spa_route() -> FileResponse:
+    """Serve the app shell for the client-side routes; JS picks the screen."""
+    return FileResponse("frontend/index.html")
 
 
 app.mount("/", StaticFiles(directory="frontend", html=True), name="frontend")
