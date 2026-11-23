@@ -200,7 +200,7 @@ input[type=range]{width:100%;accent-color:#1F3FD1;min-height:32px}
 @media(prefers-reduced-motion:reduce){.d{animation:none;stroke-dashoffset:0}.f,.q,.scan{animation:none}.q:first-child{opacity:1}.scan{left:50%}}
 
 /* ---------- start: live demo ---------- */
-.demo{justify-content:center}
+.demo{justify-content:center;align-items:center}
 .demo .eq{width:100%;max-width:760px;text-align:center;margin-inline:auto}
 .demo-inner{width:100%;max-width:760px;display:flex;flex-direction:column;align-items:center;gap:12px}
 .deckwrap{position:relative;width:100%}
