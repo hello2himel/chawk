@@ -2739,7 +2739,6 @@ function bind() {
   $("download-mobile").addEventListener("click", () => { openSheet(); });
   $("scrim").addEventListener("click", () => closeMenus());
   $("run-menu-btn").addEventListener("click", () => { openRunMenu(); });
-  $("new-mobile").addEventListener("click", () => showScreen("start"));
 
   document.querySelectorAll("[data-img]").forEach((b) => {
     b.addEventListener("click", () => {
