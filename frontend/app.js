@@ -7,6 +7,11 @@ const $ = (id) => document.getElementById(id);
 const MAX_BYTES = 15 * 1024 * 1024;
 
 const KIND_PRESET = { clean: "precise", sketchy: "balanced", busy: "complex" };
+const KIND_VALUES = {
+  clean: { sensitivity: 50, fit: 50 },
+  sketchy: { sensitivity: 50, fit: 50 },
+  busy: { sensitivity: 100, fit: 100 },
+};
 const MODEL_NAME = {
   line: "Line", polynomial2: "Parabola", polynomial3: "Cubic", polynomial4: "Quartic",
   polynomial5: "Quintic", polynomial6: "Curve", circle: "Circle", ellipse: "Ellipse",
@@ -16,7 +21,7 @@ const MODEL_NAME = {
 const SUPER = { 2: "²", 3: "³", 4: "⁴", 5: "⁵", 6: "⁶" };
 
 const settings = {
-  sensitivity: 55, kind: "sketchy", fit: 50,
+  sensitivity: 50, kind: "sketchy", fit: 50,
   fill: true,
   types: { circle: true, ellipse: true, sinusoid: true, spline: true },
 };
@@ -704,8 +709,6 @@ function renderCheck() {
   const onLoad = () => { fitPreview(); drawPreviewMask(); };
   if (img.complete) onLoad();
   else img.onload = onLoad;
-  $("sensitivity").value = String(settings.sensitivity);
-  $("fit").value = String(settings.fit);
   $("fill-toggle").checked = settings.fill;
   for (const row of document.querySelectorAll("[data-kind]")) {
     const on = row.dataset.kind === settings.kind;
@@ -718,7 +721,7 @@ function renderCheck() {
 }
 
 /* Blue "what will be traced" wash over the upload, computed locally so the
-   sensitivity slider shows the effect before spending a trace. */
+   sensitivity preset shows the effect before spending a trace. */
 let previewCache = null;
 
 /* Paper luminance from a 96 px sample: cheap enough to run for every image
@@ -1803,16 +1806,14 @@ function bind() {
   });
 
   $("fill-toggle").addEventListener("change", (e) => { settings.fill = e.target.checked; });
-  $("sensitivity").addEventListener("input", (e) => {
-    settings.sensitivity = Number(e.target.value);
-    drawPreviewMask();
-  });
-  $("fit").addEventListener("input", (e) => { settings.fit = Number(e.target.value); });
   document.querySelectorAll("[data-kind]").forEach((row) => {
     row.addEventListener("click", () => {
       settings.kind = row.dataset.kind;
+      const v = KIND_VALUES[settings.kind];
+      if (v) { settings.sensitivity = v.sensitivity; settings.fit = v.fit; }
       for (const r of document.querySelectorAll("[data-kind]")) r.classList.toggle("on", r === row);
       for (const r of document.querySelectorAll("[data-kind] input")) r.checked = r.closest("[data-kind]") === row;
+      drawPreviewMask();
     });
   });
   document.querySelectorAll("[data-type]").forEach((b) => {
