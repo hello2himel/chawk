@@ -15,30 +15,36 @@
 <div class="app" id="app">
   <header class="bar" id="bar">
     <a class="brand" id="brand-home" href="/" aria-label="Chawk home">
-      <svg width="32" height="32" viewBox="0 0 64 64" aria-hidden="true"><g transform="rotate(-24 32 32)"><rect x="18" y="4" width="28" height="56" rx="8" fill="#fff" stroke="#15161A" stroke-width="3"></rect><path d="M18 46h28v6a8 8 0 0 1-8 8H26a8 8 0 0 1-8-8z" fill="#ECE8DD" stroke="#15161A" stroke-width="3"></path><circle cx="26" cy="22" r="6" fill="#fff" stroke="#15161A" stroke-width="2.5"></circle><circle cx="38" cy="22" r="6" fill="#fff" stroke="#15161A" stroke-width="2.5"></circle><circle cx="27" cy="23" r="2" fill="#15161A"></circle><circle cx="37" cy="23" r="2" fill="#15161A"></circle><path d="M24 36c3-5 5-5 8 0s5 5 8 0" fill="none" stroke="#1F3FD1" stroke-width="3" stroke-linecap="round"></path></g></svg>
-      Chawk
+      <span class="brandmark">
+        <svg width="28" height="28" viewBox="0 0 64 64" aria-hidden="true"><g transform="rotate(-24 32 32)"><rect x="18" y="4" width="28" height="56" rx="8" fill="#fff" stroke="#15161A" stroke-width="3"></rect><path d="M18 46h28v6a8 8 0 0 1-8 8H26a8 8 0 0 1-8-8z" fill="#ECE8DD" stroke="#15161A" stroke-width="3"></path><circle cx="26" cy="22" r="6" fill="#fff" stroke="#15161A" stroke-width="2.5"></circle><circle cx="38" cy="22" r="6" fill="#fff" stroke="#15161A" stroke-width="2.5"></circle><circle cx="27" cy="23" r="2" fill="#15161A"></circle><circle cx="37" cy="23" r="2" fill="#15161A"></circle><path d="M24 36c3-5 5-5 8 0s5 5 8 0" fill="none" stroke="#1F3FD1" stroke-width="3" stroke-linecap="round"></path></g></svg>
+      </span>
+      <span class="brandname">Chawk</span>
     </a>
 
-    <button class="chip libbtn" id="library-btn" type="button" aria-label="Previous works">
-      <i class="ri-history-line" aria-hidden="true"></i>
-      <span class="hide-m">Previous</span>
+    <button class="navlink libbtn" id="library-btn" type="button" aria-label="Previous works">
+      <i class="ri-arrow-left-line" aria-hidden="true"></i>
+      <span>Previous</span>
       <span class="libcount" id="library-count" hidden>0</span>
     </button>
 
-    <span class="m hide-m" id="start-meta">v1.1.22 · connected</span>
+    <div class="nav-context">
+      <div class="resultbar" id="result-bar" hidden>
+        <span class="run-meta" id="run-meta"></span>
+        <button class="runselect" id="run-menu-btn" type="button" aria-haspopup="menu" aria-expanded="false">Run 1 <i class="ri-arrow-down-s-line" aria-hidden="true"></i></button>
+        <div class="result-actions">
+          <button class="iconbtn" id="retrace" type="button" title="Try again" aria-label="Try again"><i class="ri-refresh-line" aria-hidden="true"></i></button>
+          <button class="iconbtn" id="new-run" type="button" title="New doodle" aria-label="New doodle"><i class="ri-quill-pen-line" aria-hidden="true"></i></button>
+          <button class="btn bp download" id="download-btn" type="button" title="Download" aria-label="Download" aria-haspopup="menu" aria-expanded="false">
+            <i class="ri-download-line" aria-hidden="true"></i><i class="ri-arrow-down-s-line download-caret" aria-hidden="true"></i>
+          </button>
+        </div>
+      </div>
+    </div>
 
-    <button class="btn" id="check-change" hidden>
-      <span class="hide-m">Choose another</span><span class="show-m">Change</span>
-    </button>
-
-    <div class="resultbar" id="result-bar" hidden>
-      <div class="runs hide-m" id="runs" role="group" aria-label="Runs"></div>
-      <span class="m hide-m" id="run-meta"></span>
-      <button class="chip show-m" id="run-menu-btn" aria-haspopup="menu" aria-expanded="false">Run 1 <i class="ri-arrow-down-s-line" aria-hidden="true"></i></button>
-      <button class="btn hide-m" id="retrace">Try again</button>
-      <button class="btn hide-m" id="new-run">New doodle</button>
-      <button class="btn bp hide-m" id="download-btn" aria-haspopup="menu" aria-expanded="false">
-        <i class="ri-download-line" aria-hidden="true"></i> Download <i class="ri-arrow-down-s-line" aria-hidden="true"></i>
+    <div class="nav-actions">
+      <button class="navlink" id="check-change" type="button" hidden>
+        <i class="ri-image-line" aria-hidden="true"></i>
+        <span class="hide-m">Choose another</span><span class="show-m">Change</span>
       </button>
     </div>
   </header>

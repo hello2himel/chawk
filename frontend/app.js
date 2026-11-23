@@ -518,9 +518,12 @@ function applyScreen(name) {
   $("screen-working").hidden = name !== "working";
   $("screen-result").hidden = name !== "result";
   $("screen-library").hidden = name !== "library";
-  $("start-meta").hidden = name !== "start";
   $("check-change").hidden = name !== "check";
   $("result-bar").hidden = name !== "result";
+  $("library-btn").classList.toggle("on", name === "library");
+  $("library-btn").setAttribute("aria-current", name === "library" ? "page" : "false");
+  $("app").classList.toggle("home", name === "start");
+  $("app").classList.toggle("project", name === "result" || name === "check" || name === "working");
   $("bar").classList.toggle("result", name === "result");
   $("app").classList.toggle("result", name === "result");
   $("app").classList.toggle("check", name === "check");
@@ -1754,8 +1757,7 @@ function renderResult() {
 
   // header
   $("run-meta").textContent = `${run.meta.name} · traced in ${(run.seconds || 0).toFixed(2)} s`;
-  renderRunChips();
-  $("run-menu-btn").innerHTML = `Run ${state.active + 1} <i class="ri-arrow-down-s-line" aria-hidden="true"></i>`;
+  $("run-menu-btn").innerHTML = `Run ${state.active + 1}${run.label ? ` · ${run.label}` : ""} <i class="ri-arrow-down-s-line" aria-hidden="true"></i>`;
 
   // stage
   const plot = $("plot");
@@ -1827,27 +1829,6 @@ function pickDefaultSegment(segs) {
     if (l > bestLen) { bestLen = l; best = i; }
   });
   return best;
-}
-
-function renderRunChips() {
-  const runs = $("runs");
-  runs.innerHTML = "";
-  state.runs.forEach((run, i) => {
-    const b = document.createElement("button");
-    b.className = "chip";
-    b.type = "button";
-    b.textContent = `Run ${i + 1} · ${run.label}`;
-    b.setAttribute("aria-pressed", i === state.active ? "true" : "false");
-    b.onclick = () => { state.active = i; state.selected = -1; renderResult(); };
-    runs.append(b);
-  });
-  const add = document.createElement("button");
-  add.className = "chip";
-  add.type = "button";
-  add.setAttribute("aria-label", "New run");
-  add.innerHTML = '<i class="ri-add-line" aria-hidden="true"></i>';
-  add.onclick = () => { renderCheck(); showScreen("check"); };
-  runs.append(add);
 }
 
 function paintStage() {
@@ -2468,12 +2449,6 @@ function openRunMenu() {
     b.onclick = () => { state.active = i; state.selected = -1; renderResult(); closeMenus(); };
     menu.append(b);
   });
-  const add = document.createElement("button");
-  add.type = "button";
-  add.className = "row";
-  add.innerHTML = '<i class="ri-add-line" aria-hidden="true"></i><b>New run</b>';
-  add.onclick = () => { closeMenus(); renderCheck(); showScreen("check"); };
-  menu.append(add);
   menu.hidden = false;
   $("scrim").hidden = false;
   $("run-menu-btn").setAttribute("aria-expanded", "true");
@@ -2992,18 +2967,12 @@ function flip(on) {
   }
 }
 
+
 async function health() {
-  try {
-    const r = await fetch("/health");
-    if (!r.ok) throw new Error();
-    const j = await r.json();
-    $("start-meta").textContent = `v${j.version} · connected`;
-  } catch {
-    $("start-meta").textContent = "offline";
-  }
+  try { await fetch("/health"); } catch { /* offline; the UI still works */ }
 }
 
 bind();
-health();
 loadAdvancedMeta();
+health();
 bootRoute();
