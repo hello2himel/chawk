@@ -108,7 +108,7 @@ button,input{font:inherit;color:inherit}button{cursor:pointer}h1,h2,p{margin:0}
 /* demo lightbox: slightly larger image + details */
 .demo-modal{position:fixed;inset:0;z-index:40;display:grid;place-items:center;padding:16px}
 .demo-modal[hidden]{display:none}
-.demo-modal-scrim{position:absolute;inset:0;background:#8c8c90;opacity:0;transition:opacity .22s ease}
+.demo-modal-scrim{position:absolute;inset:0;background:rgba(21,22,26,.42);backdrop-filter:blur(2px);opacity:0;transition:opacity .22s ease}
 .demo-modal.is-open .demo-modal-scrim{opacity:1}
 .demo-modal-card{
   --ink:#1c1c1e;--muted:#6a6a70;--line:#e7e5e0;--paper:#fff;--accent:#1f3fd0;--radius:14px;
