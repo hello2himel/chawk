@@ -2673,7 +2673,7 @@ async function initDemo() {
       modal.classList.remove("is-closing");
       requestAnimationFrame(() => modal.classList.add("is-open"));
       document.body.classList.add("modal-open");
-      $("demo-modal-close").focus();
+      $("demo-modal-card").focus({ preventScroll: true });
     };
     const closeModal = () => {
       if (modal.hidden) return;

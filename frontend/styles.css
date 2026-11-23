@@ -108,7 +108,7 @@ button,input{font:inherit;color:inherit}button{cursor:pointer}h1,h2,p{margin:0}
 /* demo lightbox: slightly larger image + details */
 .demo-modal{position:fixed;inset:0;z-index:40;display:grid;place-items:center;padding:16px}
 .demo-modal[hidden]{display:none}
-.demo-modal-scrim{position:absolute;inset:0;background:rgba(21,22,26,.42);backdrop-filter:blur(2px);opacity:0;transition:opacity .22s ease}
+.demo-modal-scrim{position:absolute;inset:0;background:#8c8c90;opacity:0;transition:opacity .22s ease}
 .demo-modal.is-open .demo-modal-scrim{opacity:1}
 .demo-modal-card{
   --ink:#1c1c1e;--muted:#6a6a70;--line:#e7e5e0;--paper:#fff;--accent:#1f3fd0;--radius:14px;
@@ -133,6 +133,7 @@ button,input{font:inherit;color:inherit}button{cursor:pointer}h1,h2,p{margin:0}
 .demo-handle::after{content:"";position:absolute;top:50%;left:50%;width:28px;height:28px;transform:translate(-50%,-50%);border-radius:50%;background:#fff;box-shadow:0 1px 6px rgba(0,0,0,.3)}
 .demo-compare input{position:absolute;inset:0;width:100%;height:100%;margin:0;opacity:0;cursor:ew-resize}
 .demo-compare:focus-within{outline:2px solid var(--accent);outline-offset:2px}
+.demo-modal-card:focus{outline:none}
 .demo-modal-body{display:flex;flex-direction:column;padding:12px 8px 4px 0}
 .demo-modal-body>*{opacity:0;transform:translateY(7px);transition:opacity .24s ease,transform .32s cubic-bezier(.16,1,.3,1)}
 .demo-modal.is-open .demo-modal-body>*{opacity:1;transform:none}
@@ -140,9 +141,9 @@ button,input{font:inherit;color:inherit}button{cursor:pointer}h1,h2,p{margin:0}
 .demo-modal.is-open .demo-modal-body>*:nth-child(2){transition-delay:.11s}
 .demo-modal.is-open .demo-modal-body>*:nth-child(3){transition-delay:.14s}
 .demo-modal.is-open .demo-modal-body>*:nth-child(4){transition-delay:.18s}
-.demo-modal-body h2{margin:0 0 6px;font:500 26px/1.2 "STIX Two Text",Georgia,serif;letter-spacing:-.01em}
+.demo-modal-body h2{margin:0 0 6px;font:500 26px/1.2 "Source Serif 4",Georgia,serif;letter-spacing:-.01em}
 .demo-modal-meta{margin:0;font-size:14px;color:var(--muted)}
-.demo-modal-eqs{margin:20px 0 0;padding:14px 0 0;border-top:1px solid var(--line);font:15px/1.7 "STIX Two Text",Georgia,serif;font-variant-numeric:tabular-nums;overflow-x:auto;white-space:nowrap;display:block;min-height:0}
+.demo-modal-eqs{margin:20px 0 0;padding:14px 0 0;border-top:1px solid var(--line);font:15px/1.7 "Source Serif 4",Georgia,serif;font-variant-numeric:tabular-nums;overflow-x:auto;white-space:nowrap;display:block;min-height:0}
 .demo-modal-eqs .f{display:block;white-space:nowrap;animation:none;opacity:1}
 .demo-modal-open{margin-top:auto;padding:12px 16px;border:0;border-radius:8px;background:var(--accent);color:#fff;font:500 15px/1 inherit;cursor:pointer}
 .demo-modal-open:hover{background:#1a35b3}
