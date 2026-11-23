@@ -25,12 +25,12 @@ const state = {
   file: null, url: null, name: "", bytes: 0, width: 0, height: 0,
   runs: [], active: -1, selected: -1,
   busy: false, screen: "start", controller: null, workTimer: null, hovering: false,
-  cardPinned: false, cardTimer: 0, busyTimer: null,
+  busyTimer: null, hoverSeg: null,
   libSelect: false, libSelected: new Set(), pendingUndo: null, undoTimer: null,
   confirmAll: false, confirmTimer: null,
 };
 
-const view = { original: true, equations: true, labels: false, diff: true, blend: 70, yUp: false };
+const view = { mode: "both", labels: false, diff: false, blend: 70, yUp: false };
 
 /* ------------------------------------------------------------------ utils */
 function esc(s) {
@@ -671,7 +671,7 @@ async function chooseFile(file) {
 
 function resetView() {
   view.original = true; view.equations = true; view.labels = false;
-  view.diff = true; view.blend = 70; view.yUp = false;
+  view.mode = "both"; view.diff = false; view.blend = 70; view.yUp = false;
   $("blend").value = "70";
 }
 
@@ -978,7 +978,13 @@ function fitPlot() {
   plot.style.aspectRatio = "auto";
 }
 window.addEventListener("resize", () => {
-  if (state.screen === "result") fitPlot();
+  if (state.screen === "result") {
+    fitPlot();
+    placeCard();
+    const it = selectedItem();
+    if (it) drawSelectionOverlay(it);
+    else if (state.hoverSeg) drawSelectionOverlay(state.hoverSeg);
+  }
   if (state.screen === "check") fitPreview();
 });
 
@@ -987,9 +993,8 @@ function renderResult() {
   if (!run) return;
   const r = run.report;
   const segs = flattenSegments(r);
-  if (state.selected < 0 || state.selected >= segs.length) {
-    state.selected = pickDefaultSegment(segs);
-  }
+  state.selected = -1;
+  state.hoverSeg = null;
 
   // header
   $("run-meta").textContent = `${run.meta.name} · traced in ${(run.seconds || 0).toFixed(2)} s`;
@@ -1008,16 +1013,16 @@ function renderResult() {
   paintChips();
 
   // list + card
-  $("eq-count").innerHTML = `${segs.length} equation${segs.length === 1 ? "" : "s"}, <span class="hl"><i>plotted</i></span>`;
+  $("eq-count").textContent = `${segs.length} equation${segs.length === 1 ? "" : "s"}`;
   const tight = segs.filter((s) => !isWarn(s)).length;
   const loose = segs.length - tight;
   $("eq-summary").textContent = loose
     ? `${tight} spot-on fit${tight === 1 ? "" : "s"} · ${loose} a bit wobbly`
     : `${tight} spot-on fit${tight === 1 ? "" : "s"}`;
-  state.cardPinned = false;
   hideCard();
   renderRows(segs);
-  selectSegment(state.selected, false);
+  clearSelectionOverlay();
+  paintStage();
 
   // lazy diff
   requestAnimationFrame(() => setTimeout(() => drawDiff(), 30));
@@ -1086,24 +1091,33 @@ function paintStage() {
   const b = view.blend / 100;
   const ghost = $("layer-ghost");
   const math = $("layer-math");
-  ghost.style.opacity = view.original ? String((1 - b) * 0.45) : "0";
-  ghost.style.display = view.original ? "" : "none";
-  math.style.display = view.equations ? "" : "none";
+  const showGhost = view.mode !== "equations";
+  const showMath = view.mode !== "original";
+  const both = view.mode === "both";
+  ghost.style.display = showGhost ? "" : "none";
+  ghost.style.mixBlendMode = view.mode === "original" ? "normal" : "multiply";
+  math.style.display = showMath ? "" : "none";
+  const dim = state.selected >= 0 || state.hoverSeg ? 0.25 : 1;
+  ghost.style.opacity = showGhost ? String((both ? Math.max(0, 1 - b) : 1) * dim) : "0";
+  math.style.opacity = showMath ? String((both ? Math.min(1, b) : 1) * dim) : "0";
   const src = view.labels
     ? (run.images.redrawLabels || run.images.labeled)
     : run.images.redraw;
   if (math.getAttribute("src") !== src) math.src = src;
-  // "Show the wobble" marks are an inspection aid: they appear only while the
-  // pointer is over the artwork, so the equation-drawn picture stays clean.
-  $("layer-diff").style.display = view.diff && state.hovering ? "" : "none";
+  $("layer-diff").style.display = view.diff && showMath ? "" : "none";
+  $("blend-wrap").hidden = !both;
+  $("t-labels").disabled = !showMath;
+  $("t-diff").disabled = !showMath;
   $("plot").setAttribute("aria-label", view.labels
     ? "Your drawing redrawn from its equations, with equation labels"
     : "Your drawing with its fitted equations");
+  paintChips();
 }
 
 function paintChips() {
   const map = {
-    "t-original": view.original, "t-equations": view.equations,
+    "t-original": view.mode === "original", "t-both": view.mode === "both",
+    "t-equations": view.mode === "equations",
     "t-labels": view.labels, "t-diff": view.diff,
     "coord-px": !view.yUp, "coord-up": view.yUp,
   };
@@ -1184,19 +1198,13 @@ function renderRows(segs) {
       btn.append(p);
     }
     btn.onclick = () => {
-      if (state.cardPinned && state.selected === i) {
-        unpinCard();
-        return;
-      }
-      selectSegment(i, true);
-      state.cardPinned = true;
-      cancelCardHide();
-      showCard(i);
+      if (state.selected === i) { clearSelection(); return; }
+      selectSegment(i, true, true);
     };
-    btn.onmouseenter = () => { showHighlight(item); if (!state.cardPinned) showCard(i); };
-    btn.onmouseleave = () => { hideHighlight(); scheduleCardHide(); };
-    btn.onfocus = () => { showHighlight(item); if (!state.cardPinned) showCard(i); };
-    btn.onblur = () => scheduleCardHide();
+    btn.onmouseenter = () => { if (hoverable()) previewSegment(item); };
+    btn.onmouseleave = () => { if (hoverable()) endPreview(); };
+    btn.onfocus = () => { if (hoverable()) previewSegment(item); };
+    btn.onblur = () => { if (hoverable()) endPreview(); };
     wrap.append(btn);
   });
 }
@@ -1225,30 +1233,8 @@ function domainText(seg) {
   return seg.closed ? "closed curve" : "open curve";
 }
 
-function showCard(i) {
-  const run = activeRun();
-  if (!run) return;
-  const segs = flattenSegments(run.report);
-  if (i < 0 || i >= segs.length) return;
-  const { stroke, seg } = segs[i];
-  fillCard(i, stroke, seg);
-  $("eqcard").hidden = false;
-}
 function hideCard() {
   $("eqcard").hidden = true;
-}
-function cancelCardHide() {
-  clearTimeout(state.cardTimer);
-}
-function scheduleCardHide() {
-  if (state.cardPinned) return;
-  cancelCardHide();
-  state.cardTimer = setTimeout(hideCard, 600);
-}
-function unpinCard() {
-  state.cardPinned = false;
-  cancelCardHide();
-  hideCard();
 }
 
 function fillCard(i, stroke, seg) {
@@ -1261,38 +1247,171 @@ function fillCard(i, stroke, seg) {
   $("sel-no").textContent = `(${i + 1})`;
 }
 
-function selectSegment(i, scroll) {
+function hoverable() {
+  return window.matchMedia("(hover: hover)").matches;
+}
+
+function selectedItem() {
+  const run = activeRun();
+  if (!run || state.selected < 0) return null;
+  return flattenSegments(run.report)[state.selected] || null;
+}
+
+function previewSegment(item) {
+  state.hoverSeg = item;
+  paintStage();
+  drawSelectionOverlay(item);
+}
+
+function endPreview() {
+  state.hoverSeg = null;
+  paintStage();
+  const it = selectedItem();
+  if (it) drawSelectionOverlay(it); else clearSelectionOverlay();
+}
+
+function selectSegment(i, scroll, showCardFlag) {
   const run = activeRun();
   if (!run) return;
   const segs = flattenSegments(run.report);
   if (i < 0 || i >= segs.length) return;
   state.selected = i;
+  state.hoverSeg = null;
   const { stroke, seg } = segs[i];
   for (const row of document.querySelectorAll("#eq-rows .row")) {
     row.classList.toggle("on", Number(row.dataset.i) === i);
   }
   fillCard(i, stroke, seg);
+  if (showCardFlag) $("eqcard").hidden = false;
+  placeCard();
+  paintStage();
+  drawSelectionOverlay({ stroke, seg });
   if (scroll) {
     const row = document.querySelector(`#eq-rows .row[data-i="${i}"]`);
     if (row) row.scrollIntoView({ block: "nearest", behavior: "smooth" });
   }
 }
 
-function showHighlight(item) {
+function clearSelection() {
+  state.selected = -1;
+  state.hoverSeg = null;
+  for (const row of document.querySelectorAll("#eq-rows .row")) row.classList.remove("on");
+  hideCard();
+  clearSelectionOverlay();
+  paintStage();
+}
+
+function placeCard() {
+  const card = $("eqcard");
+  if (!card || card.hidden) return;
+  const row = document.querySelector(`#eq-rows .row[data-i="${state.selected}"]`);
+  if (window.innerWidth < 900 && row) {
+    if (card.previousElementSibling !== row) row.after(card);
+    card.classList.add("inline");
+  } else {
+    const dock = $("card-dock");
+    if (dock && card.parentElement !== dock) dock.append(card);
+    card.classList.remove("inline");
+  }
+}
+
+/* The selected/previewed curve is highlighted from the equation raster itself:
+   match the stroke colour inside its bbox, then draw those pixels with a white
+   halo. No bounding-box guesswork. */
+const selDrawn = { token: 0 };
+function parseHexColor(hex) {
+  const m = String(hex || "").match(/^#?([0-9a-f]{6})$/i);
+  if (!m) return null;
+  const n = parseInt(m[1], 16);
+  return { r: (n >> 16) & 255, g: (n >> 8) & 255, b: n & 255 };
+}
+function clearSelectionOverlay() {
+  selDrawn.token += 1;
+  const c = $("layer-sel");
+  if (!c) return;
+  const ctx = c.getContext("2d");
+  ctx.clearRect(0, 0, c.width, c.height);
+}
+async function drawSelectionOverlay(item) {
+  const token = ++selDrawn.token;
+  const c = $("layer-sel");
   const run = activeRun();
-  if (!run) return;
-  const { seg } = item;
-  const H = run.report.image_size.height;
+  if (!c || !run || !item) { clearSelectionOverlay(); return; }
+  const plot = $("plot");
+  const W = Math.max(1, plot.clientWidth), H = Math.max(1, plot.clientHeight);
+  const dpr = Math.min(2, window.devicePixelRatio || 1);
+  c.width = Math.round(W * dpr); c.height = Math.round(H * dpr);
+  const ctx = c.getContext("2d");
+  ctx.setTransform(dpr, 0, 0, dpr, 0, 0);
+  ctx.clearRect(0, 0, W, H);
+
+  const im = await loadImage(run.images.redraw);
+  if (!im || token !== selDrawn.token || activeRun() !== run) return;
+  const off = document.createElement("canvas");
+  off.width = Math.round(W); off.height = Math.round(H);
+  const octx = off.getContext("2d", { willReadFrequently: true });
+  octx.drawImage(im, 0, 0, W, H);
+
+  const size = run.report.image_size;
+  const sx = W / size.width, sy = H / size.height;
+  const seg = item.seg;
   const [x0, x1] = seg.x_range || [0, 0];
   const [y0, y1] = seg.y_range || [0, 0];
-  const hl = $("hl");
-  hl.hidden = false;
-  hl.style.left = `${(x0 / run.report.image_size.width) * 100}%`;
-  hl.style.top = `${(Math.min(y0, y1) / H) * 100}%`;
-  hl.style.width = `${(Math.max(1, x1 - x0) / run.report.image_size.width) * 100}%`;
-  hl.style.height = `${(Math.max(1, Math.abs(y1 - y0)) / H) * 100}%`;
+  const pad = 8;
+  const bx = Math.max(0, Math.floor(Math.min(x0, x1) * sx - pad));
+  const by = Math.max(0, Math.floor(Math.min(y0, y1) * sy - pad));
+  const bw = Math.min(W - bx, Math.ceil(Math.abs(x1 - x0) * sx + pad * 2));
+  const bh = Math.min(H - by, Math.ceil(Math.abs(y1 - y0) * sy + pad * 2));
+  if (bw < 1 || bh < 1) return;
+
+  if (item.stroke.filled) {
+    // A fill is an area: frame it cleanly instead of painting a noisy interior.
+    const col = dotColor(item.stroke.color);
+    ctx.save();
+    ctx.fillStyle = col + "14";
+    ctx.fillRect(bx, by, bw, bh);
+    ctx.strokeStyle = "rgba(255,255,255,.95)";
+    ctx.lineWidth = 6;
+    ctx.strokeRect(bx + 1, by + 1, bw - 2, bh - 2);
+    ctx.strokeStyle = col;
+    ctx.lineWidth = 2;
+    ctx.strokeRect(bx + 1, by + 1, bw - 2, bh - 2);
+    ctx.restore();
+    return;
+  }
+
+  const src = octx.getImageData(bx, by, bw, bh);
+  const col = parseHexColor(item.stroke.color) || { r: 21, g: 22, b: 26 };
+  const mask = document.createElement("canvas");
+  mask.width = bw; mask.height = bh;
+  const mctx = mask.getContext("2d");
+  const md = mctx.createImageData(bw, bh);
+  for (let i = 0; i < src.data.length; i += 4) {
+    const a = src.data[i + 3];
+    if (a < 40) continue;
+    const d = Math.abs(src.data[i] - col.r) + Math.abs(src.data[i + 1] - col.g)
+      + Math.abs(src.data[i + 2] - col.b);
+    if (d < 120) {
+      md.data[i] = 255; md.data[i + 1] = 255; md.data[i + 2] = 255; md.data[i + 3] = 255;
+    }
+  }
+  mctx.putImageData(md, 0, 0);
+
+  const colored = document.createElement("canvas");
+  colored.width = bw; colored.height = bh;
+  const cctx = colored.getContext("2d");
+  cctx.drawImage(mask, 0, 0);
+  cctx.globalCompositeOperation = "source-in";
+  cctx.fillStyle = dotColor(item.stroke.color);
+  cctx.fillRect(0, 0, bw, bh);
+
+  ctx.save();
+  ctx.shadowColor = "#1F3FD1";
+  ctx.shadowBlur = 9;
+  ctx.drawImage(colored, bx, by);
+  ctx.restore();
+  ctx.drawImage(colored, bx, by);
 }
-function hideHighlight() { $("hl").hidden = true; }
 
 /* ------------------------------------------------------------------ y up */
 function displayEquation(seg) {
@@ -1705,21 +1824,31 @@ function bind() {
   });
 
   // result toggles
+  const setMode = (mode) => {
+    view.mode = mode;
+    if (mode === "both" && view.blend === 0) view.blend = 50;
+    paintStage();
+  };
+  $("t-original").addEventListener("click", () => setMode("original"));
+  $("t-both").addEventListener("click", () => setMode("both"));
+  $("t-equations").addEventListener("click", () => setMode("equations"));
   const toggle = (id, key) => $(id).addEventListener("click", () => {
     view[key] = !view[key];
-    paintChips();
     paintStage();
   });
-  toggle("t-original", "original");
-  toggle("t-equations", "equations");
   toggle("t-labels", "labels");
-  toggle("t-diff", "diff");
-  $("coord-px").addEventListener("click", () => { view.yUp = false; paintChips(); renderAxes(); renderRows(flattenSegments(activeRun().report)); selectSegment(state.selected); });
-  $("coord-up").addEventListener("click", () => { view.yUp = true; paintChips(); renderAxes(); renderRows(flattenSegments(activeRun().report)); selectSegment(state.selected); });
+  $("t-diff").addEventListener("click", () => {
+    view.diff = !view.diff;
+    paintStage();
+    if (view.diff) drawDiff(); else clearDiff();
+  });
+  $("coord-px").addEventListener("click", () => { view.yUp = false; paintChips(); renderAxes(); renderRows(flattenSegments(activeRun().report)); selectSegment(state.selected, false); });
+  $("coord-up").addEventListener("click", () => { view.yUp = true; paintChips(); renderAxes(); renderRows(flattenSegments(activeRun().report)); selectSegment(state.selected, false); });
   $("blend").addEventListener("input", (e) => { view.blend = Number(e.target.value); paintStage(); });
-  $("t-hold").addEventListener("pointerdown", () => flip(true));
+  $("t-hold").addEventListener("pointerdown", (e) => { e.preventDefault(); flip(true); });
   $("t-hold").addEventListener("pointerup", () => flip(false));
   $("t-hold").addEventListener("pointerleave", () => flip(false));
+  $("t-hold").addEventListener("pointercancel", () => flip(false));
 
   $("copy-all").addEventListener("click", async () => {
     const items = currentItems();
@@ -1792,7 +1921,7 @@ function bind() {
   $("new-run").addEventListener("click", () => showScreen("start"));
 
   document.addEventListener("keydown", (e) => {
-    if (e.key === "Escape") { closeMenus(); unpinCard(); }
+    if (e.key === "Escape") { closeMenus(); clearSelection(); }
     if (e.code === "Space" && state.screen === "result" && !isTyping(e.target)) {
       e.preventDefault();
       flip(true);
@@ -1802,24 +1931,8 @@ function bind() {
     if (e.code === "Space" && state.screen === "result") { flip(false); }
   });
 
-  $("eqcard").addEventListener("mouseenter", () => {
-    cancelCardHide();
-    const run = activeRun();
-    if (run && state.selected >= 0) showHighlight(flattenSegments(run.report)[state.selected]);
-  });
-  $("eqcard").addEventListener("mouseleave", () => {
-    hideHighlight();
-    scheduleCardHide();
-  });
-
-  $("plot").addEventListener("click", () => {
-    if (state.cardPinned) unpinCard();
-  });
   $("plot").addEventListener("pointerenter", () => {
     state.hovering = true;
-    paintStage();
-    const run = activeRun();
-    if (run && state.selected >= 0) showHighlight(flattenSegments(run.report)[state.selected]);
   });
   $("plot").addEventListener("pointermove", (e) => {
     const run = activeRun();
@@ -1832,8 +1945,6 @@ function bind() {
   });
   $("plot").addEventListener("pointerleave", () => {
     state.hovering = false;
-    paintStage();
-    hideHighlight();
     $("coords").textContent = "x — · y — px";
   });
 }

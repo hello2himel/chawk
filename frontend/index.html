@@ -21,7 +21,7 @@
       <span class="libcount" id="library-count" hidden>0</span>
     </button>
 
-    <span class="m hide-m" id="start-meta">v1.1.15 · connected</span>
+    <span class="m hide-m" id="start-meta">v1.1.16 · connected</span>
 
     <button class="btn" id="check-change" hidden>
       <span class="hide-m">Choose another</span><span class="show-m">Change</span>
@@ -43,17 +43,17 @@
   <!-- ============================= START ============================= -->
   <main class="hero" id="screen-start">
     <section class="copy">
-      <div style="display:flex;align-items:center;gap:6px">
+      <div class="hero-greet">
         <svg width="72" height="72" viewBox="0 0 64 64" aria-hidden="true"><g transform="rotate(-24 32 32)"><rect x="18" y="4" width="28" height="56" rx="8" fill="#fff" stroke="#15161A" stroke-width="3"></rect><path d="M18 46h28v6a8 8 0 0 1-8 8H26a8 8 0 0 1-8-8z" fill="#ECE8DD" stroke="#15161A" stroke-width="3"></path><circle cx="26" cy="22" r="6" fill="#fff" stroke="#15161A" stroke-width="2.5"></circle><circle cx="38" cy="22" r="6" fill="#fff" stroke="#15161A" stroke-width="2.5"></circle><circle cx="27" cy="23" r="2" fill="#15161A"></circle><circle cx="37" cy="23" r="2" fill="#15161A"></circle><path d="M24 36c3-5 5-5 8 0s5 5 8 0" fill="none" stroke="#1F3FD1" stroke-width="3" stroke-linecap="round"></path></g></svg>
-        <span class="hand" style="font-size:26px">hi, I’m Chawk. I turn doodles into algebra.</span>
+        <span class="hand hand-hero">hi, I’m Chawk. I turn doodles into algebra.</span>
       </div>
       <h1 class="h">Every squiggle is a <span class="hl"><i>function</i></span>.</h1>
       <p class="lead">Drop in a doodle. I’ll find the line, circle, wave or curve hiding behind every stroke, then redraw your picture using nothing but equations.</p>
       <button class="drop" id="drop">
-        <span style="font-size:20px;font-weight:700"><span class="hide-m">Drop a doodle here</span><span class="show-m">Tap to add a doodle</span></span>
-        <span class="m" style="font-size:15px"><span class="hide-m">Click to choose · paste with Ctrl V · or take a photo on your phone</span><span class="show-m">Pick from your photos or take a new picture</span></span>
+        <span class="drop-title"><span class="hide-m">Drop a doodle here</span><span class="show-m">Tap to add a doodle</span></span>
+        <span class="m drop-sub"><span class="hide-m">Click to choose · paste with Ctrl V · or take a photo on your phone</span><span class="show-m">Pick from your photos or take a new picture</span></span>
       </button>
-      <div style="display:flex;gap:8px;align-items:center;flex-wrap:wrap">
+      <div class="sample-row">
         <span class="hand">no doodle handy? borrow one →</span>
         <button class="chip" data-sample="sine_wave.png">Sine wave</button>
         <button class="chip" data-sample="geometric.png">Shapes</button>
@@ -63,7 +63,7 @@
     </section>
 
     <section class="demo paper">
-      <svg viewBox="0 0 760 500" style="width:100%;height:auto;display:block" role="img" aria-label="Animation: a drawing builds itself curve by curve from equations">
+      <svg viewBox="0 0 760 500" style="width:100%;height:auto;display:block" role="img" aria-label="Animation: a star builds itself from its equations">
         <g font-family="'JetBrains Mono',monospace" font-size="11" fill="#5A5D68">
           <path d="M60 480H700M50 40V480" stroke="#15161A" stroke-opacity=".35"></path>
           <text x="60" y="496" text-anchor="middle">0</text>
@@ -76,17 +76,19 @@
           <text x="44" y="324" text-anchor="end">280</text>
           <text x="44" y="464" text-anchor="end">420</text>
         </g>
-        <path class="d" pathLength="1" d="M185 110a55 55 0 1 0-110 0a55 55 0 1 0 110 0" stroke="#B4441C" stroke-width="3"></path>
-        <path class="d" pathLength="1" d="M60 260C100 180 180 180 220 260S340 340 380 260S500 180 540 260S660 340 700 260" stroke="#0F6E5A" stroke-width="5" stroke-linecap="round" style="animation-delay:.8s"></path>
-        <path class="d" pathLength="1" d="M60 430L700 414" stroke="#15161A" stroke-width="3" stroke-linecap="round" style="animation-delay:1.6s"></path>
+        <g transform="translate(130 70) scale(2.2) translate(-130 -70)"><path class="d" pathLength="1" d="M130.0 8.0 L145.3 49.0 L189.0 50.8 L154.7 78.0 L166.4 120.2 L130.0 96.0 L93.6 120.2 L105.3 78.0 L71.0 50.8 L114.7 49.0 Z" stroke="#15161A" stroke-width="2" stroke-linejoin="round"></path></g>
       </svg>
-      <p class="fig">Fig. 1 · a doodle, rebuilt from 3 equations</p>
-      <div class="eq" style="font-size:19px;display:flex;flex-direction:column;gap:6px;min-height:84px">
-        <span class="f" style="color:#B4441C">(<i>x</i> − 70)<sup>2</sup> + (<i>y</i> − 70)<sup>2</sup> = 55<sup>2</sup><span class="no">(1)</span></span>
-        <span class="f" style="animation-delay:.8s;color:#0F6E5A"><i>y</i> = −80 sin(0.0196<i>x</i>) + 220<span class="no">(2)</span></span>
-        <span class="f" style="animation-delay:1.6s"><i>y</i> = −0.025<i>x</i> + 390<span class="no">(3)</span></span>
+      <p class="fig">Fig. 1 · a doodle, rebuilt from 7 equations</p>
+      <div class="eq demo-eqs">
+        <span class="f"><i>y</i> = 8.3783·sin(0.0941<i>x</i> − 1.23) + 106.9273<span class="no">(1)</span></span>
+        <span class="f" style="animation-delay:.35s"><i>x</i> = 1.651e-05<i>y</i><sup>4</sup> − 0.0053<i>y</i><sup>3</sup> + 0.6033<i>y</i><sup>2</sup> − 28.1827<i>y</i> + 533.6565<span class="no">(2)</span></span>
+        <span class="f" style="animation-delay:.7s"><i>x</i> = −1.970e-05<i>y</i><sup>4</sup> + 0.0064<i>y</i><sup>3</sup> − 0.7349<i>y</i><sup>2</sup> + 35.2616<i>y</i> − 414.6465<span class="no">(3)</span></span>
+        <span class="f" style="animation-delay:1.05s"><i>x</i> = −0.4282<i>y</i> + 133.791<span class="no">(4)</span></span>
+        <span class="f" style="animation-delay:1.4s"><i>y</i> = −0.0732<i>x</i> + 55.5648<span class="no">(5)</span></span>
+        <span class="f" style="animation-delay:1.75s"><i>x</i> = 0.397<i>y</i> + 126.0559<span class="no">(6)</span></span>
+        <span class="f" style="animation-delay:2.1s"><i>y</i> = 0.0754<i>x</i> + 36.2329<span class="no">(7)</span></span>
       </div>
-      <p class="hand">↑ yes, that circle is just algebra</p>
+      <p class="hand">↑ yes, that star is just algebra</p>
     </section>
   </main>
 
@@ -94,9 +96,9 @@
   <main class="library" id="screen-library" hidden>
     <div class="libhead">
       <div>
-        <p class="fig" style="margin:0 0 8px">YOUR WORK · THIS BROWSER</p>
-        <h1 class="h" style="font-size:clamp(34px,5vw,50px)">Previous works, <span class="hl"><i>kept</i></span>.</h1>
-        <p class="m" style="margin-top:6px">Open one to run it again, or tidy up.</p>
+        <p class="fig libfig">YOUR WORK · THIS BROWSER</p>
+        <h1 class="h h-lib">Previous works, <span class="hl"><i>kept</i></span>.</h1>
+        <p class="m libsub">Open one to run it again, or tidy up.</p>
       </div>
       <div class="libtools">
         <button class="chip" id="lib-select" aria-pressed="false">Select</button>
@@ -109,7 +111,7 @@
 
     <div class="libempty" id="lib-empty" hidden>
       <svg width="84" height="84" viewBox="0 0 64 64" aria-hidden="true"><g transform="rotate(-24 32 32)"><rect x="18" y="4" width="28" height="56" rx="8" fill="#fff" stroke="#15161A" stroke-width="3"></rect><path d="M18 46h28v6a8 8 0 0 1-8 8H26a8 8 0 0 1-8-8z" fill="#ECE8DD" stroke="#15161A" stroke-width="3"></path><circle cx="26" cy="22" r="6" fill="#fff" stroke="#15161A" stroke-width="2.5"></circle><circle cx="38" cy="22" r="6" fill="#fff" stroke="#15161A" stroke-width="2.5"></circle><circle cx="27" cy="23" r="2" fill="#15161A"></circle><circle cx="37" cy="23" r="2" fill="#15161A"></circle><path d="M24 36c3-5 5-5 8 0s5 5 8 0" fill="none" stroke="#1F3FD1" stroke-width="3" stroke-linecap="round"></path></g></svg>
-      <p class="hand" style="font-size:26px;margin-top:14px">nothing saved yet — draw something.</p>
+      <p class="hand hand-lg empty-hand">nothing saved yet — draw something.</p>
       <button class="btn bp" id="lib-empty-new">New doodle</button>
     </div>
 
@@ -123,7 +125,7 @@
 
   <!-- ============================= CHECK ============================= -->
   <main class="set" id="screen-check" hidden>
-    <section class="view paper" style="align-items:center;border-top:0">
+    <section class="view paper view-check">
       <div class="previewwrap" id="preview-wrap">
         <div class="preview" id="preview">
           <div class="preview-inner">
@@ -133,42 +135,43 @@
           <div class="frame" aria-hidden="true"><span class="handle tl"></span><span class="handle tr"></span><span class="handle bl"></span><span class="handle br"></span></div>
         </div>
       </div>
-      <p class="fig" style="text-align:center">Fig. 0 · what I think is ink</p>
-      <p class="hand" style="text-align:center">blue = I’ll trace it. The circled speck? Pretending I didn’t see it.</p>
+      <p class="fig fig-center">Fig. 0 · what I think is ink</p>
+      <p class="hand hand-center">blue = I’ll trace it. The circled speck? Pretending I didn’t see it.</p>
     </section>
 
     <aside class="ctl">
       <div>
-        <h1 class="h" style="font-size:34px">Ready to do some <span class="hl"><i>maths</i></span>?</h1>
-        <p class="m" id="file-meta" style="margin-top:4px"></p>
+        <h1 class="h h-check">Ready to do some <span class="hl"><i>maths</i></span>?</h1>
+        <p class="m file-meta" id="file-meta"></p>
       </div>
 
-      <label style="display:block;font-weight:600;font-size:14px">Ink sensitivity
+      <label class="field-label">Ink sensitivity
         <input id="sensitivity" type="range" min="0" max="100" value="55">
-        <span class="m" style="display:flex;justify-content:space-between"><span>Only dark lines</span><span>Faint lines too</span></span>
+        <span class="m range-labels"><span>Only dark lines</span><span>Faint lines too</span></span>
       </label>
 
       <fieldset class="kindfield">
         <legend>What kind of drawing is it?</legend>
         <label class="row card" data-kind="clean">
-          <input type="radio" name="kind" value="clean"><span><b>Clean lines</b><br><span class="m">Crisp pen, print or digital</span></span>
+          <input type="radio" name="kind" value="clean"><span><b>Clean lines</b><br><span class="kind-effect">Tight fit: stays within about 1 px of the ink, up to 48 pieces per stroke.</span><br><span class="m">Crisp pen, print or digital</span></span>
         </label>
         <label class="row card on" data-kind="sketchy">
-          <input type="radio" name="kind" value="sketchy" checked><span><b>Sketchy</b><br><span class="m">Hand-drawn, charmingly wobbly</span></span>
+          <input type="radio" name="kind" value="sketchy" checked><span><b>Sketchy</b><br><span class="kind-effect">The default. Fits within about 2 px, up to 24 pieces per stroke.</span><br><span class="m">Hand-drawn, charmingly wobbly</span></span>
         </label>
         <label class="row card" data-kind="busy">
-          <input type="radio" name="kind" value="busy"><span><b>Busy</b><br><span class="m">Many strokes, ambitious art</span></span>
+          <input type="radio" name="kind" value="busy"><span><b>Busy</b><br><span class="kind-effect">Keeps short strokes and up to 1,200 of them, so you get a lot of equations.</span><br><span class="m">Many strokes, ambitious art</span></span>
         </label>
       </fieldset>
 
-      <label style="display:block;font-weight:600;font-size:14px">How picky should the fit be?
+      <label class="field-label">How picky should the fit be?
         <input id="fit" type="range" min="0" max="100" value="50">
-        <span class="m" style="display:flex;justify-content:space-between"><span>Minimalist</span><span>Pedantic</span></span>
+        <span class="m fit-range"><span>Minimalist</span><span>Pedantic</span></span>
+        <span class="m fit-help">Minimalist: fewer, simpler equations. Pedantic: more equations that hug the ink.</span>
       </label>
 
       <div>
-        <p style="font-weight:600;font-size:14px;margin-bottom:8px">Allowed curve types</p>
-        <div style="display:flex;gap:6px;flex-wrap:wrap">
+        <p class="field-label type-label">Allowed curve types</p>
+        <div class="type-row">
           <button class="chip" data-type="circle" aria-pressed="true">Circles</button>
           <button class="chip" data-type="ellipse" aria-pressed="true">Ellipses</button>
           <button class="chip" data-type="sinusoid" aria-pressed="true">Waves</button>
@@ -193,25 +196,25 @@
         <img id="working-img" alt="Your doodle being scanned">
         <div class="scan" aria-hidden="true"></div>
       </div>
-      <p class="fig" id="working-fig" style="margin:0">Fig. 1 · scanning your doodle for strokes</p>
-      <div style="display:flex;align-items:center;gap:14px">
+      <p class="fig fig-flush" id="working-fig">Fig. 1 · scanning your doodle for strokes</p>
+      <div class="workstrip">
         <svg width="72" height="72" viewBox="0 0 64 64" aria-hidden="true"><g transform="rotate(-24 32 32)"><rect x="18" y="4" width="28" height="56" rx="8" fill="#fff" stroke="#15161A" stroke-width="3"></rect><path d="M18 46h28v6a8 8 0 0 1-8 8H26a8 8 0 0 1-8-8z" fill="#ECE8DD" stroke="#15161A" stroke-width="3"></path><circle cx="26" cy="22" r="6" fill="#fff" stroke="#15161A" stroke-width="2.5"></circle><circle cx="38" cy="22" r="6" fill="#fff" stroke="#15161A" stroke-width="2.5"></circle><circle cx="27" cy="23" r="2" fill="#15161A"></circle><circle cx="37" cy="23" r="2" fill="#15161A"></circle><path d="M24 36c3-5 5-5 8 0s5 5 8 0" fill="none" stroke="#1F3FD1" stroke-width="3" stroke-linecap="round"></path></g></svg>
         <div class="workstatus" role="status" aria-live="polite">
-          <p class="hand q" style="font-size:26px">Interrogating your squiggles…</p>
-          <p class="hand q" style="font-size:26px;animation-delay:3s">Asking π for a second opinion…</p>
-          <p class="hand q" style="font-size:26px;animation-delay:6s">Fitting curves. Tangents avoided.</p>
-          <p class="hand q" style="font-size:26px;animation-delay:9s">Rounding to four decimal places…</p>
+          <p class="hand q quip">Interrogating your squiggles…</p>
+          <p class="hand q quip" style="animation-delay:3s">Asking π for a second opinion…</p>
+          <p class="hand q quip" style="animation-delay:6s">Fitting curves. Tangents avoided.</p>
+          <p class="hand q quip" style="animation-delay:9s">Rounding to four decimal places…</p>
         </div>
         <span class="mono" id="working-time">0:00</span>
       </div>
-      <button class="btn" id="cancel" style="height:48px">Cancel</button>
+      <button class="btn btn-lg" id="cancel">Cancel</button>
     </div>
   </main>
 
   <!-- ============================= RESULT ============================= -->
   <div class="resultwrap" id="screen-result" hidden>
     <div class="body">
-      <section class="sc" style="flex:1">
+      <section class="sc">
         <div class="stage paper" id="stage">
           <div class="artw">
             <div class="artbox" id="artbox">
@@ -219,7 +222,7 @@
                 <img class="layer ghost" id="layer-ghost" alt="">
                 <img class="layer math" id="layer-math" alt="">
                 <canvas class="layer diff" id="layer-diff" aria-hidden="true"></canvas>
-                <div class="hlbox" id="hl" hidden></div>
+                <canvas class="layer selection" id="layer-sel" aria-hidden="true"></canvas>
                 <span class="axis axis-x" aria-hidden="true"></span>
                 <span class="axis axis-y" aria-hidden="true"></span>
                 <div class="ticks ticks-x" id="ticks-x" aria-hidden="true"></div>
@@ -230,48 +233,51 @@
           </div>
 
           <div class="card sel" id="eqcard" hidden>
-            <span style="display:flex;align-items:center;gap:8px"><span class="dot" id="sel-dot"></span><b id="sel-model">Wave</b><span class="m" id="sel-stroke">Stroke 2</span><span class="ok" id="sel-ok">spot on</span><span class="no" id="sel-no">(1)</span></span>
-            <div class="eq" id="sel-eq" style="font-size:24px;margin:10px 0 4px"></div>
+            <span class="sel-head"><span class="dot" id="sel-dot"></span><b id="sel-model">Wave</b><span class="m" id="sel-stroke">Stroke 2</span><span class="ok" id="sel-ok">spot on</span><span class="no" id="sel-no">(1)</span></span>
+            <div class="eq sel-eq" id="sel-eq"></div>
             <p class="m" id="sel-meta"></p>
-            <div style="display:flex;gap:8px;margin-top:12px">
-              <button class="btn bp" id="sel-copy" style="flex:1"><i class="ri-file-copy-line" aria-hidden="true"></i> Copy LaTeX</button>
+            <div class="sel-actions">
+              <button class="btn bp" id="sel-copy"><i class="ri-file-copy-line" aria-hidden="true"></i> Copy LaTeX</button>
               <button class="btn" id="sel-desmos">Desmos</button>
             </div>
           </div>
         </div>
 
         <div class="tools">
-          <button class="chip" id="t-original" aria-pressed="true">Original</button>
-          <button class="chip" id="t-equations" aria-pressed="true">Equations</button>
+          <div class="seg" role="group" aria-label="Layers">
+            <button id="t-original" type="button" aria-pressed="false">Original</button>
+            <button id="t-both" type="button" aria-pressed="true">Both</button>
+            <button id="t-equations" type="button" aria-pressed="false">Equations</button>
+          </div>
           <button class="chip" id="t-labels" aria-pressed="false">Labels</button>
-          <button class="chip" id="t-diff" aria-pressed="true">Show the wobble</button>
-          <button class="chip show-m" id="t-hold">Hold: flip to original</button>
-          <label class="m blend">Original<input id="blend" type="range" aria-label="Blend between original and equations" value="70">Math</label>
-          <span class="m hide-m" style="margin-left:auto">Hold&nbsp;<kbd class="mono">Space</kbd>&nbsp;to flip</span>
-          <span class="mono hide-m" id="coords" style="min-width:120px;justify-content:flex-end">x — · y — px</span>
+          <button class="chip" id="t-diff" aria-pressed="false">Show the wobble</button>
+          <button class="chip" id="t-hold" title="Hold to compare, or hold Space">Hold to compare</button>
+          <label class="m blend" id="blend-wrap">Original<input id="blend" type="range" aria-label="Blend between original and equations" value="70">Equations</label>
+                    <span class="mono hide-m" id="coords">x — · y — px</span>
         </div>
       </section>
 
       <aside class="side">
-        <div style="padding:16px 16px 10px">
-          <h2 class="h" style="font-size:28px" id="eq-count">0 equations</h2>
-          <p class="m" id="eq-summary" style="margin-top:4px"></p>
-          <div style="display:flex;gap:8px;margin-top:12px;align-items:center">
-            <div role="group" aria-label="Coordinates" class="coordbar">
-              <button class="chip" id="coord-px" aria-pressed="true" style="border:0">Pixels</button>
-              <button class="chip" id="coord-up" aria-pressed="false" style="border:0;background:transparent">Math, y up</button>
+        <div class="side-head">
+          <h2 class="h eq-count-h" id="eq-count">0 equations</h2>
+          <p class="m eq-summary" id="eq-summary"></p>
+          <p class="hand qed-inline">∎ Q.E.D. your doodle is officially a function</p>
+          <div class="side-controls">
+            <div role="group" aria-label="Coordinate display" class="seg">
+              <button id="coord-px" type="button" aria-pressed="true">Pixels</button>
+              <button id="coord-up" type="button" aria-pressed="false">Y up</button>
             </div>
-            <button class="btn" id="copy-all" style="margin-left:auto"><i class="ri-file-copy-line" aria-hidden="true"></i> Copy all</button>
+            <button class="btn" id="copy-all"><i class="ri-file-copy-line" aria-hidden="true"></i> Copy all</button>
           </div>
+          <div id="card-dock"></div>
         </div>
-        <div id="eq-rows" style="padding:4px 10px;display:flex;flex-direction:column;gap:4px"></div>
-        <p class="hand" style="padding:14px 16px 6px">∎ Q.E.D. your doodle is officially a function</p>
+        <div id="eq-rows"></div>
       </aside>
     </div>
 
     <div class="actbar">
-      <button class="btn bp" id="download-mobile" style="flex:1;height:48px"><i class="ri-download-line" aria-hidden="true"></i> Download</button>
-      <button class="btn" id="retrace-mobile" style="height:48px">Try again</button>
+      <button class="btn bp act-primary" id="download-mobile"><i class="ri-download-line" aria-hidden="true"></i> Download</button>
+      <button class="btn btn-lg" id="retrace-mobile">Try again</button>
     </div>
   </div>
 </div>
@@ -279,21 +285,21 @@
 <div class="scrim" id="scrim" hidden></div>
 
 <div class="menu" id="sheet" role="menu" aria-label="Download" hidden>
-  <p class="m" style="font-weight:600;padding:8px 10px 4px">Save as image</p>
+  <p class="m menu-head">Save as image</p>
   <button role="menuitem" class="row dl-item" data-img="clean">
-    <svg width="56" height="40" viewBox="0 0 56 40" aria-hidden="true" style="flex:none"><rect width="56" height="40" rx="5" fill="#FAF9F4" stroke="#DDD9CC"></rect><path d="M6 24C14 8 22 8 28 22S44 34 50 16" fill="none" stroke="#15161A" stroke-opacity=".25" stroke-width="5" stroke-linecap="round"></path><path d="M6 24C14 8 22 8 28 22S44 34 50 16" fill="none" stroke="#0F6E5A" stroke-width="2" stroke-linecap="round"></path></svg>
-    <span><b style="font-size:14px">Drawing + equations</b><br><span class="m">Your original with the fitted curves on top</span></span>
+    <svg width="56" height="40" viewBox="0 0 56 40" aria-hidden="true" class="dl-icon"><rect width="56" height="40" rx="5" fill="#FAF9F4" stroke="#DDD9CC"></rect><path d="M6 24C14 8 22 8 28 22S44 34 50 16" fill="none" stroke="#15161A" stroke-opacity=".25" stroke-width="5" stroke-linecap="round"></path><path d="M6 24C14 8 22 8 28 22S44 34 50 16" fill="none" stroke="#0F6E5A" stroke-width="2" stroke-linecap="round"></path></svg>
+    <span><b>Drawing + equations</b><br><span class="m">Your original with the fitted curves on top</span></span>
   </button>
   <button role="menuitem" class="row dl-item" data-img="redraw">
-    <svg width="56" height="40" viewBox="0 0 56 40" aria-hidden="true" style="flex:none"><rect width="56" height="40" rx="5" fill="#fff" stroke="#DDD9CC"></rect><path d="M6 24C14 8 22 8 28 22S44 34 50 16" fill="none" stroke="#0F6E5A" stroke-width="2" stroke-linecap="round"></path></svg>
-    <span><b style="font-size:14px">Equations only</b><br><span class="m">The drawing rebuilt from the math alone</span></span>
+    <svg width="56" height="40" viewBox="0 0 56 40" aria-hidden="true" class="dl-icon"><rect width="56" height="40" rx="5" fill="#fff" stroke="#DDD9CC"></rect><path d="M6 24C14 8 22 8 28 22S44 34 50 16" fill="none" stroke="#0F6E5A" stroke-width="2" stroke-linecap="round"></path></svg>
+    <span><b>Equations only</b><br><span class="m">The drawing rebuilt from the math alone</span></span>
   </button>
   <button role="menuitem" class="row dl-item" data-img="sidebyside">
-    <svg width="56" height="40" viewBox="0 0 56 40" aria-hidden="true" style="flex:none"><rect width="56" height="40" rx="5" fill="#FAF9F4" stroke="#DDD9CC"></rect><rect x="5" y="5" width="20" height="30" rx="2" fill="#fff" stroke="#DDD9CC"></rect><path d="M9 26C13 16 16 16 21 25" fill="none" stroke="#0F6E5A" stroke-width="1.6" stroke-linecap="round"></path><path d="M31 11h19M31 17h19M31 23h13M31 29h16" stroke="#15161A" stroke-opacity=".45" stroke-width="1.5" stroke-linecap="round"></path></svg>
-    <span><b style="font-size:14px">Poster</b><br><span class="m">A 4:5 poster — the drawing in a 3:2 window above the equations</span></span>
+    <svg width="56" height="40" viewBox="0 0 56 40" aria-hidden="true" class="dl-icon"><rect width="56" height="40" rx="5" fill="#FAF9F4" stroke="#DDD9CC"></rect><rect x="5" y="5" width="20" height="30" rx="2" fill="#fff" stroke="#DDD9CC"></rect><path d="M9 26C13 16 16 16 21 25" fill="none" stroke="#0F6E5A" stroke-width="1.6" stroke-linecap="round"></path><path d="M31 11h19M31 17h19M31 23h13M31 29h16" stroke="#15161A" stroke-opacity=".45" stroke-width="1.5" stroke-linecap="round"></path></svg>
+    <span><b>Poster</b><br><span class="m">A 4:5 poster — the drawing in a 3:2 window above the equations</span></span>
   </button>
-  <p class="m" style="font-weight:600;padding:10px 10px 6px;border-top:1px solid #E9E5DA;margin-top:6px">Copy or save the math</p>
-  <div style="display:flex;gap:6px;flex-wrap:wrap;padding:0 8px 8px">
+  <p class="m menu-head menu-rule">Copy or save the math</p>
+  <div class="math-row">
     <button role="menuitem" class="chip" data-math="desmos">Desmos</button>
     <button role="menuitem" class="chip" data-math="latex">LaTeX</button>
     <button role="menuitem" class="chip" data-math="text">Text</button>
