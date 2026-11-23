@@ -145,7 +145,9 @@ button,input{font:inherit;color:inherit}button{cursor:pointer}h1,h2,p{margin:0}
 .demo-modal-meta{margin:0;font-size:14px;color:var(--muted)}
 .demo-modal-eqs{margin:20px 0 0;padding:14px 0 0;border-top:1px solid var(--line);font:15px/1.7 "Source Serif 4",Georgia,serif;font-variant-numeric:tabular-nums;overflow-x:auto;white-space:nowrap;display:block;min-height:0}
 .demo-modal-eqs .f{display:block;white-space:nowrap;animation:none;opacity:1}
-.demo-modal-open{margin-top:auto;padding:12px 16px;border:0;border-radius:8px;background:var(--accent);color:#fff;font:500 15px/1 inherit;cursor:pointer}
+.demo-modal-open{margin-top:auto;padding:12px 16px;border:0;border-radius:8px;background:var(--accent);color:#fff;font:500 15px/1 inherit;cursor:pointer;display:flex;align-items:center;justify-content:center;gap:8px}
+.demo-modal-open .ri{font-size:16px;transition:transform .18s ease}
+.demo-modal-open:hover .ri{transform:translateX(2px)}
 .demo-modal-open:hover{background:#1a35b3}
 .demo-modal-open:focus-visible,.demo-modal-close:focus-visible{outline:2px solid var(--accent);outline-offset:2px}
 .demo-modal-close{position:absolute;top:10px;right:10px;z-index:2;width:32px;height:32px;border:0;border-radius:50%;background:transparent;color:var(--muted);font-size:20px;line-height:1;cursor:pointer}
