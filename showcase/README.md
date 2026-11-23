@@ -12,10 +12,13 @@ Drag the `showcase` folder onto <https://app.netlify.com/drop>. No build step is
 
 Connect this repository to Netlify. The checked-in `netlify.toml` at the repository root sets:
 
-- publish directory: `showcase`
-- build command: empty
-- long-lived caching for `assets/` and `vendor/`
+- base directory: `showcase`
+- publish directory: `.`
+- no build command
+- one-day revalidated caching for `assets/` and `vendor/`
 - baseline security headers
+
+Netlify runs dependency detection from the base directory. Since the base is `showcase`, it never sees the app's root `requirements.txt` and does not install Python, NumPy, OpenCV, SciPy, or Matplotlib.
 
 ### CLI
 

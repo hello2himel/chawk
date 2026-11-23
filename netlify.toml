@@ -1,5 +1,8 @@
 [build]
-  publish = "showcase"
+  # Keep Netlify dependency detection and the build inside the static site.
+  # The repo root has the Python app's requirements.txt; Netlify must not see it.
+  base = "showcase"
+  publish = "."
 
 [[headers]]
   for = "/*"
@@ -21,5 +24,10 @@
 
 [[headers]]
   for = "/index.html"
+  [headers.values]
+    Cache-Control = "public, max-age=0, must-revalidate"
+
+[[headers]]
+  for = "/"
   [headers.values]
     Cache-Control = "public, max-age=0, must-revalidate"
