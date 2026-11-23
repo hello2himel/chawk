@@ -32,6 +32,16 @@ docker build -t chawk .
 docker run --rm -p 8010:8000 chawk
 ```
 
+### Static showcase (Netlify)
+
+A self-contained, static portfolio of Chawk lives in [`showcase/`](showcase/README.md). It shows the five proofs, the original-versus-rebuilt compare, the tracing pipeline, and sample equations — with the same light/dark theme system as the app.
+
+- **Netlify Drop:** drag `showcase/` onto <https://app.netlify.com/drop>.
+- **Git-connected Netlify:** the checked-in `netlify.toml` publishes `showcase` with no build step.
+- **CLI:** `npx netlify-cli deploy --prod --dir=showcase` after `npx netlify-cli login`.
+
+The showcase is precomputed; the full tracer is the Docker app below.
+
 ### From source
 
 Python 3.12.

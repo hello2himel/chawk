@@ -1,0 +1,247 @@
+<!doctype html>
+<html lang="en">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1, viewport-fit=cover">
+<title>Chawk — every squiggle is a function</title>
+<meta name="description" content="Chawk turns line art and flat-colour illustrations into equations, then redraws them from the math. Five proofs, 25,603 equations. A local-first tracer in Docker.">
+<meta name="color-scheme" content="light dark">
+<meta name="theme-color" content="#F5F3EC">
+<meta property="og:title" content="Chawk — every squiggle is a function">
+<meta property="og:description" content="Five proofs, 25,603 equations. Images rebuilt from nothing but fitted functions.">
+<meta property="og:type" content="website">
+<meta property="og:image" content="assets/cat-original.webp">
+<meta name="twitter:card" content="summary_large_image">
+<link rel="icon" type="image/svg+xml" href="favicon.svg">
+<link rel="icon" type="image/png" sizes="32x32" href="favicon-32.png">
+<link rel="apple-touch-icon" href="apple-touch-icon.png">
+<script>
+(() => { try {
+  const t = localStorage.getItem('chawk.theme.v1');
+  const d = t === 'dark' || (t !== 'light' && matchMedia('(prefers-color-scheme: dark)').matches);
+  if (t === 'light' || t === 'dark') document.documentElement.dataset.theme = t;
+  document.querySelector('meta[name="theme-color"]').content = d ? '#131311' : '#F5F3EC';
+} catch (e) {} })();
+</script>
+<style>
+  html { background: #F5F3EC; }
+  html[data-theme="dark"] { background: #131311; }
+  @media (prefers-color-scheme: dark) { html:not([data-theme="light"]) { background: #131311; } }
+  html[data-theme="light"] { background: #F5F3EC; }
+</style>
+<link rel="stylesheet" href="vendor/remixicon.css">
+<link rel="preload" href="vendor/fonts/STIXTwoText-latin.woff2" as="font" type="font/woff2" crossorigin>
+<link rel="preload" href="vendor/fonts/InstrumentSans-latin.woff2" as="font" type="font/woff2" crossorigin>
+<link rel="stylesheet" href="styles.css?v=showcase-1">
+</head>
+<body>
+<a class="skip" href="#proofs">Skip to the proofs</a>
+
+<header class="bar">
+  <div class="bar-inner">
+    <a class="brand" href="#top" aria-label="Chawk — back to top">
+      <span class="brandmark">
+        <svg width="28" height="28" viewBox="0 0 64 64" aria-hidden="true"><g transform="rotate(-24 32 32)"><rect x="18" y="4" width="28" height="56" rx="8" fill="#fff" stroke="#15161A" stroke-width="3"></rect><path d="M18 46h28v6a8 8 0 0 1-8 8H26a8 8 0 0 1-8-8z" fill="#ECE8DD" stroke="#15161A" stroke-width="3"></path><circle cx="26" cy="22" r="6" fill="#fff" stroke="#15161A" stroke-width="2.5"></circle><circle cx="38" cy="22" r="6" fill="#fff" stroke="#15161A" stroke-width="2.5"></circle><circle cx="27" cy="23" r="2" fill="#15161A"></circle><circle cx="37" cy="23" r="2" fill="#15161A"></circle><path d="M24 36c3-5 5-5 8 0s5 5 8 0" fill="none" stroke="#1F3FD1" stroke-width="3" stroke-linecap="round"></path></g></svg>
+      </span>
+      <span class="brandname">Chawk</span>
+    </a>
+    <nav class="nav" aria-label="Sections">
+      <a href="#proofs">Proofs</a>
+      <a href="#process">Process</a>
+      <a href="#math">The math</a>
+      <a href="#run">Run it</a>
+    </nav>
+    <div class="rail">
+      <a class="iconbtn" href="https://github.com/hello2himel/chawk" target="_blank" rel="noopener" aria-label="Chawk source on GitHub" title="Source on GitHub"><i class="ri ri-code-s-slash-line" aria-hidden="true"></i></a>
+      <button class="iconbtn themetoggle" id="theme-toggle" type="button" aria-pressed="false" aria-label="Dark theme" title="Switch to dark theme"><i class="ri ri-moon-line" aria-hidden="true"></i></button>
+    </div>
+  </div>
+</header>
+
+<main id="top">
+  <section class="hero" aria-labelledby="hero-title">
+    <div class="hero-inner">
+      <div class="hero-copy">
+        <div class="greet">
+          <svg width="58" height="58" viewBox="0 0 64 64" aria-hidden="true"><g transform="rotate(-24 32 32)"><rect x="18" y="4" width="28" height="56" rx="8" fill="#fff" stroke="#15161A" stroke-width="3"></rect><path d="M18 46h28v6a8 8 0 0 1-8 8H26a8 8 0 0 1-8-8z" fill="#ECE8DD" stroke="#15161A" stroke-width="3"></path><circle cx="26" cy="22" r="6" fill="#fff" stroke="#15161A" stroke-width="2.5"></circle><circle cx="38" cy="22" r="6" fill="#fff" stroke="#15161A" stroke-width="2.5"></circle><circle cx="27" cy="23" r="2" fill="#15161A"></circle><circle cx="37" cy="23" r="2" fill="#15161A"></circle><path d="M24 36c3-5 5-5 8 0s5 5 8 0" fill="none" stroke="#1F3FD1" stroke-width="3" stroke-linecap="round"></path></g></svg>
+          <span class="hand">hi, I’m Chawk. I turn doodles into algebra.</span>
+        </div>
+        <h1 class="h h1" id="hero-title">Every squiggle is a <span class="hl"><i>function</i></span>.</h1>
+        <p class="lead">An image goes in. The ink is traced, segmented, and fitted with lines, arcs, waves, and splines. The drawing comes back out — rebuilt with nothing but equations.</p>
+        <div class="hero-actions">
+          <a class="btn bp" href="#proofs">See the proofs <i class="ri ri-arrow-down-line" aria-hidden="true"></i></a>
+          <a class="btn" href="#run">Run it locally <i class="ri ri-arrow-right-line" aria-hidden="true"></i></a>
+        </div>
+        <p class="hero-note"><b>Five proofs · 25,603 equations.</b> Not one pixel in the final drawing.</p>
+      </div>
+
+      <div class="demo-panel" aria-label="Live proof carousel">
+        <div class="deckwrap">
+          <div class="deck" id="deck" tabindex="0" aria-label="Proofs. Use the arrow keys to browse."></div>
+          <button class="deck-arrow prev" id="deck-prev" type="button" aria-label="Previous proof"><svg viewBox="0 0 16 16" fill="none" stroke="currentColor" stroke-width="1.7" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><path d="M10 3 5 8l5 5"/></svg></button>
+          <button class="deck-arrow next" id="deck-next" type="button" aria-label="Next proof"><svg viewBox="0 0 16 16" fill="none" stroke="currentColor" stroke-width="1.7" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><path d="m6 3 5 5-5 5"/></svg></button>
+          <div class="deck-overlay" id="deck-overlay">
+            <button class="deck-play" id="deck-play" type="button" aria-label="Pause auto-cycling" title="Pause auto-cycling"><i class="ri ri-pause-fill" aria-hidden="true"></i></button>
+            <button class="deck-max" id="deck-max" type="button" aria-label="Compare this proof" title="Compare this proof"><i class="ri ri-expand-diagonal-line" aria-hidden="true"></i></button>
+          </div>
+        </div>
+        <p class="hand demo-quip" id="demo-quip">↑ the cat is just algebra. even the shades too!</p>
+        <div class="demo-eqs" id="demo-eqs" aria-live="polite">
+          <span class="f">x(t) = 1107.77 − 10.11cos 2πt − 13.83sin 2πt + 0.79cos 4πt − 8.73sin 4πt</span>
+          <span class="f">x(t) = 731.41 − 0.5cos 2πt − 10.89sin 2πt + 0.44cos 4πt − 1.69sin 4πt</span>
+          <span class="f">x(t) = 793.35 − 20.89cos 2πt − 7.79sin 2πt + 2.1cos 4πt − 1.52sin 4πt</span>
+          <span class="f">x(t) = 810.64 + 0.64cos 2πt + 3.18sin 2πt + 0.09cos 4πt − 0.13sin 4πt</span>
+          <span class="more">…and 1,668 more</span>
+        </div>
+        <div class="deck-dots" id="deck-dots" role="group" aria-label="Choose a proof"></div>
+      </div>
+    </div>
+  </section>
+
+  <section class="section proofs" id="proofs" aria-labelledby="proofs-title">
+    <div class="section-inner">
+      <header class="section-head">
+        <p class="mono">01 / The proofs</p>
+        <h2 class="h h2" id="proofs-title">Five images. <span class="hand">No pixels</span> in the final drawing.</h2>
+        <p class="section-lede">These are the rebuilt renders, not the source photos. Open any proof to compare the original against its equations-only reconstruction.</p>
+      </header>
+      <div class="proof-grid" id="proof-grid"></div>
+      <p class="proof-hint">← click a proof to drag the compare handle</p>
+    </div>
+  </section>
+
+  <section class="section process" id="process" aria-labelledby="process-title">
+    <div class="section-inner">
+      <header class="section-head">
+        <p class="mono">02 / The trace</p>
+        <h2 class="h h2" id="process-title">From ink to <i>equations</i>.</h2>
+        <p class="section-lede">No generative model, no prompt, no image layer hidden under the math. A deterministic computer-vision pipeline reads the drawing and fits primitives to it.</p>
+      </header>
+
+      <div class="process-grid">
+        <figure class="step">
+          <div class="step-top"><span class="step-no">01</span><span class="step-kicker">Read the ink</span></div>
+          <div class="step-media"><img src="assets/cat-original.webp" width="1536" height="1024" alt="Original flat-colour illustration of a cat in sunglasses against a blue sky" loading="lazy" decoding="async"></div>
+          <figcaption><h3>The image goes in.</h3><p>A flat-shaded illustration or a photo of line art. <b>No labels, no masks, no manual tracing.</b> The tracer finds the ink itself.</p></figcaption>
+        </figure>
+        <figure class="step">
+          <div class="step-top"><span class="step-no">02</span><span class="step-kicker">Trace the strokes</span></div>
+          <div class="step-media"><img src="assets/cat-trace.webp" width="1536" height="1024" alt="Blue edge trace of the cat illustration on paper" loading="lazy" decoding="async"></div>
+          <figcaption><h3>The ink becomes strokes.</h3><p>An adaptive mask isolates ink from paper. Contours are split at corners, resampled, and fitted: line, circle, ellipse, sinusoid, spline. <b>The cat gets 1,672 equations.</b></p></figcaption>
+        </figure>
+        <figure class="step">
+          <div class="step-top"><span class="step-no">03</span><span class="step-kicker">Keep the math</span></div>
+          <div class="step-media"><img src="assets/cat-still.webp" width="720" height="480" alt="The cat illustration rebuilt from 1,672 equations" loading="lazy" decoding="async"></div>
+          <figcaption><h3>The proof comes out.</h3><p>Every layer is rendered from the fitted functions. The final drawing is a plot, not a photograph. <b>The equations are the artifact.</b></p></figcaption>
+        </figure>
+      </div>
+
+      <div class="process-note">
+        <p class="hand">the model is just a very patient curve fit.</p>
+        <p class="m"><b>The actual pipeline:</b> OpenCV ink mask · contour extraction and corner splitting · RDP resampling · primitive fitting (line, circle, ellipse, sinusoid, spline) · BIC model selection · Matplotlib render. Five proofs, 25,603 fitted equations, all deterministic. The Busy preset can fit up to 3,000 strokes in 24 colours.</p>
+      </div>
+    </div>
+  </section>
+
+  <section class="section math" id="math" aria-labelledby="math-title">
+    <div class="section-inner math-grid">
+      <div class="math-copy">
+        <p class="mono">03 / The math</p>
+        <h2 class="h h2" id="math-title">The cat is <span class="hl">algebra</span>.</h2>
+        <p class="lead">The pixel-shades cat is 1,672 equations. Not a photo with a math filter — every region boundary is a fitted function, rendered from the coefficients.</p>
+        <div class="math-stats">
+          <div class="math-stat"><b>1,672</b><span>equations</span></div>
+          <div class="math-stat"><b>24</b><span>colours</span></div>
+          <div class="math-stat"><b>4</b><span>shown here</span></div>
+        </div>
+        <div class="math-actions">
+          <button class="btn bp" type="button" data-proof="0">Open the cat proof <i class="ri ri-arrow-right-line" aria-hidden="true"></i></button>
+          <a class="btn" href="#process">Read the pipeline</a>
+        </div>
+      </div>
+
+      <div class="math-sheet" aria-label="Sample equations from the cat proof">
+        <div class="math-sheet-head"><span><b>PROOF 01</b> / PIXEL-SHADES CAT</span><span>1,672 EQ</span></div>
+        <div class="eq">
+          <span>x(t) = 1107.77 − 10.11cos 2πt − 13.83sin 2πt + 0.79cos 4πt − 8.73sin 4πt</span>
+          <span>x(t) = 731.41 − 0.5cos 2πt − 10.89sin 2πt + 0.44cos 4πt − 1.69sin 4πt</span>
+          <span>x(t) = 793.35 − 20.89cos 2πt − 7.79sin 2πt + 2.1cos 4πt − 1.52sin 4πt</span>
+          <span>x(t) = 810.64 + 0.64cos 2πt + 3.18sin 2πt + 0.09cos 4πt − 0.13sin 4πt</span>
+          <span class="more">…and 1,668 more</span>
+        </div>
+        <div class="math-sheet-foot"><span>4 of 1,672 shown</span><span class="hand">even the shades are curves</span></div>
+      </div>
+    </div>
+  </section>
+
+  <section class="section run" id="run" aria-labelledby="run-title">
+    <div class="section-inner run-grid">
+      <div class="run-copy">
+        <p class="mono">04 / Run it</p>
+        <h2 class="h h2" id="run-title">Your machine. <span class="hl">Your doodle.</span></h2>
+        <p class="lead">The showcase is precomputed. The tracer itself runs locally in one Docker container — no account, no upload, no third-party API.</p>
+        <div class="run-meta">
+          <span><i class="ri ri-shield-check-line" aria-hidden="true"></i> Local only</span>
+          <span><i class="ri ri-terminal-box-line" aria-hidden="true"></i> Python 3.12 · OpenCV</span>
+          <span><i class="ri ri-test-tube-line" aria-hidden="true"></i> 72 tests</span>
+        </div>
+      </div>
+      <div class="terminal">
+        <div class="term-bar"><span>Run Chawk locally</span><button class="term-copy" id="copy-command" type="button"><i class="ri ri-file-copy-line" aria-hidden="true"></i><span id="copy-label">Copy</span></button></div>
+        <pre class="term-code"><span class="prompt">$</span> docker run --rm -p 8010:8000 <span class="dim">\</span>
+    ghcr.io/hello2himel/chawk:latest</pre>
+        <div class="term-foot">
+          <span>Open <b>localhost:8010</b></span>
+          <a href="https://github.com/hello2himel/chawk#quick-start" target="_blank" rel="noopener">Quick start <i class="ri ri-arrow-right-up-line" aria-hidden="true"></i></a>
+          <span class="copy-state" id="copy-state" aria-live="polite"></span>
+        </div>
+      </div>
+    </div>
+  </section>
+</main>
+
+<footer class="foot">
+  <div class="foot-inner">
+    <div>
+      <a class="foot-brand" href="#top" aria-label="Chawk — back to top">
+        <span class="brandmark"><svg width="24" height="24" viewBox="0 0 64 64" aria-hidden="true"><g transform="rotate(-24 32 32)"><rect x="18" y="4" width="28" height="56" rx="8" fill="#fff" stroke="#15161A" stroke-width="3"></rect><path d="M18 46h28v6a8 8 0 0 1-8 8H26a8 8 0 0 1-8-8z" fill="#ECE8DD" stroke="#15161A" stroke-width="3"></path><circle cx="26" cy="22" r="6" fill="#fff" stroke="#15161A" stroke-width="2.5"></circle><circle cx="38" cy="22" r="6" fill="#fff" stroke="#15161A" stroke-width="2.5"></circle><path d="M24 36c3-5 5-5 8 0s5 5 8 0" fill="none" stroke="#1F3FD1" stroke-width="3" stroke-linecap="round"></path></g></svg></span>
+        <span class="brandname">Chawk</span>
+      </a>
+      <p class="foot-tag">A local-first line-art tracer. Images in, equations out, the drawing rebuilt from the math.</p>
+    </div>
+    <div class="foot-links">
+      <a href="https://github.com/hello2himel/chawk" target="_blank" rel="noopener"><i class="ri ri-github-line" aria-hidden="true"></i> Source</a>
+      <a href="https://github.com/hello2himel/chawk#quick-start" target="_blank" rel="noopener"><i class="ri ri-terminal-box-line" aria-hidden="true"></i> Quick start</a>
+      <a href="https://github.com/hello2himel/chawk/pkgs/container/chawk" target="_blank" rel="noopener"><i class="ri ri-box-3-line" aria-hidden="true"></i> Container</a>
+    </div>
+    <div class="foot-fine"><span>Chawk 1.1.23 · FastAPI · OpenCV · Matplotlib</span><span>Static showcase · no uploads · no tracking</span></div>
+  </div>
+</footer>
+
+<div class="demo-modal" id="compare-modal" hidden>
+  <div class="demo-modal-scrim" id="compare-scrim"></div>
+  <div class="demo-modal-card" id="compare-card" tabindex="-1" role="dialog" aria-modal="true" aria-labelledby="compare-title">
+    <button class="demo-modal-close" id="compare-close" type="button" aria-label="Close">×</button>
+    <div class="demo-compare" id="compare" data-art>
+      <div class="demo-scene"><img id="compare-original" alt=""></div>
+      <div class="demo-scene demo-rebuilt"><img id="compare-rebuilt" alt=""></div>
+      <span class="demo-tag l">Original</span>
+      <span class="demo-tag r">Rebuilt</span>
+      <div class="demo-handle"></div>
+      <input id="compare-range" type="range" min="0" max="100" value="50" aria-label="Compare original and rebuilt">
+    </div>
+    <div class="demo-modal-body">
+      <h2 id="compare-title"></h2>
+      <p class="demo-modal-meta" id="compare-meta"></p>
+      <div class="demo-modal-eqs" id="compare-eqs"></div>
+      <a class="demo-modal-open" id="compare-cta" href="https://github.com/hello2himel/chawk#quick-start" target="_blank" rel="noopener">Run the tracer <i class="ri ri-arrow-right-line" aria-hidden="true"></i></a>
+      <p class="demo-honest">The showcase is precomputed. Run Chawk locally for the full proof.</p>
+    </div>
+  </div>
+</div>
+
+<noscript><div style="position:fixed;left:12px;right:12px;bottom:12px;z-index:70;padding:12px 16px;background:#15161A;color:#fff;border-radius:8px;font:14px/1.4 system-ui,sans-serif">This showcase uses JavaScript for the proof carousel and compare view. The equations and process are still readable above; the tracer runs locally via Docker.</div></noscript>
+
+<script src="app.js?v=showcase-1" defer></script>
+</body>
+</html>
