@@ -101,7 +101,7 @@ const state = {
   runs: [], active: -1, selected: -1,
   busy: false, screen: "start", controller: null, workTimer: null, hovering: false,
   busyTimer: null, hoverSeg: null,
-  libSelect: false, libSelected: new Set(), libView: "grid", libSort: "newest",
+  libSelect: false, libSelected: new Set(), libView: "grid", libSort: "newest", restore: null,
   renaming: null, libMenuWork: null, libDialog: null, pendingUndo: null, undoTimer: null,
 };
 
@@ -552,7 +552,9 @@ function showScreen(name, opts = {}) {
 
   if (canAnimate) {
     try {
-      document.startViewTransition(change);
+      const transition = document.startViewTransition(change);
+      transition.ready.catch(() => {});
+      transition.finished.catch(() => {});
       return;
     } catch { /* fall through to the CSS transition */ }
   }
@@ -560,11 +562,86 @@ function showScreen(name, opts = {}) {
   if (opts.animate !== false && !reduced) animateScreenIn(name);
 }
 
+function projectIdFromURL() {
+  try { return new URLSearchParams(location.search).get("work") || ""; } catch { return ""; }
+}
+
+function projectWork(id) {
+  return id ? loadWorks().find((w) => w.id === id) || null : null;
+}
+
+function rememberProject(id) {
+  try { if (id) sessionStorage.setItem("chawk.lastProject.v1", id); } catch { /* private mode */ }
+}
+
+function lastProjectId() {
+  try { return sessionStorage.getItem("chawk.lastProject.v1") || ""; } catch { return ""; }
+}
+
+function restoreProjectId() {
+  const fromURL = projectIdFromURL();
+  if (fromURL && projectWork(fromURL)) return fromURL;
+  const last = lastProjectId();
+  if (last && projectWork(last)) return last;
+  return "";
+}
+
+function closeRestorePrompt() {
+  state.restore = null;
+  $("restore").hidden = true;
+}
+
+function openRestorePrompt(id, screen) {
+  state.restore = { id, screen };
+  const hasWork = !!id;
+  $("restore-title").textContent = hasWork ? "Re-run this project?" : "Project not available";
+  $("restore-body").textContent = hasWork
+    ? "This page was refreshed. Chawk can rebuild your drawing by re-processing the saved image."
+    : screen === "result"
+      ? "This project wasn’t saved in this browser. Choose the image again to rebuild it."
+      : "This upload wasn’t saved. Choose the image again to continue.";
+  $("restore-ok").textContent = hasWork ? "Re-run project" : "Choose image";
+  $("restore-ok").classList.toggle("bp", true);
+  $("restore").hidden = false;
+  requestAnimationFrame(() => $("restore-ok").focus());
+}
+
+function restoreCancel() {
+  closeRestorePrompt();
+  history.replaceState({ screen: "start" }, "", "/");
+  showScreen("start", { history: false });
+}
+
+function restoreConfirm() {
+  const pending = state.restore;
+  if (!pending) return;
+  closeRestorePrompt();
+  if (pending.id) {
+    openWork(pending.id, { restore: true });
+    return;
+  }
+  history.replaceState({ screen: "start" }, "", "/");
+  showScreen("start", { history: false });
+  $("file").click();
+}
+
+async function restoreCheck(id) {
+  await openWork(id, { trace: false, restore: true });
+}
+
 function bootRoute() {
   const path = pathName();
   let name = PATH_SCREEN[path] || "start";
-  if (name === "check" && !state.file) { name = "start"; history.replaceState({ screen: "start" }, "", "/"); }
-  if (name === "result" && !activeRun()) { name = "start"; history.replaceState({ screen: "start" }, "", "/"); }
+  const projectId = restoreProjectId();
+  if (name === "check" && !state.file) {
+    if (projectId) { restoreCheck(projectId); return; }
+    openRestorePrompt("", "check");
+    return;
+  }
+  if (name === "result" && !activeRun()) {
+    openRestorePrompt(projectId, "result");
+    return;
+  }
   if (!PATH_SCREEN[path] && name === "start") history.replaceState({ screen: "start" }, "", "/");
   if (name === "library") { state.libSelect = false; state.libSelected.clear(); }
   showScreen(name, { history: false, focus: false, animate: false, force: true });
@@ -574,8 +651,16 @@ window.addEventListener("popstate", () => {
   const path = pathName();
   let name = PATH_SCREEN[path];
   if (!name) { name = "start"; history.replaceState({ screen: "start" }, "", "/"); }
-  if (name === "check" && !state.file) { name = "start"; history.replaceState({ screen: "start" }, "", "/"); }
-  if (name === "result" && !activeRun()) { name = "start"; history.replaceState({ screen: "start" }, "", "/"); }
+  const projectId = restoreProjectId();
+  if (name === "check" && !state.file) {
+    if (projectId) { restoreCheck(projectId); return; }
+    openRestorePrompt("", "check");
+    return;
+  }
+  if (name === "result" && !activeRun()) {
+    openRestorePrompt(projectId, "result");
+    return;
+  }
   showScreen(name, { history: false });
 });
 
@@ -669,7 +754,8 @@ async function saveWork(run) {
     const stored = persistWorks(works);
     updateLibraryBadge();
     if (stored.length < works.length) toast("Library is full", "The oldest work was removed.");
-  } catch { /* storage may be unavailable; tracing still works */ }
+    return record.id;
+  } catch { /* storage may be unavailable; tracing still works */ return null; }
 }
 
 function newWorkId() {
@@ -728,10 +814,11 @@ function selectCard(id) {
   renderLibrary();
 }
 
-async function openWork(id) {
+async function openWork(id, opts = {}) {
   const work = loadWorks().find((w) => w.id === id);
-  if (!work) return;
+  if (!work) return false;
   closeLibMenus();
+  rememberProject(id);
   try {
     const blob = await (await fetch(work.source)).blob();
     const file = new File([blob], work.name || "saved.webp", { type: blob.type || "image/webp" });
@@ -743,9 +830,16 @@ async function openWork(id) {
       settings.advanced = { ...(work.settings.advanced || {}) };
     }
     await chooseFile(file);
-    trace();
+    if (opts.trace === false) {
+      history.replaceState({ screen: "check" }, "", `/check?work=${encodeURIComponent(id)}`);
+    } else {
+      trace();
+    }
+    return true;
   } catch {
     toast("Could not open that work", "The saved copy may be damaged.");
+    if (opts.restore) openRestorePrompt("", opts.trace === false ? "check" : "result");
+    return false;
   }
 }
 
@@ -1540,7 +1634,14 @@ function renderResult() {
 
   if (!run.saved) {
     run.saved = true;
-    saveWork(run).catch(() => {});
+    saveWork(run).then((id) => {
+      if (!id) return;
+      run.workId = id;
+      rememberProject(id);
+      if (state.screen === "result") {
+        history.replaceState({ screen: "result" }, "", `/result?work=${encodeURIComponent(id)}`);
+      }
+    }).catch(() => {});
   }
 }
 
@@ -2236,11 +2337,43 @@ const demo = { slides: [], index: 0, layer: 0, timer: null, busy: false };
 const DEMO_INTERVAL = 8000;
 
 function renderDemoText(slide) {
-  $("demo-caption").textContent = `Fig. 1 · ${slide.caption}`;
-  $("demo-eqs").innerHTML = (slide.equations || [])
-    .map((eq, i) => `<span class="f">${esc(eq)}<span class="no">(${i + 1})</span></span>`)
-    .join("");
+  const equations = slide.equations || [];
+  const more = Math.max(0, (slide.count || 0) - equations.length);
+  $("demo-eqs").innerHTML = equations
+    .map((eq) => `<span class="f">${esc(eq)}</span>`)
+    .join("") + (more ? `<span class="demo-more">…and ${more.toLocaleString()} more</span>` : "");
   $("demo-quip").textContent = slide.quip || "";
+}
+
+function prefersReducedMotion() {
+  return window.matchMedia("(prefers-reduced-motion: reduce)").matches;
+}
+
+function waveClip(p) {
+  const n = 8;
+  const y = p * 115;
+  const points = ["0% 0%", "100% 0%"];
+  for (let i = n; i >= 0; i--) {
+    const x = (i / n) * 100;
+    const wobble = Math.sin((i / n) * Math.PI * 3 + p * 7) * 2.8;
+    points.push(`${x.toFixed(2)}% ${Math.max(0, y + wobble).toFixed(2)}%`);
+  }
+  return `polygon(${points.join(", ")})`;
+}
+
+function animateWave(img) {
+  return new Promise((resolve) => {
+    const start = performance.now();
+    const duration = 1050;
+    const step = (now) => {
+      const p = Math.min(1, (now - start) / duration);
+      img.style.clipPath = waveClip(p);
+      if (p < 1) requestAnimationFrame(step);
+      else resolve();
+    };
+    img.style.clipPath = waveClip(0);
+    requestAnimationFrame(step);
+  });
 }
 
 async function initDemo() {
@@ -2255,9 +2388,13 @@ async function initDemo() {
     a.src = first.src;
     a.alt = first.alt;
     renderDemoText(first);
+    a.classList.remove("demo-intro");
+    if (!prefersReducedMotion()) animateWave(a);
     for (const slide of slides.slice(1)) { const im = new Image(); im.src = slide.src; }
     demo.timer = setInterval(nextDemo, DEMO_INTERVAL);
-  } catch { /* the river still plays on its own */ }
+  } catch {
+    $("demo-slide-a")?.classList.remove("demo-intro");
+  }
 }
 
 async function nextDemo() {
@@ -2273,11 +2410,14 @@ async function nextDemo() {
     incoming.removeAttribute("aria-hidden");
     try { await incoming.decode(); } catch { /* still swap */ }
     incoming.classList.add("on");
-    active.classList.remove("on");
+    active.classList.add("under");
+    renderDemoText(slide);
+    if (!prefersReducedMotion()) await animateWave(incoming);
+    incoming.style.clipPath = "";
+    active.classList.remove("on", "under");
     active.setAttribute("aria-hidden", "true");
     demo.layer = 1 - demo.layer;
     demo.index = next;
-    renderDemoText(slide);
   } finally {
     demo.busy = false;
   }
@@ -2344,6 +2484,9 @@ function bind() {
     updateLibraryBadge();
   });
   $("undo-close").addEventListener("click", hideUndo);
+  $("restore-cancel").addEventListener("click", restoreCancel);
+  $("restore-scrim").addEventListener("click", restoreCancel);
+  $("restore-ok").addEventListener("click", restoreConfirm);
   updateLibraryBadge();
   initDemo();
   $("cancel").addEventListener("click", () => { if (state.controller) state.controller.abort(); });
@@ -2489,6 +2632,7 @@ function bind() {
 
   document.addEventListener("keydown", (e) => {
     if (e.key === "Escape" && !$("advanced").hidden) { closeAdvanced(); return; }
+    if (e.key === "Escape" && !$("restore").hidden) { restoreCancel(); return; }
     if (e.key === "Escape" && !$("lib-dialog").hidden) { closeLibDialog(); return; }
     if (e.key === "Escape" && (!$("lib-card-menu").hidden || !$("lib-sort-menu").hidden)) { closeLibMenus(); return; }
     if (e.key === "Escape" && state.renaming) { cancelRename(); return; }
