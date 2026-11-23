@@ -120,11 +120,8 @@ h1,h2,h3,p{margin:0}
 
 /* ---------- hero ---------- */
 .hero{padding:clamp(42px,6.4vw,88px) 24px clamp(50px,6vw,78px)}
-.hero-inner{max-width:1240px;margin:0 auto;display:grid;grid-template-columns:minmax(0,.92fr) minmax(0,1.12fr);gap:clamp(34px,4.4vw,64px);align-items:center}
-.hero-copy{display:flex;flex-direction:column;gap:22px;min-width:0}
-.greet{display:flex;align-items:center;gap:12px}
-.greet svg{width:58px;height:58px;flex:none}
-.greet .hand{font-size:clamp(20px,1.8vw,25px);text-wrap:balance}
+.hero-inner{max-width:1240px;margin:0 auto;display:grid;grid-template-columns:minmax(0,.92fr) minmax(0,1.12fr);gap:clamp(34px,4.4vw,64px);align-items:stretch}
+.hero-copy{display:flex;flex-direction:column;gap:22px;min-width:0;justify-content:center}
 .hero .h1{margin-top:4px}
 .hero .lead{max-width:27em}
 .hero-actions{display:flex;align-items:center;gap:14px;flex-wrap:wrap;margin-top:2px}
@@ -138,7 +135,7 @@ h1,h2,h3,p{margin:0}
 .hero-command code .dim{color:var(--text-muted)}
 
 /* hero demo panel */
-.demo-panel{border:1px solid var(--line);border-radius:16px;padding:clamp(14px,1.8vw,22px);background-color:var(--paper-bg);background-image:linear-gradient(var(--paper-grid-major) 1px,transparent 1px),linear-gradient(90deg,var(--paper-grid-major) 1px,transparent 1px),linear-gradient(var(--paper-grid-minor) 1px,transparent 1px),linear-gradient(90deg,var(--paper-grid-minor) 1px,transparent 1px);background-size:100px 100px,100px 100px,20px 20px,20px 20px;box-shadow:var(--shadow-md);position:relative;min-width:0}
+.demo-panel{border:1px solid var(--line);border-radius:16px;padding:clamp(14px,1.8vw,22px);background-color:var(--paper-bg);background-image:linear-gradient(var(--paper-grid-major) 1px,transparent 1px),linear-gradient(90deg,var(--paper-grid-major) 1px,transparent 1px),linear-gradient(var(--paper-grid-minor) 1px,transparent 1px),linear-gradient(90deg,var(--paper-grid-minor) 1px,transparent 1px);background-size:100px 100px,100px 100px,20px 20px,20px 20px;box-shadow:var(--shadow-md);position:relative;min-width:0;display:flex;flex-direction:column;justify-content:center}
 .demo-panel .deckwrap{position:relative}
 .deck{--deck-card:min(430px,calc(100% - 54px));display:flex;gap:10px;overflow-x:auto;overflow-y:hidden;scroll-snap-type:x mandatory;scrollbar-width:none;padding:6px calc((100% - var(--deck-card))/2) 6px;scroll-behavior:smooth;-webkit-mask-image:linear-gradient(to right,transparent 0,#000 22px,#000 calc(100% - 22px),transparent 100%);mask-image:linear-gradient(to right,transparent 0,#000 22px,#000 calc(100% - 22px),transparent 100%)}
 .deck::-webkit-scrollbar{display:none}
