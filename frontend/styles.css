@@ -109,18 +109,28 @@ button,input{font:inherit;color:inherit}button{cursor:pointer}h1,h2,p{margin:0}
 .demo-modal{position:fixed;inset:0;z-index:40;display:flex;align-items:center;justify-content:center;padding:24px}
 .demo-modal[hidden]{display:none}
 .demo-modal-scrim{position:absolute;inset:0;background:rgba(21,22,26,.45);backdrop-filter:blur(2px)}
-.demo-modal-card{position:relative;display:grid;grid-template-columns:minmax(0,1.15fr) minmax(0,.85fr);width:min(1000px,94vw);max-height:90vh;background:#FAF9F4;border:1px solid #DDD9CC;border-radius:16px;overflow:hidden;box-shadow:0 30px 80px rgba(21,22,26,.3)}
-.demo-modal-art{background:#F5F3EC;display:flex;align-items:center;justify-content:center;min-height:0}
-.demo-modal-art img{display:block;width:100%;height:100%;object-fit:contain;aspect-ratio:3/2}
-.demo-modal-copy{padding:24px;display:flex;flex-direction:column;gap:10px;overflow:auto;min-height:0}
-.demo-modal-close{position:absolute;top:10px;right:10px;z-index:2;width:32px;height:32px;border-radius:50%;border:1px solid #DDD9CC;background:rgba(250,249,244,.95);color:#15161A;font-size:20px;line-height:1;display:grid;place-items:center;padding:0}
-.demo-modal-count{font:600 10px/1 'JetBrains Mono',monospace;letter-spacing:.06em;text-transform:uppercase;color:#1F3FD1}
-.demo-modal-title{font-family:'STIX Two Text',Georgia,serif;font-size:24px;line-height:1.15;letter-spacing:-.02em;margin:0}
+.demo-modal-card{position:relative;display:grid;grid-template-columns:minmax(0,1.1fr) minmax(0,.9fr);width:min(1000px,94vw);max-height:90vh;background:#FAF9F4;border:1px solid #DDD9CC;border-radius:14px;overflow:hidden;box-shadow:0 30px 80px rgba(21,22,26,.3);transform:rotate(-.35deg)}
+.demo-modal-card::after{content:"";position:absolute;inset:8px;border:1px dashed #CFCABA;border-radius:10px;pointer-events:none;opacity:.7}
+.demo-modal-tape{position:absolute;z-index:3;top:-12px;left:50%;width:120px;height:26px;transform:translateX(-50%) rotate(-2deg);background:rgba(255,224,102,.65);border-left:1px dashed rgba(21,22,26,.12);border-right:1px dashed rgba(21,22,26,.12);box-shadow:0 2px 5px rgba(21,22,26,.08)}
+.demo-modal-art{margin:18px;background:#fff;border:1px solid #DDD9CC;border-bottom-width:7px;padding:8px;display:flex;align-items:center;justify-content:center;min-height:0;transform:rotate(-1.1deg);box-shadow:0 10px 24px rgba(21,22,26,.12)}
+.demo-modal-art img{display:block;width:100%;height:100%;max-height:62vh;object-fit:contain;aspect-ratio:3/2}
+.demo-modal-copy{padding:28px 28px 24px 8px;display:flex;flex-direction:column;gap:10px;overflow:auto;min-height:0}
+.demo-modal-close{position:absolute;top:14px;right:14px;z-index:4;width:30px;height:30px;border-radius:50%;border:1px solid #C9C4B4;background:#FAF9F4;color:#15161A;font-size:18px;line-height:1;display:grid;place-items:center;padding:0;box-shadow:0 2px 6px rgba(21,22,26,.1)}
+.demo-modal-close:hover{background:#F1F0E6}
+.demo-modal-top{display:flex;align-items:center;gap:10px}
+.demo-modal-fig{font:700 10px/1 'JetBrains Mono',monospace;letter-spacing:.08em;color:#1F3FD1}
+.demo-modal-count{font:600 9px/1 'JetBrains Mono',monospace;letter-spacing:.07em;text-transform:uppercase;color:#5A5D68;border:1px solid #C9C4B4;border-radius:3px;padding:4px 6px;background:#FAF9F4}
+.demo-modal-title{font-family:'STIX Two Text',Georgia,serif;font-size:27px;line-height:1.12;letter-spacing:-.025em;margin:2px 0 0}
+.demo-modal-quip{font-size:24px;line-height:1.05;color:#1F3FD1;margin:2px 0}
+.demo-modal-rule{border-top:1px dashed #CFCABA;margin:4px 0 2px}
 .demo-modal-eqs{font-size:14px;gap:6px;min-height:0}
 .demo-modal-eqs .f{animation:none;opacity:1;display:block;width:100%;white-space:normal;overflow:visible;text-align:left;line-height:1.35}
 .demo-modal .demo-more{font-size:13px}
+.demo-modal-actions{display:flex;flex-direction:column;gap:7px;margin-top:auto;padding-top:12px}
+.demo-modal-project{height:36px;justify-content:center}
+.demo-modal-hint{font:500 9px/1.35 'JetBrains Mono',monospace;text-transform:uppercase;letter-spacing:.05em;color:#5A5D68;text-align:center}
 body.modal-open{overflow:hidden}
-@media(max-width:860px){.demo-modal{padding:12px}.demo-modal-card{grid-template-columns:1fr;max-height:92vh}.demo-modal-art{max-height:46vh}.demo-modal-copy{padding:16px}}
+@media(max-width:860px){.demo-modal{padding:12px}.demo-modal-card{grid-template-columns:1fr;max-height:92vh;transform:none}.demo-modal-art{max-height:44vh;margin:14px}.demo-modal-copy{padding:16px}.demo-modal-card::after{inset:6px}}
 
 /* home footer options */
 .home-links{display:flex;align-items:center;gap:8px;margin-top:4px;flex-wrap:wrap}

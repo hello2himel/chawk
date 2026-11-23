@@ -2656,6 +2656,7 @@ async function initDemo() {
       $("demo-modal-img").src = s.src;
       $("demo-modal-img").alt = s.alt || "";
       $("demo-modal-title").textContent = s.alt || "Proof";
+      $("demo-modal-fig").textContent = `FIG. ${String(demo.index + 1).padStart(2, "0")}`;
       $("demo-modal-count").textContent = `${Number(s.count || 0).toLocaleString()} equations`;
       $("demo-modal-quip").textContent = s.quip || "";
       const equations = s.equations || [];
@@ -2676,6 +2677,23 @@ async function initDemo() {
     $("demo-modal-scrim").addEventListener("click", closeModal);
     document.addEventListener("keydown", (e) => {
       if (e.key === "Escape" && !modal.hidden) closeModal();
+    });
+
+    $("demo-modal-project").addEventListener("click", async () => {
+      const s = demo.slides[demo.index];
+      if (!s) return;
+      closeModal();
+      try {
+        const res = await fetch(s.src);
+        const blob = await res.blob();
+        const ext = (blob.type.split("/")[1] || "webp").replace("jpeg", "jpg");
+        await chooseFile(new File([blob], `proof-${String(demo.index + 1).padStart(2, "0")}.${ext}`, {
+          type: blob.type || "image/webp",
+        }));
+        await trace();
+      } catch (e) {
+        toast("Could not open the proof", e.message || String(e));
+      }
     });
 
     updatePlay();
