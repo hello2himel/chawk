@@ -1262,7 +1262,7 @@ function renderLibrary() {
   const works = sortedWorks(matching);
   const selecting = state.libSelect;
   const empty = works.length === 0;
-  const noMatches = allWorks.length > 0 && empty && !!query;
+  const noMatches = empty && !!query;
   for (const id of [...state.libSelected]) {
     if (!allWorks.some((w) => w.id === id)) state.libSelected.delete(id);
   }
@@ -1751,6 +1751,7 @@ function fitPlot() {
   plot.style.aspectRatio = "auto";
 }
 window.addEventListener("resize", () => {
+  if (!$("run-menu").hidden || !$("sheet").hidden) closeMenus();
   if (state.screen === "result") {
     fitPlot();
     placeCard();
@@ -2450,9 +2451,10 @@ function positionMenu(menu, button) {
   if (window.matchMedia("(min-width:900px)").matches) {
     const r = button.getBoundingClientRect();
     const width = menu.offsetWidth;
+    const belowBar = $("bar").getBoundingClientRect().bottom + 6;
     menu.style.left = `${Math.max(12, Math.min(window.innerWidth - width - 12, r.right - width))}px`;
     menu.style.right = "auto";
-    menu.style.top = `${r.bottom + 6}px`;
+    menu.style.top = `${Math.max(r.bottom + 6, belowBar)}px`;
   } else {
     menu.style.left = "";
     menu.style.right = "";
@@ -2460,14 +2462,20 @@ function positionMenu(menu, button) {
   }
 }
 
-function openSheet() {
+let menuTrigger = null;
+
+function openSheet(trigger) {
   closeMenus();
+  const btn = trigger || $("download-btn");
   const menu = $("sheet");
   menu.hidden = false;
-  positionMenu(menu, $("download-btn"));
+  positionMenu(menu, btn);
   $("scrim").hidden = false;
-  $("download-btn").setAttribute("aria-expanded", "true");
-  $("download-btn").focus();
+  $("download-btn").setAttribute("aria-expanded", String(btn === $("download-btn")));
+  $("download-mobile").setAttribute("aria-expanded", String(btn === $("download-mobile")));
+  document.body.classList.add("menu-open");
+  menuTrigger = btn;
+  btn.focus({ preventScroll: true });
 }
 function openRunMenu() {
   closeMenus();
@@ -2477,6 +2485,9 @@ function openRunMenu() {
     const b = document.createElement("button");
     b.type = "button";
     b.className = "row" + (i === state.active ? " on" : "");
+    b.setAttribute("role", "menuitemradio");
+    b.setAttribute("aria-checked", i === state.active ? "true" : "false");
+    b.tabIndex = -1;
     b.innerHTML = `<span class="dot" style="background:${dotColor(run.report.strokes?.[0]?.color)}"></span>
       <span><b>Run ${i + 1} · ${esc(run.label)}</b><br><span class="m">${esc(run.meta.name)} · ${run.seconds.toFixed(2)} s</span></span>`;
     b.onclick = () => { state.active = i; state.selected = -1; renderResult(); closeMenus(); };
@@ -2486,13 +2497,28 @@ function openRunMenu() {
   positionMenu(menu, $("run-menu-btn"));
   $("scrim").hidden = false;
   $("run-menu-btn").setAttribute("aria-expanded", "true");
+  document.body.classList.add("menu-open");
+  menuTrigger = $("run-menu-btn");
+  const active = menu.querySelector('.row[aria-checked="true"]') || menu.querySelector(".row");
+  if (active) {
+    active.tabIndex = 0;
+    active.focus({ preventScroll: true });
+    active.scrollIntoView({ block: "nearest" });
+  }
 }
 function closeMenus() {
+  const wasOpen = !$("sheet").hidden || !$("run-menu").hidden;
   $("sheet").hidden = true;
   $("run-menu").hidden = true;
   $("scrim").hidden = true;
   $("download-btn").setAttribute("aria-expanded", "false");
+  $("download-mobile").setAttribute("aria-expanded", "false");
   $("run-menu-btn").setAttribute("aria-expanded", "false");
+  document.body.classList.remove("menu-open");
+  if (wasOpen && menuTrigger && menuTrigger.offsetParent !== null) {
+    menuTrigger.focus({ preventScroll: true });
+  }
+  menuTrigger = null;
 }
 
 /* ------------------------------------------------------------------ wiring */
@@ -2754,10 +2780,39 @@ function bind() {
     window.open("https://www.desmos.com/calculator", "_blank", "noopener");
   });
 
-  $("download-btn").addEventListener("click", () => { openSheet(); });
-  $("download-mobile").addEventListener("click", () => { openSheet(); });
+  $("download-btn").addEventListener("click", () => {
+    if ($("sheet").hidden) openSheet($("download-btn")); else closeMenus();
+  });
+  $("download-mobile").addEventListener("click", () => {
+    if ($("sheet").hidden) openSheet($("download-mobile")); else closeMenus();
+  });
   $("scrim").addEventListener("click", () => closeMenus());
-  $("run-menu-btn").addEventListener("click", () => { openRunMenu(); });
+  $("run-menu-btn").addEventListener("click", () => {
+    if ($("run-menu").hidden) openRunMenu(); else closeMenus();
+  });
+  document.addEventListener("pointerdown", (e) => {
+    if ($("sheet").hidden && $("run-menu").hidden) return;
+    if (e.target.closest("#sheet,#run-menu,#download-btn,#download-mobile,#run-menu-btn")) return;
+    closeMenus();
+  });
+  $("run-menu").addEventListener("keydown", (e) => {
+    const rows = [...$("run-menu").querySelectorAll(".row")];
+    if (!rows.length) return;
+    const i = rows.indexOf(document.activeElement);
+    if (e.key === "ArrowDown" || e.key === "ArrowUp") {
+      e.preventDefault();
+      const next = e.key === "ArrowDown" ? (i + 1) % rows.length : (i - 1 + rows.length) % rows.length;
+      rows.forEach((r) => { r.tabIndex = -1; });
+      rows[next].tabIndex = 0;
+      rows[next].focus();
+    } else if (e.key === "Home" || e.key === "End") {
+      e.preventDefault();
+      const next = e.key === "Home" ? 0 : rows.length - 1;
+      rows.forEach((r) => { r.tabIndex = -1; });
+      rows[next].tabIndex = 0;
+      rows[next].focus();
+    }
+  });
 
   document.querySelectorAll("[data-img]").forEach((b) => {
     b.addEventListener("click", () => {
