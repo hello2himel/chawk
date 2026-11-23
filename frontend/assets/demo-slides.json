@@ -13,7 +13,7 @@
     "count": 4017,
     "name": "River and boats",
     "original": "assets/river-original.webp",
-    "rebuilt": "assets/river-rebuilt.webp"
+    "rebuilt": "assets/river-still.webp"
   },
   {
     "src": "assets/nebula-still.webp",
@@ -29,7 +29,7 @@
     "count": 1442,
     "name": "Orion nebula",
     "original": "assets/nebula-original.webp",
-    "rebuilt": "assets/nebula-rebuilt.webp"
+    "rebuilt": "assets/nebula-still.webp"
   },
   {
     "src": "assets/tree-still.webp",
@@ -45,7 +45,7 @@
     "count": 4817,
     "name": "Tree and river",
     "original": "assets/tree-original.webp",
-    "rebuilt": "assets/tree-rebuilt.webp"
+    "rebuilt": "assets/tree-still.webp"
   },
   {
     "src": "assets/pink-leaves-still.webp",
@@ -61,7 +61,7 @@
     "count": 13655,
     "name": "Pink leaves",
     "original": "assets/pink-leaves-original.webp",
-    "rebuilt": "assets/pink-leaves-rebuilt.webp"
+    "rebuilt": "assets/pink-leaves-still.webp"
   },
   {
     "src": "assets/cat-still.webp",
