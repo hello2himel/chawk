@@ -201,7 +201,15 @@ input[type=range]{width:100%;accent-color:#1F3FD1;min-height:32px}
 .demo-eqs{font-size:20px;display:flex;flex-direction:column;align-items:center;gap:6px;min-height:120px}
 .demo-eqs .f{display:block;width:100%;text-align:center;justify-content:center}
 .demo-more{font-family:'STIX Two Text',Georgia,serif;font-size:15px;color:#5A5D68;line-height:1.4}
+.deck-controls{display:flex;align-items:center;gap:10px}
 .deck-dots{display:flex;align-items:center;gap:6px}
+.deck-play{width:32px;height:32px;border:1px solid #DDD9CC;border-radius:50%;background:#ECE8DD;color:#5A5D68;display:grid;place-items:center;padding:0;transition:background-color .15s ease,color .15s ease,border-color .15s ease}
+.deck-play:hover{background:#E2DED2;color:#15161A}
+.deck-play:focus-visible{outline:2px solid #1F3FD1;outline-offset:2px}
+.deck-play .ri{font-size:15px}
+.deck-card.is-clone{pointer-events:none}
+.demo-quip,.demo-eqs{transition:opacity .16s ease}
+.demo-quip.is-fading,.demo-eqs.is-fading{opacity:0}
 .deck-dots .dot{width:6px;height:6px;border-radius:999px;border:0;padding:0;background:#D8D2C4;transition:width .2s,background .2s}
 .deck-dots .dot.is-active{width:18px;background:#1F3FD1}
 .demo svg{max-width:760px}

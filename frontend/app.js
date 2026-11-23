@@ -2490,15 +2490,24 @@ function closeMenus() {
 
 /* ------------------------------------------------------------------ wiring */
 /* ------------------------------------------------------------------ hero demo */
-const demo = { slides: [], index: 0 };
+const demo = { slides: [], index: 0, raw: 1, timer: null, playing: true, reduced: false, fadeTimer: null };
 
 function renderDemoText(slide) {
-  const equations = slide.equations || [];
-  const more = Math.max(0, (slide.count || 0) - equations.length);
-  $("demo-eqs").innerHTML = equations
-    .map((eq) => `<span class="f">${esc(eq)}</span>`)
-    .join("") + (more ? `<span class="demo-more">…and ${more.toLocaleString()} more</span>` : "");
-  $("demo-quip").textContent = slide.quip || "";
+  const eqs = $("demo-eqs");
+  const quip = $("demo-quip");
+  clearTimeout(demo.fadeTimer);
+  eqs.classList.add("is-fading");
+  quip.classList.add("is-fading");
+  demo.fadeTimer = setTimeout(() => {
+    const equations = slide.equations || [];
+    const more = Math.max(0, (slide.count || 0) - equations.length);
+    eqs.innerHTML = equations
+      .map((eq) => `<span class="f">${esc(eq)}</span>`)
+      .join("") + (more ? `<span class="demo-more">…and ${more.toLocaleString()} more</span>` : "");
+    quip.textContent = slide.quip || "";
+    eqs.classList.remove("is-fading");
+    quip.classList.remove("is-fading");
+  }, 130);
 }
 
 async function initDemo() {
@@ -2508,13 +2517,21 @@ async function initDemo() {
     const slides = await res.json();
     if (!Array.isArray(slides) || !slides.length) return;
     demo.slides = slides;
+    demo.reduced = window.matchMedia("(prefers-reduced-motion: reduce)").matches;
+    demo.playing = !demo.reduced;
 
+    const N = slides.length;
+    const ordered = [slides[N - 1], ...slides, slides[0]];
     const deck = $("demo-deck");
-    deck.innerHTML = slides.map((s, i) => `
-      <figure class="deck-card${i === 0 ? " is-active" : ""}" data-i="${i}">
-        <img src="${esc(s.src)}" width="720" height="480" alt="${esc(s.alt || "")}" draggable="false">
-        <figcaption class="deck-count">${Number(s.count || 0).toLocaleString()} equations</figcaption>
-      </figure>`).join("");
+    deck.innerHTML = ordered.map((s, raw) => {
+      const real = raw === 0 ? N - 1 : raw === N + 1 ? 0 : raw - 1;
+      const clone = raw === 0 || raw === N + 1;
+      return `
+        <figure class="deck-card${raw === 1 ? " is-active" : ""}${clone ? " is-clone" : ""}" data-raw="${raw}" data-real="${real}"${clone ? ' aria-hidden="true"' : ""}>
+          <img src="${esc(s.src)}" width="720" height="480" alt="${esc(s.alt || "")}" draggable="false">
+          <figcaption class="deck-count">${Number(s.count || 0).toLocaleString()} equations</figcaption>
+        </figure>`;
+    }).join("");
 
     const dots = $("demo-dots");
     dots.innerHTML = slides.map((s, i) =>
@@ -2524,31 +2541,54 @@ async function initDemo() {
     const dotEls = [...dots.querySelectorAll(".dot")];
     const gap = () => parseFloat(getComputedStyle(deck).gap) || 10;
     const step = () => cards[0] ? cards[0].getBoundingClientRect().width + gap() : 0;
+    const realOf = (raw) => ((raw - 1) % N + N) % N;
 
-    const paint = (i) => {
-      const n = ((i % slides.length) + slides.length) % slides.length;
-      demo.index = n;
-      cards.forEach((c, j) => c.classList.toggle("is-active", j === n));
+    const setActive = (raw) => {
+      const real = realOf(raw);
+      const changed = real !== demo.index;
+      demo.raw = raw;
+      demo.index = real;
+      cards.forEach((c, j) => c.classList.toggle("is-active", j === raw));
       dotEls.forEach((d, j) => {
-        d.classList.toggle("is-active", j === n);
-        d.setAttribute("aria-pressed", String(j === n));
+        d.classList.toggle("is-active", j === real);
+        d.setAttribute("aria-pressed", String(j === real));
       });
-      renderDemoText(slides[n]);
+      if (changed) renderDemoText(slides[real]);
     };
 
-    const go = (i) => {
-      const n = ((i % slides.length) + slides.length) % slides.length;
-      const card = cards[n];
+    const go = (real, instant = false) => {
+      const n = ((real % N) + N) % N;
+      let raw = n + 1;
+      if (demo.index === N - 1 && n === 0) raw = N + 1;
+      else if (demo.index === 0 && n === N - 1) raw = 0;
+      const card = cards[raw];
       if (!card) return;
-      const left = card.offsetLeft - (deck.clientWidth - card.offsetWidth) / 2;
-      deck.scrollTo({ left: Math.max(0, left), behavior: "smooth" });
-      paint(n);
+      const s = step();
+      deck.scrollTo({
+        left: Math.max(0, raw * s),
+        behavior: instant || demo.reduced ? "instant" : "smooth",
+      });
+      setActive(raw);
     };
 
+    const normalize = () => {
+      if (demo.raw === 0) {
+        deck.scrollLeft = step() * N;
+        setActive(N);
+      } else if (demo.raw === N + 1) {
+        deck.scrollLeft = step();
+        setActive(1);
+      }
+    };
+
+    let settleTimer = null;
     deck.addEventListener("scroll", () => {
       const s = step();
       if (!s) return;
-      paint(Math.round(deck.scrollLeft / s));
+      const raw = Math.max(0, Math.min(N + 1, Math.round(deck.scrollLeft / s)));
+      if (raw !== demo.raw) setActive(raw);
+      clearTimeout(settleTimer);
+      settleTimer = setTimeout(normalize, 220);
     }, { passive: true });
 
     dotEls.forEach((d) => d.addEventListener("click", () => go(Number(d.dataset.i))));
@@ -2575,13 +2615,50 @@ async function initDemo() {
       down = null;
       deck.style.scrollSnapType = "x mandatory";
       const s = step();
-      if (s) go(Math.round(deck.scrollLeft / s));
+      if (s) go(Math.round(deck.scrollLeft / s) - 1);
     };
     deck.addEventListener("pointerup", endDrag);
     deck.addEventListener("pointercancel", endDrag);
 
-    paint(0);
-    requestAnimationFrame(() => { deck.scrollLeft = 0; });
+    const playBtn = $("demo-play");
+    const updatePlay = () => {
+      playBtn.setAttribute("aria-label", demo.playing ? "Pause auto-cycling" : "Start auto-cycling");
+      playBtn.title = demo.playing ? "Pause auto-cycling" : "Start auto-cycling";
+      playBtn.innerHTML = `<i class="ri ${demo.playing ? "ri-pause-fill" : "ri-play-fill"}" aria-hidden="true"></i>`;
+    };
+    const stopAuto = () => {
+      clearInterval(demo.timer);
+      demo.timer = null;
+    };
+    const startAuto = () => {
+      stopAuto();
+      if (!demo.playing || demo.reduced || document.hidden) return;
+      demo.timer = setInterval(() => {
+        if (!document.hidden) go(demo.index + 1);
+      }, 9000);
+    };
+    const setPlaying = (v) => {
+      demo.playing = v;
+      updatePlay();
+      if (v) startAuto(); else stopAuto();
+    };
+    playBtn.addEventListener("click", () => setPlaying(!demo.playing));
+    deck.addEventListener("pointerenter", stopAuto);
+    deck.addEventListener("pointerleave", () => { if (demo.playing && !demo.reduced) startAuto(); });
+    deck.addEventListener("focusin", stopAuto);
+    deck.addEventListener("focusout", () => { if (demo.playing && !demo.reduced) startAuto(); });
+    document.addEventListener("visibilitychange", () => {
+      if (document.hidden) stopAuto();
+      else if (demo.playing && !demo.reduced) startAuto();
+    });
+
+    updatePlay();
+    setActive(1);
+    requestAnimationFrame(() => {
+      deck.scrollLeft = step();
+      setActive(1);
+      startAuto();
+    });
   } catch { /* static first card remains */ }
 }
 
