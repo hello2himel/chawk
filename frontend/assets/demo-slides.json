@@ -1,5 +1,21 @@
 [
   {
+    "src": "assets/cat-still.webp",
+    "alt": "The pixel-shades cat, rebuilt from 1,672 equations",
+    "caption": "the cat, rebuilt from 1,672 equations",
+    "quip": "↑ the cat is just algebra. even the shades too!",
+    "equations": [
+      "x(t) = 1107.77 − 10.11cos 2πt − 13.83sin 2πt + 0.79cos 4πt − 8.73sin 4πt",
+      "x(t) = 731.41 − 0.5cos 2πt − 10.89sin 2πt + 0.44cos 4πt − 1.69sin 4πt",
+      "x(t) = 793.35 − 20.89cos 2πt − 7.79sin 2πt + 2.1cos 4πt − 1.52sin 4πt",
+      "x(t) = 810.64 + 0.64cos 2πt + 3.18sin 2πt + 0.09cos 4πt − 0.13sin 4πt"
+    ],
+    "count": 1672,
+    "name": "Pixel-shades cat",
+    "original": "assets/cat-original.webp",
+    "rebuilt": "assets/cat-still.webp"
+  },
+  {
     "src": "assets/river-still.webp",
     "alt": "The river and boats, rebuilt from their equations",
     "caption": "the river, rebuilt from 4,017 equations",
@@ -62,21 +78,5 @@
     "name": "Pink leaves",
     "original": "assets/pink-leaves-original.webp",
     "rebuilt": "assets/pink-leaves-still.webp"
-  },
-  {
-    "src": "assets/cat-still.webp",
-    "alt": "The pixel-shades cat, rebuilt from 1,672 equations",
-    "caption": "the cat, rebuilt from 1,672 equations",
-    "quip": "↑ the cat is just algebra. even the shades too!",
-    "equations": [
-      "x(t) = 1107.77 − 10.11cos 2πt − 13.83sin 2πt + 0.79cos 4πt − 8.73sin 4πt",
-      "x(t) = 731.41 − 0.5cos 2πt − 10.89sin 2πt + 0.44cos 4πt − 1.69sin 4πt",
-      "x(t) = 793.35 − 20.89cos 2πt − 7.79sin 2πt + 2.1cos 4πt − 1.52sin 4πt",
-      "x(t) = 810.64 + 0.64cos 2πt + 3.18sin 2πt + 0.09cos 4πt − 0.13sin 4πt"
-    ],
-    "count": 1672,
-    "name": "Pixel-shades cat",
-    "original": "assets/cat-original.webp",
-    "rebuilt": "assets/cat-still.webp"
   }
 ]

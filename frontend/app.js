@@ -2554,6 +2554,7 @@ async function initDemo() {
         d.setAttribute("aria-pressed", String(j === real));
       });
       cards[raw]?.append($("demo-overlay"));
+      $("demo-play")?.closest(".deck-card")?.classList.toggle("is-paused", !demo.playing);
       if (changed) renderDemoText(slides[real]);
     };
 
@@ -2573,13 +2574,19 @@ async function initDemo() {
     };
 
     const normalize = () => {
+      if (demo.raw !== 0 && demo.raw !== N + 1) return;
+      // The clone is pixel-identical to the real card. Jump instantly so the
+      // reset never animates backwards through the deck.
+      const prevBehavior = deck.style.scrollBehavior;
+      deck.style.scrollBehavior = "auto";
       if (demo.raw === 0) {
         deck.scrollLeft = step() * N;
         setActive(N);
-      } else if (demo.raw === N + 1) {
+      } else {
         deck.scrollLeft = step();
         setActive(1);
       }
+      deck.style.scrollBehavior = prevBehavior;
     };
 
     let settleTimer = null;
@@ -2714,8 +2721,8 @@ async function initDemo() {
       }
     });
 
-    updatePlay();
     setActive(1);
+    updatePlay();
     requestAnimationFrame(() => {
       deck.scrollLeft = step();
       setActive(1);
