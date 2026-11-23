@@ -519,7 +519,6 @@ function applyScreen(name) {
   $("screen-result").hidden = name !== "result";
   $("screen-library").hidden = name !== "library";
   $("check-change").hidden = name !== "check";
-  $("nav-home-group").hidden = name !== "start";
   $("nav-library-group").hidden = name !== "library";
   $("nav-check-group").hidden = name !== "check";
   $("nav-check-name").textContent = state.name || "";
@@ -2447,12 +2446,31 @@ function copyAllText(items) {
 }
 
 /* ------------------------------------------------------------------ menus */
+function positionMenu(menu, button) {
+  if (window.matchMedia("(min-width:900px)").matches) {
+    const r = button.getBoundingClientRect();
+    const width = menu.offsetWidth;
+    menu.style.left = `${Math.max(12, Math.min(window.innerWidth - width - 12, r.right - width))}px`;
+    menu.style.right = "auto";
+    menu.style.top = `${r.bottom + 6}px`;
+  } else {
+    menu.style.left = "";
+    menu.style.right = "";
+    menu.style.top = "";
+  }
+}
+
 function openSheet() {
-  $("sheet").hidden = false;
+  closeMenus();
+  const menu = $("sheet");
+  menu.hidden = false;
+  positionMenu(menu, $("download-btn"));
   $("scrim").hidden = false;
   $("download-btn").setAttribute("aria-expanded", "true");
+  $("download-btn").focus();
 }
 function openRunMenu() {
+  closeMenus();
   const menu = $("run-menu");
   menu.innerHTML = "";
   state.runs.forEach((run, i) => {
@@ -2465,6 +2483,7 @@ function openRunMenu() {
     menu.append(b);
   });
   menu.hidden = false;
+  positionMenu(menu, $("run-menu-btn"));
   $("scrim").hidden = false;
   $("run-menu-btn").setAttribute("aria-expanded", "true");
 }
@@ -2587,7 +2606,6 @@ function bind() {
     showScreen("library");
   });
   $("nav-new").addEventListener("click", () => showScreen("start"));
-  $("nav-home-drop").addEventListener("click", () => $("file").click());
   $("lib-search").addEventListener("input", (e) => {
     state.libQuery = e.target.value;
     if (state.screen === "library") renderLibrary();
