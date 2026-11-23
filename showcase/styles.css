@@ -136,10 +136,6 @@ h1,h2,h3,p{margin:0}
 .hero-command code{display:block;white-space:pre;overflow-x:auto;padding:10px 12px;font-family:'JetBrains Mono',monospace;font-size:11px;line-height:1.55;color:var(--text)}
 .hero-command code .prompt{color:var(--accent)}
 .hero-command code .dim{color:var(--text-muted)}
-@media(min-width:981px){
-  .hero{min-height:calc(100vh - 65px);min-height:calc(100svh - 65px);display:flex;align-items:center;box-sizing:border-box}
-  .hero-inner{width:100%}
-}
 
 /* hero demo panel */
 .demo-panel{border:1px solid var(--line);border-radius:16px;padding:clamp(14px,1.8vw,22px);background-color:var(--paper-bg);background-image:linear-gradient(var(--paper-grid-major) 1px,transparent 1px),linear-gradient(90deg,var(--paper-grid-major) 1px,transparent 1px),linear-gradient(var(--paper-grid-minor) 1px,transparent 1px),linear-gradient(90deg,var(--paper-grid-minor) 1px,transparent 1px);background-size:100px 100px,100px 100px,20px 20px,20px 20px;box-shadow:var(--shadow-md);position:relative;min-width:0}
