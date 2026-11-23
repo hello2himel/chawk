@@ -50,7 +50,7 @@ app.add_middleware(
 @app.middleware("http")
 async def no_cache_shell(request, call_next):
     response = await call_next(request)
-    if request.url.path in {"/", "/library", "/check", "/result"} or request.url.path.endswith("index.html"):
+    if request.url.path in {"/", "/library", "/check", "/result"} or request.url.path.endswith(("index.html", "styles.css", "app.js")):
         response.headers["Cache-Control"] = "no-store, no-cache, must-revalidate"
         response.headers["Pragma"] = "no-cache"
     return response
