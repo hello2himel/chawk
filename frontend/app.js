@@ -652,8 +652,11 @@ function renderLibrary() {
   $("lib-bar").hidden = !(state.libSelect && works.length > 0);
   $("lib-selcount").textContent = `${state.libSelected.size} selected`;
   $("lib-sel-delete").disabled = state.libSelected.size === 0;
+  $("lib-count-line").textContent = works.length
+    ? `${works.length} work${works.length === 1 ? "" : "s"}`
+    : "No works yet";
   $("lib-note").textContent = works.length
-    ? `${works.length} of ${MAX_WORKS} works · ${Math.round(JSON.stringify(works).length / 1024)} KB in this browser`
+    ? `${Math.round(JSON.stringify(works).length / 1024)} KB in this browser · up to ${MAX_WORKS} works`
     : "";
 
   for (const w of works) {
@@ -662,11 +665,19 @@ function renderLibrary() {
     card.className = "work" + (picked ? " sel" : "");
     card.tabIndex = 0;
 
+    card.setAttribute("aria-label", `${w.name}, ${formatCount(w.count)} equations`);
+    if (state.libSelect) {
+      card.setAttribute("role", "checkbox");
+      card.setAttribute("aria-checked", picked ? "true" : "false");
+    }
+
     const thumb = document.createElement("div");
     thumb.className = "workthumb";
     const img = document.createElement("img");
     img.src = w.thumb;
-    img.alt = "";
+    img.alt = `${w.name}, rebuilt from ${formatCount(w.count)} equations`;
+    img.loading = "lazy";
+    img.decoding = "async";
     thumb.append(img);
 
     const body = document.createElement("div");
@@ -674,21 +685,24 @@ function renderLibrary() {
     const name = document.createElement("div");
     name.className = "workname";
     name.textContent = w.name;
+    name.title = w.name;
     const meta = document.createElement("div");
     meta.className = "workmeta";
-    meta.textContent = `${w.count} equation${w.count === 1 ? "" : "s"} · ${workDate(w.at)}`;
+    meta.textContent = `${formatCount(w.count)} equation${w.count === 1 ? "" : "s"} · ${workDate(w.at)}`;
+    meta.title = meta.textContent;
     const row = document.createElement("div");
     row.className = "workrow";
     const open = document.createElement("button");
     open.type = "button";
-    open.className = "btn workopen";
-    open.textContent = "Open";
+    open.className = "workopen";
+    open.innerHTML = 'Open <i class="ri-arrow-right-line" aria-hidden="true"></i>';
     open.hidden = state.libSelect;
     open.onclick = (e) => { e.stopPropagation(); openWork(w.id); };
     const del = document.createElement("button");
     del.type = "button";
     del.className = "workdel";
     del.setAttribute("aria-label", `Delete ${w.name}`);
+    del.title = "Delete";
     del.innerHTML = '<i class="ri-delete-bin-line" aria-hidden="true"></i>';
     del.hidden = state.libSelect;
     del.onclick = (e) => { e.stopPropagation(); deleteWork(w.id); };

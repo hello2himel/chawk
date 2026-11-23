@@ -21,7 +21,7 @@
       <span class="libcount" id="library-count" hidden>0</span>
     </button>
 
-    <span class="m hide-m" id="start-meta">v1.1.20 · connected</span>
+    <span class="m hide-m" id="start-meta">v1.1.21 · connected</span>
 
     <button class="btn" id="check-change" hidden>
       <span class="hide-m">Choose another</span><span class="show-m">Change</span>
@@ -63,64 +63,57 @@
     </section>
 
     <section class="demo paper">
-      <svg viewBox="0 0 760 500" style="width:100%;height:auto;display:block" role="img" aria-label="Animation: a star builds itself from its equations">
-        <g font-family="'JetBrains Mono',monospace" font-size="11" fill="#5A5D68">
-          <path d="M60 480H700M50 40V480" stroke="#15161A" stroke-opacity=".35"></path>
-          <text x="60" y="496" text-anchor="middle">0</text>
-          <text x="220" y="496" text-anchor="middle">160</text>
-          <text x="380" y="496" text-anchor="middle">320</text>
-          <text x="540" y="496" text-anchor="middle">480</text>
-          <text x="700" y="496" text-anchor="middle">640</text>
-          <text x="44" y="44" text-anchor="end">0</text>
-          <text x="44" y="184" text-anchor="end">140</text>
-          <text x="44" y="324" text-anchor="end">280</text>
-          <text x="44" y="464" text-anchor="end">420</text>
-        </g>
-        <g transform="translate(130 70) scale(2.2) translate(-130 -70)"><path class="d" pathLength="1" d="M130.0 8.0 L145.3 49.0 L189.0 50.8 L154.7 78.0 L166.4 120.2 L130.0 96.0 L93.6 120.2 L105.3 78.0 L71.0 50.8 L114.7 49.0 Z" stroke="#15161A" stroke-width="2" stroke-linejoin="round"></path></g>
-      </svg>
-      <p class="fig">Fig. 1 · a doodle, rebuilt from 7 equations</p>
-      <div class="eq demo-eqs">
-        <span class="f"><i>y</i> = 8.3783·sin(0.0941<i>x</i> − 1.23) + 106.9273<span class="no">(1)</span></span>
-        <span class="f" style="animation-delay:.35s"><i>x</i> = 1.651e-05<i>y</i><sup>4</sup> − 0.0053<i>y</i><sup>3</sup> + 0.6033<i>y</i><sup>2</sup> − 28.1827<i>y</i> + 533.6565<span class="no">(2)</span></span>
-        <span class="f" style="animation-delay:.7s"><i>x</i> = −1.970e-05<i>y</i><sup>4</sup> + 0.0064<i>y</i><sup>3</sup> − 0.7349<i>y</i><sup>2</sup> + 35.2616<i>y</i> − 414.6465<span class="no">(3)</span></span>
-        <span class="f" style="animation-delay:1.05s"><i>x</i> = −0.4282<i>y</i> + 133.791<span class="no">(4)</span></span>
-        <span class="f" style="animation-delay:1.4s"><i>y</i> = −0.0732<i>x</i> + 55.5648<span class="no">(5)</span></span>
-        <span class="f" style="animation-delay:1.75s"><i>x</i> = 0.397<i>y</i> + 126.0559<span class="no">(6)</span></span>
-        <span class="f" style="animation-delay:2.1s"><i>y</i> = 0.0754<i>x</i> + 36.2329<span class="no">(7)</span></span>
+      <div class="demo-stage">
+        <img class="demo-river" src="assets/river-timelapse.webp" width="720" height="480"
+             alt="Timelapse of the river and boats being drawn from their equations">
       </div>
-      <p class="hand">↑ yes, that star is just algebra</p>
+      <p class="fig">Fig. 1 · the river, rebuilt from 4,017 equations</p>
+      <div class="eq demo-eqs">
+        <span class="f"><i>x</i>(t) = 140.86 − 0.37cos 2πt + 2.77sin 2πt<span class="no">(1)</span></span>
+        <span class="f" style="animation-delay:.5s"><i>y</i>(t) = 600.3 − 1.69cos 2πt − 0.4sin 2πt − 0.01sin 4πt<span class="no">(2)</span></span>
+        <span class="f" style="animation-delay:1s"><i>x</i>(t) = 268.19 − 4.41cos 2πt − 1.86sin 2πt<span class="no">(3)</span></span>
+        <span class="f" style="animation-delay:1.5s"><i>y</i>(t) = 10.55 − 1.58cos 2πt + 2.37sin 2πt − 0.01sin 4πt<span class="no">(4)</span></span>
+      </div>
+      <p class="hand">↑ the whole river is just algebra.</p>
     </section>
   </main>
 
   <!-- ============================= LIBRARY ============================= -->
   <main class="library" id="screen-library" hidden>
-    <div class="libhead">
-      <div>
-        <p class="fig libfig">YOUR WORK · THIS BROWSER</p>
-        <h1 class="h h-lib">Previous works, <span class="hl"><i>kept</i></span>.</h1>
-        <p class="m libsub">Open one to run it again, or tidy up.</p>
+    <div class="libwrap">
+      <header class="libhead">
+        <div>
+          <p class="fig libfig">YOUR WORK · THIS BROWSER</p>
+          <h1 class="h h-lib">Previous works, <span class="hl"><i>kept</i></span>.</h1>
+          <p class="m libsub">Open one to run it again, or tidy up.</p>
+        </div>
+        <div class="libtools">
+          <button class="chip" id="lib-select" aria-pressed="false">Select</button>
+          <button class="btn bp" id="lib-new"><i class="ri-add-line" aria-hidden="true"></i> New doodle</button>
+        </div>
+      </header>
+
+      <div class="libtoolbar">
+        <p class="m libcountline" id="lib-count-line"></p>
+        <button class="libdanger" id="lib-delete-all">Delete all</button>
       </div>
-      <div class="libtools">
-        <button class="chip" id="lib-select" aria-pressed="false">Select</button>
-        <button class="chip" id="lib-delete-all">Delete all</button>
-        <button class="btn" id="lib-new"><i class="ri-add-line" aria-hidden="true"></i> New doodle</button>
+
+      <div class="libgrid" id="lib-grid"></div>
+
+      <div class="libempty" id="lib-empty" hidden>
+        <svg width="84" height="84" viewBox="0 0 64 64" aria-hidden="true"><g transform="rotate(-24 32 32)"><rect x="18" y="4" width="28" height="56" rx="8" fill="#fff" stroke="#15161A" stroke-width="3"></rect><path d="M18 46h28v6a8 8 0 0 1-8 8H26a8 8 0 0 1-8-8z" fill="#ECE8DD" stroke="#15161A" stroke-width="3"></path><circle cx="26" cy="22" r="6" fill="#fff" stroke="#15161A" stroke-width="2.5"></circle><circle cx="38" cy="22" r="6" fill="#fff" stroke="#15161A" stroke-width="2.5"></circle><circle cx="27" cy="23" r="2" fill="#15161A"></circle><circle cx="37" cy="23" r="2" fill="#15161A"></circle><path d="M24 36c3-5 5-5 8 0s5 5 8 0" fill="none" stroke="#1F3FD1" stroke-width="3" stroke-linecap="round"></path></g></svg>
+        <p class="hand hand-lg empty-hand">nothing saved yet — draw something.</p>
+        <button class="btn bp" id="lib-empty-new">New doodle</button>
+      </div>
+
+      <p class="m libnote" id="lib-note"></p>
+
+      <div class="libbar" id="lib-bar" hidden>
+        <span class="m" id="lib-selcount">0 selected</span>
+        <button class="btn" id="lib-sel-cancel">Cancel</button>
+        <button class="btn danger" id="lib-sel-delete">Delete selected</button>
       </div>
     </div>
-
-    <div class="libgrid" id="lib-grid"></div>
-
-    <div class="libempty" id="lib-empty" hidden>
-      <svg width="84" height="84" viewBox="0 0 64 64" aria-hidden="true"><g transform="rotate(-24 32 32)"><rect x="18" y="4" width="28" height="56" rx="8" fill="#fff" stroke="#15161A" stroke-width="3"></rect><path d="M18 46h28v6a8 8 0 0 1-8 8H26a8 8 0 0 1-8-8z" fill="#ECE8DD" stroke="#15161A" stroke-width="3"></path><circle cx="26" cy="22" r="6" fill="#fff" stroke="#15161A" stroke-width="2.5"></circle><circle cx="38" cy="22" r="6" fill="#fff" stroke="#15161A" stroke-width="2.5"></circle><circle cx="27" cy="23" r="2" fill="#15161A"></circle><circle cx="37" cy="23" r="2" fill="#15161A"></circle><path d="M24 36c3-5 5-5 8 0s5 5 8 0" fill="none" stroke="#1F3FD1" stroke-width="3" stroke-linecap="round"></path></g></svg>
-      <p class="hand hand-lg empty-hand">nothing saved yet — draw something.</p>
-      <button class="btn bp" id="lib-empty-new">New doodle</button>
-    </div>
-
-    <div class="libbar" id="lib-bar" hidden>
-      <span class="m" id="lib-selcount">0 selected</span>
-      <button class="btn" id="lib-sel-cancel">Cancel</button>
-      <button class="btn danger" id="lib-sel-delete">Delete selected</button>
-    </div>
-    <p class="m libnote" id="lib-note"></p>
   </main>
 
   <!-- ============================= CHECK ============================= -->
