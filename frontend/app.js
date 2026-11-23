@@ -1098,7 +1098,11 @@ function renderLibrary() {
     more.setAttribute("aria-expanded", "false");
     more.innerHTML = '<i class="ri-more-2-fill" aria-hidden="true"></i>';
     more.hidden = selecting;
-    more.onclick = (e) => { e.stopPropagation(); openCardMenu(w, more); };
+    more.onclick = (e) => {
+      e.stopPropagation();
+      if (state.libMenuWork === w.id && !$("lib-card-menu").hidden) closeLibMenus();
+      else openCardMenu(w, more);
+    };
     body.append(info, more);
     card.append(thumb, body);
     if (selecting) {
