@@ -2,12 +2,14 @@
 
 **Every squiggle is a function.**
 
+**Live showcase:** <https://locusdraw.netlify.app/>
+
 <img src="docs/chawk-poster-3.webp" width="400" alt="Demo poster: a serene blue river above the 3,605 equations that redraw it">
 
 *A demo poster: the drawing in a 3:2 window, its 3,605 equations below.*
 
 Chawk reads a line drawing (or flat-colour illustration), finds a real equation for
-every stroke or region, and redraws the picture using nothing but those equations. It runs on your own machine — no account,
+every stroke or region, and redraws the picture from those equations. It runs on your own machine. No account,
 no upload to someone else's server.
 
 | The input | The drawing |
@@ -34,7 +36,7 @@ docker run --rm -p 8010:8000 chawk
 
 ### Static showcase (Netlify)
 
-A self-contained, static portfolio of Chawk lives in [`showcase/`](showcase/README.md). It shows the five proofs, the original-versus-rebuilt compare, the tracing pipeline, and sample equations — with the same light/dark theme system as the app.
+A self-contained, static portfolio of Chawk lives in [`showcase/`](showcase/README.md). It shows the five proofs, the original-versus-rebuilt compare, the tracing pipeline, and sample equations, with the same light/dark theme system as the app.
 
 - **Netlify Drop:** drag `showcase/` onto <https://app.netlify.com/drop>.
 - **Git-connected Netlify:** the checked-in `netlify.toml` publishes `showcase` with no build step. Its base directory is `showcase`, so Netlify does not install the Python app's root `requirements.txt`.
@@ -59,11 +61,11 @@ Open **http://127.0.0.1:8000**.
 
 ## How it works
 
-1. **Drop a doodle** — PNG, JPG or WebP up to 15MB, or pick a sample.
-2. **Check the ink** — preview what will be traced, pick the drawing type, how
+1. **Drop a doodle:** PNG, JPG or WebP up to 15MB, or pick a sample.
+2. **Check the ink:** preview what will be traced, pick the drawing type, how
    picky the fit should be, and which curve types are allowed.
-3. **Do the maths** — every stroke is fitted.
-4. **Inspect** — the drawing is rebuilt from the equations. Hover a curve to
+3. **Do the maths:** every stroke is fitted.
+4. **Inspect:** the drawing is rebuilt from the equations. Hover a curve to
    highlight it, click an equation to pin its card, click again to close it.
 
 | Start | Check |
@@ -92,13 +94,13 @@ Each equation gets a verdict: **spot on** when it stays close to the ink,
 
 The **Download** menu offers:
 
-- **Drawing + equations** — your drawing with the fitted curves on top.
-- **Equations only** — the drawing rebuilt from the math alone.
-- **Side by side** — a square 3600×3600 social poster: the drawing rebuilt
+- **Drawing + equations:** your drawing with the fitted curves on top.
+- **Equations only:** the drawing rebuilt from the math alone.
+- **Side by side:** a square 3600×3600 social poster: the drawing rebuilt
   from the equations in a 2:3 window on the left, and "drawn using", the
   count, a legible numbered KaTeX list of the real equations and the project
   footer on the right. It downloads directly.
-- **Desmos, LaTeX, text and JSON** — the math, ready for other tools.
+- **Desmos, LaTeX, text and JSON:** the math, ready for other tools.
 
 The side-by-side poster is a 3600×3600 square (the 1800 design rasterised at
 2× for crisp text), composed as DOM + KaTeX. The drawing gets a true 2:3 window (1200×1800); other aspect ratios are fitted inside it, never cropped. The right
@@ -114,7 +116,7 @@ python lineart2eq.py -i drawing.png -o out.png --print-equations --json report.j
 python lineart2eq.py -i art.png -o out.png --preset precise
 ```
 
-`python lineart2eq.py --help` lists every knob — thresholding, gap closing,
+`python lineart2eq.py --help` lists every knob: thresholding, gap closing,
 tolerances, labels, DPI. Exit codes: `0` success, `2` bad input, `3` no strokes.
 
 ## HTTP API
@@ -130,9 +132,9 @@ The response contains `report` (strokes, segments, equations, fit quality and th
 settings used) plus base64 PNGs: `image_png_b64`, `image_clean_b64`,
 `image_redraw_b64`, `image_redraw_labels_b64`, and optional `debug_png_b64`.
 
-- `GET /health` — liveness check
-- `GET /api/presets` — available presets
-- `POST /api/process` — `file`, plus optional `preset`, `config` (JSON), `debug`
+- `GET /health`: liveness check
+- `GET /api/presets`: available presets
+- `POST /api/process`: `file`, plus optional `preset`, `config` (JSON), `debug`
 
 ## Presets
 
